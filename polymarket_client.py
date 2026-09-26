@@ -1,4 +1,4 @@
-﻿"""
+"""
 polymarket_client.py
 ====================
 Polymarket US piece of the pipeline. It does three jobs:
@@ -75,15 +75,8 @@ TRADING_BASE_URL = "https://api.polymarket.us"
 
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
-TAKER_FEE_THETA = 0.0695
-
-# ---- Risk limits (change these on purpose, not by accident) ----
-MAX_CONTRACTS_PER_ORDER = 25       # hard cap on contracts in one order
-MAX_DOLLARS_PER_ORDER = 10.00      # hard cap on worst-case cost of one order
-MAX_DOLLARS_PER_DAY = 50.00        # hard cap on total live spend per UTC day
-MAX_SLIPPAGE = 0.02                # pay at most 2 cents worse than best price
-KILL_SWITCH_FILE = os.path.join(SCRIPT_DIR, "STOP_TRADING")
-TRADE_LOG_PATH = os.path.join(SCRIPT_DIR, "polymarket_trades.jsonl")
+# Risk limits, kill switch, trade log and fees are shared with Kalshi.
+import trading_common as tc
 
 
 def _read_secret_file(filename: str) -> str:
@@ -108,10 +101,6 @@ def _amount(value) -> float:
     return float(value)
 
 
-def taker_fee(contracts: float, price: float) -> float:
-    return TAKER_FEE_THETA * contracts * price * (1.0 - price)
-
-
 # ------------------------------------------------------------------ #
 # 1. PUBLIC MARKET DATA
 # ------------------------------------------------------------------ #
@@ -120,11 +109,19 @@ class PolymarketPublic:
     def __init__(self):
         self.session = requests.Session()
 
+    _last_request = 0.0
+    MIN_INTERVAL = 0.15  # stay under the 20 requests/second limit, with margin
+
     def _get(self, path: str, params: dict = None) -> dict:
-        for attempt in range(4):
+        for attempt in range(6):
+            wait = PolymarketPublic._last_request + self.MIN_INTERVAL - time.time()
+            if wait > 0:
+                time.sleep(wait)
+            PolymarketPublic._last_request = time.time()
             resp = self.session.get(PUBLIC_BASE_URL + path, params=params, timeout=20)
             if resp.status_code == 429:
-                time.sleep(2 ** attempt)
+                retry_after = resp.headers.get("Retry-After", "")
+                time.sleep(float(retry_after) if retry_after.replace(".", "", 1).isdigit() else 1.5 * (attempt + 1))
                 continue
             resp.raise_for_status()
             return resp.json()
@@ -218,112 +215,56 @@ class PolymarketTrader:
 
 
 # ------------------------------------------------------------------ #
-# 3. RISK-CHECKED TRADE
+# 3. RISK-CHECKED TRADE (same behavior as kalshi_trader.place_trade)
 # ------------------------------------------------------------------ #
 
-def _spent_today() -> float:
-    """Sum of worst-case cost of LIVE orders logged today (UTC)."""
-    if not os.path.isfile(TRADE_LOG_PATH):
-        return 0.0
-    today = datetime.now(timezone.utc).date().isoformat()
-    total = 0.0
-    with open(TRADE_LOG_PATH, encoding="utf-8") as f:
-        for line in f:
-            try:
-                entry = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if entry.get("live") and entry.get("sent") and entry.get("time", "").startswith(today):
-                total += entry.get("max_cost", 0.0)
-    return total
-
-
-def _log_trade(entry: dict):
-    entry["time"] = datetime.now(timezone.utc).isoformat()
-    with open(TRADE_LOG_PATH, "a", encoding="utf-8") as f:
-        f.write(json.dumps(entry) + "\n")
-
-
 def place_trade(slug: str, side: str, qty: float, live: bool = False, reason: str = "") -> dict:
-    """Buy YES or NO on a market with an immediate-or-cancel limit order.
-
-    The limit is the current best price plus MAX_SLIPPAGE, so we never pay
-    more than that. Dry run unless live=True.
+    """Buy YES or NO with an immediate-or-cancel limit order, at most
+    tc.MAX_SLIPPAGE worse than the best price. Dry run unless live=True.
     """
     side = side.lower()
     if side not in ("yes", "no"):
         raise ValueError("side must be 'yes' or 'no'")
 
-    public = PolymarketPublic()
-    quote = public.bbo(slug)
-    if quote["state"] != "MARKET_STATE_OPEN":
-        raise RuntimeError(f"{slug} is not open for trading (state={quote['state']}).")
+    q = PolymarketPublic().bbo(slug)
+    if q["state"] != "MARKET_STATE_OPEN":
+        raise RuntimeError(f"{slug} is not open for trading (state={q['state']}).")
 
-    if side == "yes":
-        if quote["best_ask"] is None:
-            raise RuntimeError("No YES offers on the book.")
-        # Buy YES: price is the YES price we are willing to pay.
-        yes_limit = round(min(quote["best_ask"] + MAX_SLIPPAGE, 0.99), 2)
-        cost_per_contract = yes_limit
-        intent = "ORDER_INTENT_BUY_LONG"
-    else:
-        if quote["best_bid"] is None:
-            raise RuntimeError("No YES bids on the book (can't buy NO).")
-        # Buy NO = sell YES. Price is the YES price we sell at; lower is worse for us.
-        yes_limit = round(max(quote["best_bid"] - MAX_SLIPPAGE, 0.01), 2)
-        cost_per_contract = 1.0 - yes_limit
-        intent = "ORDER_INTENT_BUY_SHORT"
-
+    yes_limit, cost_per_contract = tc.limit_price(side, q["best_bid"], q["best_ask"])
     qty = float(qty)
-    fee = taker_fee(qty, yes_limit)
+    fee = tc.taker_fee("polymarket", qty, yes_limit)
     max_cost = round(qty * cost_per_contract + fee, 2)
 
     order = {
         "marketSlug": slug,
-        "intent": intent,
+        "intent": "ORDER_INTENT_BUY_LONG" if side == "yes" else "ORDER_INTENT_BUY_SHORT",
         "type": "ORDER_TYPE_LIMIT",
         "price": {"value": f"{yes_limit:.2f}", "currency": "USD"},
         "quantity": qty,
         "tif": "TIME_IN_FORCE_IMMEDIATE_OR_CANCEL",
     }
 
-    # ---- risk checks ----
-    problems = []
-    if qty > MAX_CONTRACTS_PER_ORDER:
-        problems.append(f"qty {qty} > MAX_CONTRACTS_PER_ORDER {MAX_CONTRACTS_PER_ORDER}")
-    if max_cost > MAX_DOLLARS_PER_ORDER:
-        problems.append(f"max cost ${max_cost} > MAX_DOLLARS_PER_ORDER ${MAX_DOLLARS_PER_ORDER}")
-    spent = _spent_today()
-    if live and spent + max_cost > MAX_DOLLARS_PER_DAY:
-        problems.append(f"daily cap: ${spent:.2f} spent + ${max_cost} > ${MAX_DOLLARS_PER_DAY}")
-    if live and os.path.exists(KILL_SWITCH_FILE):
-        problems.append("STOP_TRADING file exists (kill switch on)")
-
     result = {
-        "slug": slug, "side": side, "qty": qty, "yes_limit": yes_limit,
-        "quote": quote, "est_fee": round(fee, 4), "max_cost": max_cost,
+        "venue": "polymarket", "market": slug, "slug": slug, "side": side, "qty": qty,
+        "yes_limit": yes_limit, "quote": q, "est_fee": round(fee, 4), "max_cost": max_cost,
         "live": live, "sent": False, "reason": reason, "order": order,
     }
 
+    problems = tc.risk_check(qty, max_cost, live)
     if problems:
         result["blocked"] = problems
-        _log_trade(result)
-        return result
-
-    if not live:
+    elif not live:
         result["note"] = "DRY RUN: order not sent. Re-run with --live to send."
-        _log_trade(result)
-        return result
+    else:
+        trader = PolymarketTrader()
+        try:
+            result["preview"] = trader.preview_order(order)
+        except RuntimeError as e:
+            result["preview_error"] = str(e)
+        result["response"] = trader.create_order(order)
+        result["sent"] = True
 
-    trader = PolymarketTrader()
-    try:
-        result["preview"] = trader.preview_order(order)
-    except RuntimeError as e:
-        result["preview_error"] = str(e)
-    response = trader.create_order(order)
-    result["sent"] = True
-    result["response"] = response
-    _log_trade(result)
+    tc.log_trade(result)
     return result
 
 
@@ -348,7 +289,7 @@ def _ask_gemini_json(prompt: str) -> dict:
     return json.loads(text)
 
 
-def find_markets(statement: str, speaker: str = "", top_n: int = 5) -> list:
+def find_markets(statement: str, speaker: str = "", top_n: int = 5, context: str = "") -> list:
     """Statement -> list of relevant open Polymarket US markets with a
     direction ("YES more likely" / "YES less likely") and current prices.
     """
@@ -393,8 +334,9 @@ def find_markets(statement: str, speaker: str = "", top_n: int = 5) -> list:
     # Step 3: Gemini picks the relevant ones and the direction.
     listing = list(candidates.values())[:60]
     ranked = _ask_gemini_json(
-        f"Speaker: {speaker or 'unknown'}\nStatement: \"{statement}\"\n\n"
-        "Below are open prediction markets (slug, event, rules). Pick the ones "
+        f"Speaker: {speaker or 'unknown'}\nStatement: \"{statement}\"\n"
+        + (f"Context: {context}\n" if context else "")
+        + "\nBelow are open prediction markets (slug, event, rules). Pick the ones "
         "this statement plausibly moves. For each, say whether it makes YES more "
         "or less likely, a relevance score 0-1, and a one-sentence reason.\n"
         "Return JSON {\"markets\": [{\"slug\": str, \"direction\": \"YES_UP\" or "
@@ -410,8 +352,8 @@ def find_markets(statement: str, speaker: str = "", top_n: int = 5) -> list:
             continue  # ignore anything Gemini invented
         try:
             quote = public.bbo(slug)
-        except requests.RequestException:
-            continue
+        except Exception:
+            continue  # one unpriceable market shouldn't sink the whole search
         results.append({**candidates[slug], **item, "quote": quote})
 
     results.sort(key=lambda r: r.get("relevance", 0), reverse=True)

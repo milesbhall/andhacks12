@@ -1,0 +1,10 @@
+requests
+google-genai
+cryptography
+pypdf
+numpy
+pandas
+streamlit>=1.42
+Authlib>=1.3.2
+solders
+psycopg2-binary

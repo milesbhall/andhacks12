@@ -1,0 +1,14 @@
+*.txt
+!requirements.txt
+*.pem
+*.key
+.env
+solana_keypair.json
+.streamlit/secrets.toml
+trades.jsonl
+results/
+kalshi_catalog_cache.pkl.gz
+kalshi_candidates_debug.json
+__pycache__/
+.git/
+.venv/

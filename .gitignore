@@ -16,3 +16,13 @@ __pycache__/
 .venv/
 
 *.log
+
+trades.jsonl
+kalshi_catalog_cache.pkl.gz
+results/
+kalshi_candidates_debug.json
+baseline_calibration.json
+solana_keypair.json
+.streamlit/secrets.toml
+pipe_test.log
+pipe_err.log
