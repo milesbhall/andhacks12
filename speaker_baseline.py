@@ -54,7 +54,11 @@ SURPRISE_THRESHOLD = 0.35
 # Only keep the most recent N statements per speaker in the baseline,
 # so a speaker's baseline drifts to reflect their recent pattern rather
 # than being dominated by things they said years ago.
-MAX_BASELINE_SIZE = 50
+MAX_BASELINE_SIZE = 300  # two press conferences are ~120 chunks
+
+# seed_baselines.py writes a per-speaker threshold here (mean + 2 sd of the
+# speaker's own past answers). If present, it overrides SURPRISE_THRESHOLD.
+CALIBRATION_FILENAME = "baseline_calibration.json"
 
 
 @dataclass
@@ -195,6 +199,20 @@ class SurpriseScorer:
         key = api_key if api_key else GEMINI_API_KEY
         self.embedder = EmbeddingClient(key)
         self.store = BaselineStore(store_path)
+        self.calibration_path = os.path.join(
+            os.path.dirname(os.path.abspath(store_path)), CALIBRATION_FILENAME
+        )
+
+    def threshold_for(self, speaker: str) -> float:
+        """Per-speaker threshold from seed_baselines.py calibration, if it
+        exists; otherwise the global SURPRISE_THRESHOLD.
+        """
+        if os.path.isfile(self.calibration_path):
+            with open(self.calibration_path, "r") as f:
+                calibration = json.load(f)
+            if speaker in calibration:
+                return calibration[speaker]["suggested_threshold"]
+        return SURPRISE_THRESHOLD
 
     def add_to_baseline(self, speaker: str, statement: str):
         """Call this to seed or update a speaker's baseline with a
@@ -227,8 +245,9 @@ class SurpriseScorer:
         similarity = cosine_similarity(new_embedding, baseline_vector)
         surprise_score = 1.0 - similarity
 
+        threshold = self.threshold_for(speaker)
         is_surprising = False
-        if surprise_score >= SURPRISE_THRESHOLD:
+        if surprise_score >= threshold:
             is_surprising = True
 
         return ScoreResult(
