@@ -54,8 +54,7 @@ We replay the **September 16, 2026 FOMC press conference** with Kalshi's real tr
 ## Team
 
 - Om Patel
-- [Teammate]
-- [Teammate]
+- Dylan Ball
 
 Research, data analysis, and drafting assisted by Claude (Anthropic).
 
