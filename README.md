@@ -50,7 +50,7 @@ We test the hypothesis that speaker-relative surprise predicts market moves, liv
 | `backboard_client.py` | Logs every signal and trade to a Backboard thread |
 | `tiger_store.py` | Stores signals, prices and trades as Tiger Data time series |
 | `solana_proof.py` | Writes a hash of each signal to Solana, a public timestamp that proves when we made the call |
-| `speechtxt.py` | ElevenLabs speech-to-text |
+| `speechtxt.py` | ElevenLabs text-to-speech: reads transcript text aloud (the dashboard does the speech-to-text upload) |
 
 **Data and config:** `transcripts/` (parsed press conferences), `stance_baselines.json` (each speaker's usual stance), `Dockerfile` and `deploy/` (DigitalOcean), `.streamlit/secrets.example.toml` (Auth0).
 
