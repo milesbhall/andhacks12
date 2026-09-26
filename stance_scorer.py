@@ -1,4 +1,4 @@
-﻿"""
+"""
 stance_scorer.py
 ================
 Speaker-relative STANCE surprise. This replaces "is the topic unusual?"
@@ -9,7 +9,7 @@ How it works:
   1. Gemini scores each answer's policy stance from -1 (very dovish) to
      +1 (very hawkish), using a fixed rubric.
   2. A speaker's baseline is the mean and spread of their past answers'
-     stance scores (built from transcripts/ by seed_baselines.py).
+     stance scores (from transcripts/, downloaded by fed_transcripts.py).
   3. A new answer's surprise = z-score = (stance - mean) / stdev.
      |z| >= 2 is flagged. The sign says which way: + hawkish, - dovish.
 
@@ -149,7 +149,8 @@ def save_store(store: dict):
 def chair_answers(date: str) -> list:
     path = os.path.join(TRANSCRIPT_DIR, f"{date}.json")
     if not os.path.isfile(path):
-        raise RuntimeError(f"{path} missing. Run: python seed_baselines.py --parse-only --dates {date}")
+        import fed_transcripts
+        fed_transcripts.load_or_parse(date, fed_transcripts.DEFAULT_CHAIR_LABEL)
     with open(path, encoding="utf-8") as f:
         segments = json.load(f)["segments"]
     answers = []

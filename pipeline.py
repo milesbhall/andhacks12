@@ -52,12 +52,10 @@ RESULTS_DIR = os.path.join(SCRIPT_DIR, "results")
 
 
 def _backboard_log(question: str, answer: str):
-    """Best effort: log to Backboard using the teammate's client if keys exist."""
+    """Best effort: log to Backboard if a key exists."""
     try:
-        import kalshigeminibackboard as kgb
-        if not kgb.BACKBOARD_API_KEY:
-            return None
-        return kgb.BackboardClient(kgb.BACKBOARD_API_KEY).log_exchange(kgb.BACKBOARD_THREAD_ID, question, answer)
+        import backboard_client
+        return backboard_client.log(question, answer)
     except Exception as e:
         print(f"  (Backboard log skipped: {e})")
         return None

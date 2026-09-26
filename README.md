@@ -27,6 +27,46 @@ We test the hypothesis that speaker-relative surprise predicts market moves, liv
 - **ElevenLabs Scribe v2 Realtime**: live speech-to-text (~150 ms) with speaker labels, so only the speaker being tracked is scored (not reporters' questions)
 - **Federal Reserve caption files**: official, timed, speaker-labeled transcripts used for the replay demo and to build speaker baselines
 
+## Repo map
+
+**Run these**
+
+| File | What it does |
+|---|---|
+| `pipeline.py` | The whole system: statement or replay -> stance surprise -> markets -> trades -> logs |
+| `dashboard.py` | Streamlit demo screen (`streamlit run dashboard.py`) |
+
+**Pieces the pipeline uses**
+
+| File | What it does |
+|---|---|
+| `stance_scorer.py` | Gemini scores each answer -1 (dovish) to +1 (hawkish); surprise = z-score vs. that speaker's past answers |
+| `fed_transcripts.py` | Downloads Fed press conference PDFs and splits them into Chair answers vs. reporter questions |
+| `market_router.py` | Finds related markets on Kalshi and Polymarket and trades them the same way |
+| `kalshi_ticker_finder.py` | Searches all ~130k live Kalshi markets for ones related to a statement |
+| `kalshi_trader.py` | Kalshi prices and orders |
+| `polymarket_client.py` | Polymarket US search, prices and orders |
+| `trading_common.py` | Shared risk limits, kill switch, fees and trade log for both venues |
+| `backboard_client.py` | Logs every signal and trade to a Backboard thread |
+| `tiger_store.py` | Stores signals, prices and trades as Tiger Data time series |
+| `solana_proof.py` | Writes a hash of each signal to Solana, a public timestamp that proves when we made the call |
+| `speechtxt.py` | ElevenLabs speech-to-text |
+
+**Data and config:** `transcripts/` (parsed press conferences), `stance_baselines.json` (each speaker's usual stance), `Dockerfile` and `deploy/` (DigitalOcean), `.streamlit/secrets.example.toml` (Auth0).
+
+**Work in progress:** `kalshi_ticker2.py` and `run_kalshi_ticker2.py` (next version of the Kalshi market search).
+
+## Quick start
+
+```
+pip install -r requirements.txt
+python pipeline.py --replay 20260916 --venues polymarket     # replay the Sept 16 press conference (dry run)
+python pipeline.py --statement "..."                          # score one statement
+streamlit run dashboard.py
+```
+
+Keys go in gitignored files next to the code (`gemapi.txt`, `polymarketkey.txt`, `polymarketsecret.txt`, `kalshikey.txt` + `privkey.txt`, `elevenapi.txt`, `backboardapi.txt`, `tigerdb.txt`) or in environment variables. Orders are dry runs unless you pass `--live`.
+
 ## Supported venues
 
 - **Kalshi** (live, plus demo environment for testing)
