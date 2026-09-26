@@ -136,8 +136,19 @@ class PolymarketPublic:
         data = self._get(f"/v1/market/slug/{slug}")
         return data.get("market", data)
 
+    _bbo_cache = {}
+    BBO_TTL = 15.0 # seconds; lets place_trade reuse the quote find_markets just fetched
+
     def bbo(self, slug: str) -> dict:
         """Best bid/ask for the YES side, as plain floats."""
+        hit = PolymarketPublic._bbo_cache.get(slug)
+        if hit and time.time() - hit[0] < self.BBO_TTL:
+            return dict(hit[1])
+        quote = self._bbo_uncached(slug)
+        PolymarketPublic._bbo_cache[slug] = (time.time(), quote)
+        return dict(quote)
+
+    def _bbo_uncached(self, slug: str) -> dict:
         data = self._get(f"/v1/markets/{slug}/bbo").get("marketData", {})
         return {
             "slug": slug,

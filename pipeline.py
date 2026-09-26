@@ -76,6 +76,9 @@ def _solana_proof(record: dict):
         return None
 
 
+_traded_this_run = set()   # one position per market per run, not one per answer
+
+
 def act_on(result, speaker: str, venues, live: bool, qty: int, stance_only: bool,
            source: str = "") -> dict:
     """Given a StanceResult, find markets and trade if it's a surprise."""
@@ -105,9 +108,16 @@ def act_on(result, speaker: str, venues, live: bool, qty: int, stance_only: bool
     print("  Markets:")
     market_router.print_matches(matches)
 
-    trades = market_router.trade_all(matches, live=live, qty=qty,
+    fresh = [m for m in matches if (m["venue"], m["market"]) not in _traded_this_run]
+    held = len(matches) - len(fresh)
+    if held:
+        print(f"  ({held} market(s) already traded earlier in this run; not adding to them)")
+    trades = market_router.trade_all(fresh, live=live, qty=qty,
                                      reason=f"{speaker} {result.direction} z={result.z:+.1f}")
     record["trades"] = trades
+    for t in trades:
+        if not t.get("error") and not t.get("blocked"):
+            _traded_this_run.add((t.get("venue"), t.get("market")))
     tiger_store.log_trades(trades)
     if trades:
         print("  Trades:")
