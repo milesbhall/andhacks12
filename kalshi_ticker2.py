@@ -79,7 +79,7 @@ KALSHI_BASE_URL = (
 )
 
 # Number of Gemini candidates
-MAX_GEMINI_CANDIDATES = 100
+MAX_GEMINI_CANDIDATES = 40
 
 # Hybrid retrieval settings.
 # TF-IDF is used as a very fast first-stage vector search across
@@ -97,10 +97,11 @@ LEXICAL_WEIGHT = 0.25
 RULE_WEIGHT = 0.20
 
 # Maximum markets from the same event during local selection.
-MAX_MARKETS_PER_EVENT = 4
+MAX_MARKETS_PER_EVENT = 2
 
 # Minimum relevance score for returned markets
 MIN_RELEVANCE_SCORE = 0.60
+MIN_HYBRID_SCORE = 0.55
 
 # Gemini retry settings
 MAX_RETRIES = 5
@@ -244,6 +245,32 @@ def normalize_text(text: str) -> str:
     )
 
     return text.strip()
+
+
+def contains_keyword(
+    text: str,
+    keyword: str
+) -> bool:
+    """
+    Match a keyword using word boundaries.
+    """
+
+    normalized_text = normalize_text(text)
+    normalized_keyword = normalize_text(keyword)
+
+    if not normalized_keyword:
+        return False
+
+    pattern = (
+        r"(?<![a-z0-9])"
+        + re.escape(normalized_keyword)
+        + r"(?![a-z0-9])"
+    )
+
+    return re.search(
+        pattern,
+        normalized_text
+    ) is not None
 
 
 # ============================================================
@@ -410,7 +437,7 @@ def get_topic_keywords(
 
         for keyword in keywords:
 
-            if keyword in text:
+            if contains_keyword(text, keyword):
 
                 found_topics.append(topic)
 
@@ -425,19 +452,19 @@ def get_topic_keywords(
 
 def _market_vector_text(market: Dict[str, Any]) -> str:
     """Text used by the vector retrievers."""
-    return normalize_text(" ".join(
-        str(market.get(field, ""))
-        for field in (
-            "market_ticker",
-            "event_ticker",
-            "market_title",
-            "event_title",
-            "event_subtitle",
-            "subtitle",
-            "yes_sub_title",
-            "no_sub_title",
-        )
-    ))
+    market_title = str(market.get("market_title", ""))
+    return normalize_text(" ".join((
+        market_title,
+        market_title,
+        market_title,
+        str(market.get("event_title", "")),
+        str(market.get("market_ticker", "")),
+        str(market.get("event_ticker", "")),
+        str(market.get("event_subtitle", "")),
+        str(market.get("subtitle", "")),
+        str(market.get("yes_sub_title", "")),
+        str(market.get("no_sub_title", "")),
+    )))
 
 
 _SEMANTIC_MODEL = None
@@ -467,20 +494,22 @@ def score_market_locally(
     """Fast deterministic rule score used as one component of the hybrid rank."""
 
     speech = normalize_text(speech_text)
+    market_title = normalize_text(str(market.get("market_title", "")))
     market_text = _market_vector_text(market)
     score = 0.0
     reasons = []
 
     topic_terms = {
         "federal reserve": [
-            "federal reserve", "fed", "fomc", "fed chair",
+            "federal reserve", "fed", "fomc",
             "federal funds", "fed funds", "monetary policy",
             "central bank", "target range", "policy rate",
         ],
         "interest rates": [
             "interest rate", "interest rates", "rate cut", "rate cuts",
-            "rate hike", "rate hikes", "policy rate", "fed funds",
-            "federal funds", "target range",
+            "rate hike", "rate hikes", "cut rates", "hike rates",
+            "cut interest rates", "raise rates", "lower rates",
+            "policy rate", "fed funds", "federal funds", "target range",
         ],
         "inflation": [
             "inflation", "cpi", "consumer price", "consumer prices",
@@ -488,7 +517,8 @@ def score_market_locally(
         ],
         "labor market": [
             "labor market", "labour market", "employment", "unemployment",
-            "unemployed", "jobs", "job growth", "payroll", "nonfarm",
+            "unemployed", "jobs", "job growth", "payroll", "payrolls",
+            "nonfarm payrolls", "nonfarm",
             "wages", "wage growth", "jobless",
         ],
         "economic growth": [
@@ -559,29 +589,100 @@ def score_market_locally(
                 "federal reserve", "federal funds", "fed funds", "fomc",
                 "target range", "policy rate", "monetary policy",
             )
-            if contains_keyword(market_text, term)
+            if contains_keyword(market_title, term)
         ]
         if fed_matches:
-            score += 15
+            score += 8
             reasons.append("Fed-specific: " + ", ".join(fed_matches[:4]))
 
-    if "federal reserve" in topics or "interest rates" in topics:
-        near_term_terms = [
-            "fed decision", "rate cut before", "rate hike", "cut rates",
-            "hike rates", "next fed rate cut", "before 2027", "2026",
-            "2027",
-        ]
-        matches = [
-            term for term in near_term_terms
-            if contains_keyword(market_text, term)
-        ]
-        if matches:
-            score += 8
-            reasons.append("Near-term monetary policy: " + ", ".join(matches[:3]))
+    macro_outcomes = {
+        "inflation outcomes": (
+            ("inflation", "cpi", "consumer price", "pce"),
+            ("inflation", "cpi", "consumer price", "pce"),
+        ),
+        "labor outcomes": (
+            ("labor market", "labour market", "employment", "unemployment",
+             "jobs", "payroll", "wages"),
+            ("unemployment", "employment", "jobs", "payroll", "labor force",
+             "payrolls", "nonfarm payrolls", "wages"),
+        ),
+        "Fed policy outcomes": (
+            ("federal reserve", "fed", "fomc", "interest rate", "monetary policy",
+             "rate cut", "rate hike"),
+            ("fed decision", "fomc", "federal funds rate", "fed funds rate",
+             "rate cut", "rate hike", "cut rates", "hike rates",
+             "cut interest rates", "raise rates", "lower rates",
+             "interest rate", "target range"),
+        ),
+    }
 
-        if re.search(r"\b20(?:29|3[0-9])\b", market_text):
-            score -= 8
-            reasons.append("Long-term contract")
+    for outcome, (speech_terms, market_terms) in macro_outcomes.items():
+        if (
+            any(contains_keyword(speech, term) for term in speech_terms)
+            and any(contains_keyword(market_title, term) for term in market_terms)
+        ):
+            score += 22
+            reasons.append(outcome)
+
+    fed_personnel_terms = (
+        "next president", "next fed president", "next federal reserve president",
+        "president of the federal reserve", "next chair", "next fed chair",
+        "chairman", "chairperson", "governor", "governors", "fed chair nominee",
+        "nominee", "successor", "appointment", "appoint", "appointed",
+        "nomination", "nominate", "replacement for", "who will lead",
+    )
+    fed_institution_terms = (
+        "federal reserve", "fed chair", "fed president", "fomc",
+        "board of governors", "central bank",
+    )
+    if (
+        any(contains_keyword(market_title, term) for term in fed_personnel_terms)
+        and any(contains_keyword(market_title, term) for term in fed_institution_terms)
+    ):
+        score -= 35
+        reasons.append("Fed personnel or appointment market")
+
+    policy_speech_terms = (
+        "federal reserve", "fed", "fomc", "interest rate", "monetary policy",
+        "rate cut", "rate hike",
+    )
+    policy_market_terms = (
+        "fed decision", "fomc", "federal funds rate", "fed funds rate",
+        "rate cut", "rate hike", "cut rates", "hike rates",
+        "cut interest rates", "raise rates", "lower rates", "interest rate",
+        "target range",
+    )
+    near_term_terms = (
+        "2026", "2027", "next meeting", "next fed meeting", "next rate decision",
+        "upcoming meeting", "this year", "by year end", "before year end",
+        "next 12 months",
+    )
+    if (
+        any(contains_keyword(speech, term) for term in policy_speech_terms)
+        and any(contains_keyword(market_title, term) for term in policy_market_terms)
+        and any(contains_keyword(market_title, term) for term in near_term_terms)
+    ):
+        score += 14
+        reasons.append("Near-term Fed policy contract")
+
+    contract_text = " ".join((
+        market_title,
+        normalize_text(str(market.get("market_ticker", ""))),
+    ))
+    contract_years = [
+        int(year) for year in re.findall(r"\b20\d{2}\b", contract_text)
+    ]
+    if contract_years:
+        farthest_year = max(contract_years)
+        if farthest_year >= 2035:
+            score -= 45
+            reasons.append("Very long-dated contract")
+        elif farthest_year >= 2030:
+            score -= 30
+            reasons.append("Long-dated contract")
+        elif farthest_year >= 2029:
+            score -= 5
+            reasons.append("Medium-term contract")
 
     unrelated_terms = [
         "nfl", "nba", "mlb", "nhl", "super bowl", "touchdown",
@@ -746,7 +847,7 @@ def hybrid_vector_retrieval(
 
         # Normalize the old rule score into roughly 0-1. The exact
         # value is less important than preserving its relative effect.
-        rule_score = min(max(local_score / 50.0, 0.0), 1.0)
+        rule_score = min(max(local_score / 50.0, -1.0), 1.0)
         lexical_score = min(
             max(float(lexical_scores[index]) / max(max_lexical, 1e-9), 0.0),
             1.0,
@@ -762,7 +863,18 @@ def hybrid_vector_retrieval(
             + RULE_WEIGHT * rule_score
         )
 
-        if local_score <= 0 and semantic_score_normalized < 0.55:
+        if "Fed personnel or appointment market" in reasons:
+            hybrid_score -= 0.35
+        if "Very long-dated contract" in reasons:
+            hybrid_score -= 0.35
+        elif "Long-dated contract" in reasons:
+            hybrid_score -= 0.25
+        elif "Medium-term contract" in reasons:
+            hybrid_score -= 0.10
+
+        hybrid_score = max(0.0, min(hybrid_score, 1.0))
+
+        if hybrid_score < MIN_HYBRID_SCORE:
             continue
 
         market_copy = dict(market)
@@ -810,60 +922,53 @@ def filter_markets_locally_legacy(
 ) -> List[Dict[str, Any]]:
     """Original deterministic filter retained as a fallback."""
 
-    speech_normalized = normalize_text(speech_text)
     topics = get_topic_keywords(speech_text)
-
-    topic_keywords = {
-        "federal reserve": ["fed", "federal reserve", "fomc", "central bank", "monetary policy"],
-        "interest rates": ["interest", "rate", "rates", "fed funds", "policy rate"],
-        "inflation": ["inflation", "cpi", "pce", "prices"],
-        "labor market": ["unemployment", "employment", "jobs", "payroll", "wages", "labor", "labour"],
-        "economic growth": ["gdp", "growth", "recession", "economy", "economic"],
-        "housing": ["housing", "home", "house", "mortgage", "rent", "real estate"],
-        "stocks": ["stock", "stocks", "s&p", "nasdaq", "dow", "equity"],
-        "treasury": ["treasury", "bond", "yield", "yields"],
-        "government": ["government", "congress", "senate", "house"],
-        "elections": ["election", "vote", "voting", "ballot", "president"],
-        "tariffs": ["tariff", "tariffs", "trade", "imports", "exports"],
-        "oil": ["oil", "crude", "opec", "gas", "gasoline"],
-        "crypto": ["bitcoin", "ethereum", "crypto", "cryptocurrency"],
-        "technology": ["artificial intelligence", "ai", "technology", "tech", "semiconductor", "chips"],
-    }
-
-    speech_words = set(speech_normalized.split())
-    stop_words = {
-        "the", "a", "an", "will", "be", "is", "to", "of", "in", "for",
-        "on", "and", "or", "by", "at", "from", "this", "that", "it",
-        "with", "as", "are", "was", "were", "above", "below", "we",
-        "our", "i", "you", "your", "they", "their",
-    }
-    speech_words -= stop_words
-
     scored = []
 
     for market in market_catalog:
-        market_text = _market_vector_text(market)
-        market_words = set(market_text.split())
-        score = min(len(speech_words & market_words), 4)
-        reasons = []
+        local_score, reasons = score_market_locally(
+            speech_text,
+            market,
+            topics,
+        )
+        if local_score <= 0:
+            continue
 
-        for topic in topics:
-            matches = [
-                kw for kw in topic_keywords.get(topic, [])
-                if contains_keyword(market_text, kw)
-            ]
-            if matches:
-                score += 8 + min(len(matches) - 1, 4)
-                reasons.append(f"{topic}: {', '.join(matches[:4])}")
+        hybrid_score = local_score / (local_score + 10.0)
+        if "Fed personnel or appointment market" in reasons:
+            hybrid_score -= 0.35
+        if "Very long-dated contract" in reasons:
+            hybrid_score -= 0.35
+        elif "Long-dated contract" in reasons:
+            hybrid_score -= 0.30
+        elif "Medium-term contract" in reasons:
+            hybrid_score -= 0.10
+        hybrid_score = max(0.0, min(hybrid_score, 1.0))
+        if hybrid_score < MIN_HYBRID_SCORE:
+            continue
 
-        if score > 0:
-            copy = dict(market)
-            copy["_local_score"] = score
-            copy["_local_reasons"] = reasons
-            scored.append(copy)
+        copy = dict(market)
+        copy["_local_score"] = local_score
+        copy["_local_reasons"] = reasons
+        copy["_hybrid_score"] = hybrid_score
+        scored.append(copy)
 
-    scored.sort(key=lambda x: x["_local_score"], reverse=True)
-    return scored[:max_candidates]
+    scored.sort(key=lambda x: x["_hybrid_score"], reverse=True)
+
+    selected = []
+    event_counts = {}
+    for market in scored:
+        event_ticker = market.get("event_ticker", "")
+        count = event_counts.get(event_ticker, 0)
+        if count >= MAX_MARKETS_PER_EVENT:
+            continue
+
+        selected.append(market)
+        event_counts[event_ticker] = count + 1
+        if len(selected) >= max_candidates:
+            break
+
+    return selected
 
 
 # ============================================================
@@ -916,11 +1021,18 @@ def ask_gemini(
 
             error_text = str(e)
 
+            normalized_error = error_text.upper()
+            is_quota_error = any(
+                marker in normalized_error
+                for marker in ("429", "RESOURCE_EXHAUSTED", "QUOTA")
+            )
+
+            if is_quota_error:
+                raise
+
             is_temporary_error = (
-                "503" in error_text
-                or "UNAVAILABLE" in error_text
-                or "429" in error_text
-                or "RESOURCE_EXHAUSTED" in error_text
+                "503" in normalized_error
+                or "UNAVAILABLE" in normalized_error
             )
 
             if not is_temporary_error:
@@ -1038,6 +1150,23 @@ def find_relevant_tickers(
         )
 
         return []
+
+    def local_fallback_results(reasoning: str) -> List[Dict[str, Any]]:
+        fallback = []
+        for market in candidates:
+            score = float(market.get("_hybrid_score", 0.0))
+            if score < MIN_HYBRID_SCORE:
+                continue
+
+            fallback.append({
+                "ticker": market.get("market_ticker"),
+                "event_title": market.get("event_title"),
+                "market_title": market.get("market_title"),
+                "relevance_score": score,
+                "reasoning": reasoning,
+            })
+
+        return fallback[:top_n]
 
     # --------------------------------------------------------
     # Build Gemini prompt
@@ -1224,13 +1353,33 @@ If there are no sufficiently relevant markets, return:
         api_key=GEMINI_API_KEY
     )
 
-    response = ask_gemini(
-        client,
-        prompt
-    )
+    try:
+
+        response = ask_gemini(
+            client,
+            prompt
+        )
+
+    except Exception as e:
+
+        print(
+            "\nGemini unavailable or quota exhausted."
+        )
+
+        print(
+            f"Gemini error: {e}"
+        )
+
+        print(
+            "\nFalling back to local vector/rule ranking."
+        )
+
+        return local_fallback_results(
+            "Selected by local hybrid relevance ranking after Gemini failed."
+        )
 
     # --------------------------------------------------------
-    # Parse response
+    # Parse Gemini response
     # --------------------------------------------------------
 
     try:
@@ -1253,7 +1402,13 @@ If there are no sufficiently relevant markets, return:
             response.text
         )
 
-        return []
+        print(
+            "\nFalling back to local ranking."
+        )
+
+        return local_fallback_results(
+            "Selected by local hybrid relevance ranking because Gemini returned invalid JSON."
+        )
 
     if not isinstance(
         results,
@@ -1312,11 +1467,11 @@ If there are no sufficiently relevant markets, return:
 
             continue
 
-        # Minimum relevance threshold.
         if score < MIN_RELEVANCE_SCORE:
             continue
 
         validated_results.append({
+
             "ticker": ticker,
 
             "event_title": result.get(
@@ -1335,10 +1490,11 @@ If there are no sufficiently relevant markets, return:
                 "reasoning",
                 ""
             ),
+
         })
 
     # --------------------------------------------------------
-    # Sort by relevance
+    # Sort by Gemini relevance
     # --------------------------------------------------------
 
     validated_results.sort(
