@@ -8,8 +8,8 @@ which quotes everything from the YES side:
     side "bid" = buy YES,  side "ask" = sell YES (= buy NO).
 
 Environment:
-    KALSHI_ENV=demo  (default)  -> https://external-api.demo.kalshi.co   (fake money)
-    KALSHI_ENV=prod             -> https://external-api.kalshi.com       (real money)
+    KALSHI_ENV=prod  (default)  -> https://external-api.kalshi.com       (real money; dry run unless --live)
+    KALSHI_ENV=demo             -> https://external-api.demo.kalshi.co   (fake money; needs a demo key)
 Dry runs are priced against PRODUCTION order books (demo books are mostly
 empty). Live orders are priced against the environment they are sent to.
 
@@ -46,7 +46,7 @@ BASE_URLS = {
     "prod": "https://external-api.kalshi.com",
 }
 API_PREFIX = "/trade-api/v2"
-KALSHI_ENV = os.environ.get("KALSHI_ENV", "demo").lower()
+KALSHI_ENV = os.environ.get("KALSHI_ENV", "prod").lower()   # our key is a kalshi.com (prod) key; orders are still dry runs unless --live
 
 
 def _read_secret_file(filename: str) -> str:
