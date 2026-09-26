@@ -2,8 +2,7 @@
 kalshi_ticker_finder.py
 =======================
 
-Finds active Kalshi prediction markets that are relevant to
-a speech or statement.
+Find active Kalshi prediction markets relevant to a speech or statement.
 
 Pipeline:
 
@@ -11,26 +10,34 @@ Pipeline:
        ↓
     Detect topics
        ↓
-    Retrieve active Kalshi events using pagination
+    Fetch active Kalshi events/markets
        ↓
-    Deduplicate markets
+    Broad local candidate filter
        ↓
-    Local relevance filtering
+    Diversify candidates by event
        ↓
     Gemini semantic relevance analysis
        ↓
-    Validate + rank results
+    Validate tickers
        ↓
-    Relevant Kalshi tickers
+    Relevant Kalshi markets
+
+Usage:
+
+    python kalshi_ticker_finder.py
+
+    python kalshi_ticker_finder.py --no-gemini
+
+    python kalshi_ticker_finder.py --speech "The Federal Reserve..."
 """
 
 import os
 import json
 import time
-import random
 import re
-
-from typing import List, Dict, Any
+import sys
+import argparse
+from typing import List, Dict, Any, Optional, Tuple
 
 import requests
 
@@ -39,114 +46,337 @@ from google.genai import types
 
 
 # ============================================================
-# CONFIGURATION
+# Configuration
 # ============================================================
 
-SCRIPT_DIR = os.path.dirname(
-    os.path.abspath(__file__)
-)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-GEMINI_MODEL = "gemini-3.8-flash"
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
+
+if not GEMINI_API_KEY:
+    try:
+        with open(
+            os.path.join(SCRIPT_DIR, "gemapi.txt"),
+            encoding="utf-8"
+        ) as f:
+            GEMINI_API_KEY = f.read().strip()
+    except FileNotFoundError:
+        GEMINI_API_KEY = ""
+
+
+# You can override this with:
+#
+# export GEMINI_MODEL="gemini-3.8-flash"
+#
+GEMINI_MODEL = os.environ.get(
+    "GEMINI_MODEL",
+    "gemini-3.8-flash"
+)
 
 KALSHI_BASE_URL = (
     "https://api.elections.kalshi.com/trade-api/v2"
 )
 
-# Kalshi page size.
-KALSHI_PAGE_SIZE = 200
+EVENT_PAGE_SIZE = 200
 
-# Number of locally filtered markets sent to Gemini.
-MAX_GEMINI_CANDIDATES = 60
+# Number of markets sent to Gemini.
+MAX_GEMINI_CANDIDATES = 100
 
-# Number of results returned.
-DEFAULT_TOP_N = 5
+# Number of local candidates displayed in --no-gemini mode.
+MAX_LOCAL_DISPLAY = 30
 
-# Minimum relevance score accepted from Gemini.
+# Maximum number of markets from one event.
+#
+# This prevents something like:
+#
+# Fed funds rate at end of 2029
+#   - above 1%
+#   - above 1.25%
+#   - above 1.50%
+#   - above 1.75%
+#   - above 2%
+#
+# from taking the entire candidate list.
+MAX_MARKETS_PER_EVENT = 4
+
 MIN_RELEVANCE_SCORE = 0.60
 
-# Gemini retries.
-MAX_GEMINI_RETRIES = 5
+MAX_GEMINI_RETRIES = 6
 
-# Give Gemini plenty of room to finish the JSON.
-GEMINI_MAX_OUTPUT_TOKENS = 4000
+REQUEST_TIMEOUT = 30
+
+DEBUG_FILE = os.path.join(
+    SCRIPT_DIR,
+    "kalshi_candidates_debug.json"
+)
 
 
 # ============================================================
-# GEMINI API KEY
+# Topic definitions
 # ============================================================
 
-def read_gemini_api_key() -> str:
+TOPIC_KEYWORDS = {
+
+    "federal reserve": [
+        "federal reserve",
+        "fed",
+        "fomc",
+        "fed chair",
+        "federal funds",
+        "fed funds",
+        "monetary policy",
+        "central bank",
+        "target range",
+        "policy rate",
+    ],
+
+    "interest rates": [
+        "interest rate",
+        "interest rates",
+        "rate cut",
+        "rate cuts",
+        "rate hike",
+        "rate hikes",
+        "policy rate",
+        "fed funds",
+        "federal funds",
+        "target range",
+        "borrowing costs",
+    ],
+
+    "inflation": [
+        "inflation",
+        "cpi",
+        "consumer price",
+        "consumer prices",
+        "pce",
+        "core inflation",
+        "price stability",
+        "prices",
+    ],
+
+    "labor market": [
+        "labor market",
+        "labour market",
+        "employment",
+        "unemployment",
+        "unemployed",
+        "jobs",
+        "job growth",
+        "payroll",
+        "nonfarm payroll",
+        "nonfarm",
+        "wages",
+        "wage growth",
+        "jobless",
+    ],
+
+    "economic growth": [
+        "gdp",
+        "economic growth",
+        "growth",
+        "recession",
+        "output",
+        "economic activity",
+        "economy",
+    ],
+
+    "housing": [
+        "housing",
+        "home prices",
+        "house prices",
+        "mortgage",
+        "mortgages",
+        "rent",
+        "rents",
+        "real estate",
+    ],
+
+    "stocks": [
+        "stock market",
+        "stocks",
+        "equity market",
+        "equities",
+        "s&p",
+        "nasdaq",
+        "dow",
+    ],
+
+    "treasury": [
+        "treasury",
+        "treasuries",
+        "bond yield",
+        "bond yields",
+        "yield curve",
+        "10 year",
+        "10-year",
+        "2 year",
+        "2-year",
+    ],
+
+    "government": [
+        "government",
+        "congress",
+        "senate",
+        "house of representatives",
+        "federal government",
+    ],
+
+    "elections": [
+        "election",
+        "elections",
+        "vote",
+        "voting",
+        "ballot",
+        "president",
+        "presidential",
+    ],
+
+    "tariffs": [
+        "tariff",
+        "tariffs",
+        "trade war",
+        "imports",
+        "exports",
+        "trade",
+    ],
+
+    "oil": [
+        "oil",
+        "crude",
+        "opec",
+        "gas prices",
+        "gasoline",
+        "petroleum",
+    ],
+
+    "crypto": [
+        "bitcoin",
+        "ethereum",
+        "crypto",
+        "cryptocurrency",
+        "digital asset",
+    ],
+
+    "technology": [
+        "artificial intelligence",
+        "ai",
+        "technology",
+        "tech",
+        "semiconductor",
+        "chips",
+    ],
+}
+
+
+# ============================================================
+# Text utilities
+# ============================================================
+
+def normalize_text(text: str) -> str:
     """
-    Read the Gemini API key from either:
-
-        GEMINI_API_KEY environment variable
-
-    or:
-
-        gemapi.txt
+    Normalize text for keyword matching.
     """
 
-    key = os.environ.get(
-        "GEMINI_API_KEY"
+    text = str(text or "").lower()
+
+    text = text.replace(
+        "–",
+        "-"
+    ).replace(
+        "—",
+        "-"
     )
 
-    if key:
-        return key.strip()
-
-    key_file = os.path.join(
-        SCRIPT_DIR,
-        "gemapi.txt"
+    text = re.sub(
+        r"[^a-z0-9\s\-.%]",
+        " ",
+        text
     )
 
-    try:
+    text = re.sub(
+        r"\s+",
+        " ",
+        text
+    )
 
-        with open(
-            key_file,
-            encoding="utf-8"
-        ) as f:
-
-            return f.read().strip()
-
-    except FileNotFoundError:
-
-        return ""
+    return text.strip()
 
 
-GEMINI_API_KEY = read_gemini_api_key()
+def contains_keyword(
+    text: str,
+    keyword: str
+) -> bool:
+    """
+    Match a phrase without requiring exact punctuation.
+    """
+
+    normalized_keyword = normalize_text(keyword)
+
+    if not normalized_keyword:
+        return False
+
+    return normalized_keyword in text
 
 
 # ============================================================
-# KALSHI: FETCH ALL EVENTS
+# Topic detection
 # ============================================================
 
-def fetch_live_kalshi_events(
-    max_pages: int = 100
-) -> List[Dict[str, Any]]:
+def get_topic_keywords(
+    speech_text: str
+) -> List[str]:
+
+    text = normalize_text(
+        speech_text
+    )
+
+    topics = []
+
+    for topic, keywords in TOPIC_KEYWORDS.items():
+
+        for keyword in keywords:
+
+            if contains_keyword(
+                text,
+                keyword
+            ):
+                topics.append(topic)
+                break
+
+    return topics
+
+
+# ============================================================
+# Kalshi API
+# ============================================================
+
+def fetch_live_kalshi_events() -> List[Dict[str, Any]]:
     """
     Fetch all open Kalshi events using cursor pagination.
 
-    max_pages is a safety limit so a malformed API response
-    cannot cause an infinite loop.
+    The previous implementation could either use an invalid
+    huge limit or otherwise retrieve an incomplete universe.
+
+    Kalshi currently returns pagination cursors, so we walk
+    through the pages until there is no cursor.
     """
+
+    url = f"{KALSHI_BASE_URL}/events"
 
     all_events = []
 
     cursor = None
+    page = 0
 
-    page_number = 0
+    while True:
 
-    while page_number < max_pages:
-
-        page_number += 1
-
-        url = (
-            f"{KALSHI_BASE_URL}/events"
-        )
+        page += 1
 
         params = {
-            "limit": KALSHI_PAGE_SIZE,
-            "with_nested_markets": "true",
+            "limit": EVENT_PAGE_SIZE,
             "status": "open",
+            "with_nested_markets": "true",
         }
 
         if cursor:
@@ -157,102 +387,63 @@ def fetch_live_kalshi_events(
             response = requests.get(
                 url,
                 params=params,
-                timeout=30
+                timeout=REQUEST_TIMEOUT
             )
 
             response.raise_for_status()
 
             data = response.json()
 
-        except requests.exceptions.HTTPError as e:
-
-            print(
-                f"\nKalshi HTTP error on page "
-                f"{page_number}: {e}"
-            )
-
-            try:
-
-                print(
-                    "Response:"
-                )
-
-                print(
-                    response.text[:1000]
-                )
-
-            except Exception:
-                pass
-
-            break
-
-        except requests.exceptions.RequestException as e:
-
-            print(
-                f"\nKalshi request failed on page "
-                f"{page_number}: {e}"
-            )
-
-            break
-
         except Exception as e:
 
             print(
-                f"\nUnexpected Kalshi error: {e}"
+                f"\nWarning: Failed to fetch Kalshi page "
+                f"{page}: {e}"
             )
 
             break
 
-        page_events = data.get(
+        events = data.get(
             "events",
             []
         )
 
         all_events.extend(
-            page_events
+            events
         )
 
         print(
-            f"  Kalshi page {page_number}: "
-            f"{len(page_events)} events "
+            f"  Kalshi page {page}: "
+            f"{len(events)} events "
             f"(total events: {len(all_events)})"
         )
 
-        next_cursor = data.get(
+        cursor = data.get(
             "cursor"
         )
 
-        if not next_cursor:
+        if not cursor:
             break
 
-        if next_cursor == cursor:
-
-            print(
-                "Warning: Kalshi returned "
-                "the same cursor twice."
-            )
-
+        if not events:
             break
-
-        cursor = next_cursor
 
     return all_events
 
 
 # ============================================================
-# BUILD UNIQUE MARKET CATALOG
+# Market catalog
 # ============================================================
 
 def build_market_catalog(
     events: List[Dict[str, Any]]
 ) -> List[Dict[str, Any]]:
-    """
-    Flatten nested Kalshi markets into a unique market list.
 
-    A market is uniquely identified by its ticker.
-    """
+    catalog = []
 
-    markets_by_ticker = {}
+    skipped_inactive = 0
+
+    seen_tickers = set()
 
     for event in events:
 
@@ -263,6 +454,11 @@ def build_market_catalog(
 
         event_ticker = event.get(
             "event_ticker",
+            ""
+        )
+
+        event_subtitle = event.get(
+            "sub_title",
             ""
         )
 
@@ -280,8 +476,31 @@ def build_market_catalog(
             if not ticker:
                 continue
 
-            # Keep only one copy of each market.
-            markets_by_ticker[ticker] = {
+            if ticker in seen_tickers:
+                continue
+
+            seen_tickers.add(
+                ticker
+            )
+
+            status = str(
+                market.get(
+                    "status",
+                    ""
+                )
+            ).lower()
+
+            # If Kalshi explicitly says the market is closed,
+            # skip it.
+            if status and status not in {
+                "open",
+                "active"
+            }:
+                skipped_inactive += 1
+                continue
+
+            catalog.append({
+
                 "market_ticker": ticker,
 
                 "market_title": market.get(
@@ -292,6 +511,8 @@ def build_market_catalog(
                 "event_ticker": event_ticker,
 
                 "event_title": event_title,
+
+                "event_subtitle": event_subtitle,
 
                 "subtitle": market.get(
                     "subtitle",
@@ -307,204 +528,396 @@ def build_market_catalog(
                     "no_sub_title",
                     ""
                 ),
-            }
 
-    return list(
-        markets_by_ticker.values()
+                "status": status,
+
+                "yes_bid": market.get(
+                    "yes_bid"
+                ),
+
+                "yes_ask": market.get(
+                    "yes_ask"
+                ),
+
+                "no_bid": market.get(
+                    "no_bid"
+                ),
+
+                "no_ask": market.get(
+                    "no_ask"
+                ),
+
+                "last_price": market.get(
+                    "last_price"
+                ),
+
+                "volume": market.get(
+                    "volume"
+                ),
+
+                "open_interest": market.get(
+                    "open_interest"
+                ),
+
+                "close_time": market.get(
+                    "close_time"
+                ),
+
+                "expiration_time": market.get(
+                    "expiration_time"
+                ),
+            })
+
+    print(
+        f"Skipped {skipped_inactive} non-active markets."
     )
 
+    return catalog
+
 
 # ============================================================
-# TEXT NORMALIZATION
+# Market text
 # ============================================================
 
-def normalize_text(
-    text: str
+def market_search_text(
+    market: Dict[str, Any]
 ) -> str:
 
-    text = text.lower()
+    pieces = [
 
-    text = re.sub(
-        r"[^a-z0-9\s]",
-        " ",
-        text
+        market.get(
+            "market_ticker",
+            ""
+        ),
+
+        market.get(
+            "event_ticker",
+            ""
+        ),
+
+        market.get(
+            "market_title",
+            ""
+        ),
+
+        market.get(
+            "event_title",
+            ""
+        ),
+
+        market.get(
+            "event_subtitle",
+            ""
+        ),
+
+        market.get(
+            "subtitle",
+            ""
+        ),
+
+        market.get(
+            "yes_sub_title",
+            ""
+        ),
+
+        market.get(
+            "no_sub_title",
+            ""
+        ),
+    ]
+
+    return normalize_text(
+        " ".join(
+            str(x)
+            for x in pieces
+            if x
+        )
     )
-
-    text = re.sub(
-        r"\s+",
-        " ",
-        text
-    )
-
-    return text.strip()
 
 
 # ============================================================
-# TOPIC DETECTION
+# Local relevance scoring
 # ============================================================
 
-def get_topic_keywords(
-    speech_text: str
-) -> List[str]:
+def score_market_locally(
+    speech_text: str,
+    market: Dict[str, Any],
+    topics: List[str]
+) -> Tuple[float, List[str]]:
 
-    text = normalize_text(
+    speech = normalize_text(
         speech_text
     )
 
-    keyword_groups = {
+    market_text = market_search_text(
+        market
+    )
 
-        "federal reserve": [
-            "federal reserve",
-            "fed",
-            "fomc",
-            "monetary policy",
-            "central bank",
+    score = 0.0
+    reasons = []
+
+    # --------------------------------------------------------
+    # Topic-specific matches
+    # --------------------------------------------------------
+
+    for topic in topics:
+
+        keywords = TOPIC_KEYWORDS.get(
+            topic,
+            []
+        )
+
+        matches = []
+
+        for keyword in keywords:
+
+            if contains_keyword(
+                market_text,
+                keyword
+            ):
+                matches.append(
+                    keyword
+                )
+
+        if matches:
+
+            # Stronger if several terms from the same
+            # topic occur.
+            score += 10
+
+            score += min(
+                len(matches) - 1,
+                5
+            )
+
+            reasons.append(
+                f"{topic}: "
+                + ", ".join(
+                    matches[:4]
+                )
+            )
+
+    # --------------------------------------------------------
+    # Strong Fed-specific market language
+    # --------------------------------------------------------
+
+    fed_terms = [
+        "federal reserve",
+        "federal funds",
+        "fed funds",
+        "fomc",
+        "target range",
+        "policy rate",
+        "monetary policy",
+        "fed chair",
+    ]
+
+    fed_matches = [
+        term
+        for term in fed_terms
+        if contains_keyword(
+            market_text,
+            term
+        )
+    ]
+
+    if fed_matches:
+
+        score += 12
+
+        reasons.append(
+            "Fed-specific: "
+            + ", ".join(
+                fed_matches[:4]
+            )
+        )
+
+    # --------------------------------------------------------
+    # Strong macro variable matches
+    # --------------------------------------------------------
+
+    variable_terms = [
+        "inflation",
+        "cpi",
+        "pce",
+        "unemployment",
+        "employment",
+        "payroll",
+        "gdp",
+        "interest rate",
+        "rate cut",
+        "rate hike",
+    ]
+
+    variable_matches = [
+        term
+        for term in variable_terms
+        if contains_keyword(
+            market_text,
+            term
+        )
+    ]
+
+    if variable_matches:
+
+        score += min(
+            len(variable_matches) * 3,
+            12
+        )
+
+        reasons.append(
+            "Macro variables: "
+            + ", ".join(
+                variable_matches[:5]
+            )
+        )
+
+    # --------------------------------------------------------
+    # Exact meaningful word overlap
+    # --------------------------------------------------------
+
+    speech_words = set(
+        speech.split()
+    )
+
+    market_words = set(
+        market_text.split()
+    )
+
+    stop_words = {
+        "the",
+        "a",
+        "an",
+        "and",
+        "or",
+        "but",
+        "if",
+        "then",
+        "than",
+        "that",
+        "this",
+        "these",
+        "those",
+        "will",
+        "would",
+        "could",
+        "should",
+        "have",
+        "has",
+        "had",
+        "are",
+        "were",
+        "was",
+        "been",
+        "being",
+        "from",
+        "with",
+        "for",
+        "into",
+        "about",
+        "above",
+        "below",
+        "before",
+        "after",
+        "what",
+        "which",
+        "who",
+        "when",
+        "where",
+        "how",
+        "its",
+        "their",
+        "our",
+        "your",
+        "they",
+        "them",
+        "we",
+        "you",
+        "i",
+        "to",
+        "of",
+        "in",
+        "on",
+        "at",
+        "by",
+        "as",
+        "is",
+        "be",
+    }
+
+    overlap = (
+        speech_words &
+        market_words
+    ) - stop_words
+
+    if overlap:
+
+        score += min(
+            len(overlap),
+            6
+        )
+
+    # --------------------------------------------------------
+    # Speaker/topic context
+    # --------------------------------------------------------
+
+    # If this is a Fed-related speech, markets with
+    # "federal reserve" or "federal funds" deserve a
+    # substantial boost.
+    if "federal reserve" in topics:
+
+        if (
+            "federal reserve" in market_text
+            or "federal funds" in market_text
+            or "fed funds" in market_text
+            or "fomc" in market_text
+        ):
+            score += 15
+
+    # --------------------------------------------------------
+    # Penalize obviously unrelated categories
+    # --------------------------------------------------------
+
+    unrelated_penalties = {
+
+        "sports": [
+            "nfl",
+            "nba",
+            "mlb",
+            "nhl",
+            "super bowl",
+            "touchdown",
+            "game winner",
         ],
 
-        "interest rates": [
-            "interest rate",
-            "interest rates",
-            "rate cut",
-            "rate cuts",
-            "rate hike",
-            "rate hikes",
-            "policy rate",
-            "fed funds",
-            "federal funds",
-        ],
-
-        "inflation": [
-            "inflation",
-            "cpi",
-            "consumer price",
-            "prices",
-            "price stability",
-            "pce",
-            "core inflation",
-        ],
-
-        "labor market": [
-            "labor market",
-            "labour market",
-            "employment",
-            "unemployment",
-            "unemployed",
-            "jobs",
-            "job growth",
-            "payroll",
-            "nonfarm payroll",
-            "nonfarm",
-            "wages",
-            "wage growth",
-        ],
-
-        "economic growth": [
-            "gdp",
-            "economic growth",
-            "growth",
-            "recession",
-            "output",
-            "economic activity",
-        ],
-
-        "housing": [
-            "housing",
-            "home prices",
-            "house prices",
-            "mortgage",
-            "mortgages",
-            "rent",
-            "rents",
-            "real estate",
-        ],
-
-        "stocks": [
-            "stock market",
-            "stocks",
-            "equity market",
-            "s&p",
-            "nasdaq",
-            "dow",
-        ],
-
-        "treasury": [
-            "treasury",
-            "treasuries",
-            "bond yields",
-            "yield curve",
-        ],
-
-        "government": [
-            "government",
-            "congress",
-            "senate",
-            "house of representatives",
-            "federal government",
-        ],
-
-        "elections": [
-            "election",
-            "elections",
-            "vote",
-            "voting",
-            "ballot",
-            "president",
-            "presidential",
-        ],
-
-        "tariffs": [
-            "tariff",
-            "tariffs",
-            "trade war",
-            "imports",
-            "exports",
-            "trade",
-        ],
-
-        "oil": [
-            "oil",
-            "crude",
-            "opec",
-            "gas prices",
-            "gasoline",
-            "petroleum",
-        ],
-
-        "crypto": [
-            "bitcoin",
-            "ethereum",
-            "crypto",
-            "cryptocurrency",
-            "digital asset",
-        ],
-
-        "technology": [
-            "artificial intelligence",
-            "technology",
-            "tech",
-            "semiconductor",
-            "chips",
+        "entertainment": [
+            "oscar",
+            "grammy",
+            "movie",
+            "box office",
+            "celebrity",
         ],
     }
 
-    topics = []
-
-    for topic, keywords in keyword_groups.items():
+    for category, terms in unrelated_penalties.items():
 
         if any(
-            keyword in text
-            for keyword in keywords
+            contains_keyword(
+                market_text,
+                term
+            )
+            for term in terms
         ):
 
-            topics.append(
-                topic
-            )
+            # Only penalize, rather than automatically
+            # eliminate. Gemini gets the final say.
+            score -= 15
 
-    return topics
+    return score, reasons
 
 
 # ============================================================
-# LOCAL MARKET FILTER
+# Diversified local filtering
 # ============================================================
 
 def filter_markets_locally(
@@ -512,680 +925,528 @@ def filter_markets_locally(
     market_catalog: List[Dict[str, Any]],
     max_candidates: int = MAX_GEMINI_CANDIDATES
 ) -> List[Dict[str, Any]]:
-    """
-    Rank markets using deterministic keyword/topic matching.
-
-    This is only a pre-filter. Gemini makes the final relevance
-    determination.
-    """
-
-    speech_normalized = normalize_text(
-        speech_text
-    )
-
-    speech_words = set(
-        speech_normalized.split()
-    )
 
     topics = get_topic_keywords(
         speech_text
     )
 
-    topic_keywords = {
-
-        "federal reserve": [
-            "fed",
-            "federal reserve",
-            "fomc",
-            "central bank",
-            "monetary policy",
-        ],
-
-        "interest rates": [
-            "interest",
-            "rate",
-            "rates",
-            "fed funds",
-            "federal funds",
-            "policy rate",
-            "rate cut",
-            "rate hike",
-        ],
-
-        "inflation": [
-            "inflation",
-            "cpi",
-            "pce",
-            "prices",
-        ],
-
-        "labor market": [
-            "unemployment",
-            "employment",
-            "jobs",
-            "payroll",
-            "wages",
-            "labor",
-            "labour",
-        ],
-
-        "economic growth": [
-            "gdp",
-            "growth",
-            "recession",
-            "economy",
-            "economic",
-        ],
-
-        "housing": [
-            "housing",
-            "home",
-            "house",
-            "mortgage",
-            "rent",
-            "real estate",
-        ],
-
-        "stocks": [
-            "stock",
-            "stocks",
-            "s&p",
-            "nasdaq",
-            "dow",
-            "equity",
-        ],
-
-        "treasury": [
-            "treasury",
-            "treasuries",
-            "bond",
-            "yield",
-            "yields",
-        ],
-
-        "government": [
-            "government",
-            "congress",
-            "senate",
-            "house",
-        ],
-
-        "elections": [
-            "election",
-            "elections",
-            "vote",
-            "voting",
-            "ballot",
-            "president",
-        ],
-
-        "tariffs": [
-            "tariff",
-            "tariffs",
-            "trade",
-            "imports",
-            "exports",
-        ],
-
-        "oil": [
-            "oil",
-            "crude",
-            "opec",
-            "gas",
-            "gasoline",
-        ],
-
-        "crypto": [
-            "bitcoin",
-            "ethereum",
-            "crypto",
-            "cryptocurrency",
-        ],
-
-        "technology": [
-            "artificial intelligence",
-            "technology",
-            "tech",
-            "semiconductor",
-            "chips",
-        ],
-    }
-
-    stop_words = {
-        "the",
-        "a",
-        "an",
-        "will",
-        "be",
-        "is",
-        "to",
-        "of",
-        "in",
-        "for",
-        "on",
-        "and",
-        "or",
-        "by",
-        "at",
-        "from",
-        "this",
-        "that",
-        "it",
-        "with",
-        "as",
-        "are",
-        "was",
-        "were",
-        "above",
-        "below",
-    }
-
-    scored_markets = []
+    scored = []
 
     for market in market_catalog:
 
-        combined_text = " ".join([
-            str(
-                market.get(
-                    "market_title",
-                    ""
-                )
-            ),
-            str(
-                market.get(
-                    "event_title",
-                    ""
-                )
-            ),
-            str(
-                market.get(
-                    "subtitle",
-                    ""
-                )
-            ),
-            str(
-                market.get(
-                    "yes_sub_title",
-                    ""
-                )
-            ),
-            str(
-                market.get(
-                    "no_sub_title",
-                    ""
-                )
-            ),
-        ])
-
-        market_normalized = normalize_text(
-            combined_text
+        score, reasons = score_market_locally(
+            speech_text,
+            market,
+            topics
         )
 
-        market_words = set(
-            market_normalized.split()
+        if score <= 0:
+            continue
+
+        market_copy = dict(
+            market
         )
 
-        score = 0
+        market_copy["_local_score"] = score
 
-        # ----------------------------------------------------
-        # Exact phrase matches
-        # ----------------------------------------------------
+        market_copy["_local_reasons"] = reasons
 
-        for topic in topics:
-
-            for keyword in topic_keywords.get(
-                topic,
-                []
-            ):
-
-                if keyword in market_normalized:
-
-                    # Multi-word phrases are stronger evidence.
-                    if " " in keyword:
-                        score += 6
-                    else:
-                        score += 3
-
-        # ----------------------------------------------------
-        # Individual word overlap
-        # ----------------------------------------------------
-
-        common_words = (
-            speech_words &
-            market_words
+        scored.append(
+            market_copy
         )
 
-        meaningful_overlap = (
-            common_words -
-            stop_words
-        )
-
-        score += min(
-            len(meaningful_overlap),
-            5
-        )
-
-        if score > 0:
-
-            scored_markets.append(
-                (
-                    score,
-                    market
-                )
-            )
-
-    scored_markets.sort(
-        key=lambda item: item[0],
+    # Highest scoring first.
+    scored.sort(
+        key=lambda x: x["_local_score"],
         reverse=True
     )
 
-    return [
+    # --------------------------------------------------------
+    # First pass:
+    # prioritize event diversity
+    # --------------------------------------------------------
+
+    selected = []
+
+    event_counts = {}
+
+    for market in scored:
+
+        event_ticker = market.get(
+            "event_ticker",
+            ""
+        )
+
+        count = event_counts.get(
+            event_ticker,
+            0
+        )
+
+        if count >= MAX_MARKETS_PER_EVENT:
+            continue
+
+        selected.append(
+            market
+        )
+
+        event_counts[event_ticker] = (
+            count + 1
+        )
+
+        if len(selected) >= max_candidates:
+            break
+
+    # --------------------------------------------------------
+    # If diversification was too aggressive, fill remaining
+    # slots with highest scoring markets.
+    # --------------------------------------------------------
+
+    selected_tickers = {
+        market["market_ticker"]
+        for market in selected
+    }
+
+    if len(selected) < max_candidates:
+
+        for market in scored:
+
+            ticker = market.get(
+                "market_ticker"
+            )
+
+            if ticker in selected_tickers:
+                continue
+
+            selected.append(
+                market
+            )
+
+            selected_tickers.add(
+                ticker
+            )
+
+            if len(selected) >= max_candidates:
+                break
+
+    return selected
+
+
+# ============================================================
+# Debug output
+# ============================================================
+
+def clean_for_output(
+    market: Dict[str, Any]
+) -> Dict[str, Any]:
+
+    result = dict(
         market
-        for score, market
-        in scored_markets[
-            :max_candidates
-        ]
-    ]
+    )
+
+    result.pop(
+        "_local_score",
+        None
+    )
+
+    result.pop(
+        "_local_reasons",
+        None
+    )
+
+    return result
+
+
+def save_debug_candidates(
+    candidates: List[Dict[str, Any]]
+) -> None:
+
+    try:
+
+        with open(
+            DEBUG_FILE,
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            json.dump(
+                [
+                    clean_for_output(
+                        market
+                    )
+                    for market in candidates
+                ],
+                f,
+                indent=2
+            )
+
+        print(
+            f"\nSaved candidate markets to "
+            f"{DEBUG_FILE}"
+        )
+
+    except Exception as e:
+
+        print(
+            f"Warning: could not save debug file: {e}"
+        )
 
 
 # ============================================================
-# GEMINI REQUEST
+# Gemini
 # ============================================================
 
-def ask_gemini_with_retry(
+def ask_gemini(
     client: genai.Client,
     prompt: str
 ):
+
     """
-    Send the Gemini request with exponential backoff.
+    Send the request through a Chat session.
+
+    This avoids the direct Models.generate_content AFC
+    warning seen in previous versions.
     """
 
     config = types.GenerateContentConfig(
-
-        response_mime_type="application/json",
-
-        max_output_tokens=GEMINI_MAX_OUTPUT_TOKENS,
+        response_mime_type="application/json"
     )
 
+    chat = client.chats.create(
+        model=GEMINI_MODEL,
+        config=config
+    )
+
+    last_error = None
+
     for attempt in range(
-        MAX_GEMINI_RETRIES
+        1,
+        MAX_GEMINI_RETRIES + 1
     ):
 
         try:
 
-            response = client.models.generate_content(
-
-                model=GEMINI_MODEL,
-
-                contents=prompt,
-
-                config=config,
+            print(
+                f"Gemini attempt "
+                f"{attempt}/{MAX_GEMINI_RETRIES}..."
             )
 
-            return response
+            return chat.send_message(
+                prompt
+            )
 
         except Exception as e:
 
-            error_text = str(e)
+            last_error = e
 
-            temporary_error = (
+            error_text = str(
+                e
+            )
+
+            temporary = (
                 "503" in error_text
                 or "UNAVAILABLE" in error_text
                 or "429" in error_text
                 or "RESOURCE_EXHAUSTED" in error_text
-                or "500" in error_text
-                or "INTERNAL" in error_text
-                or "504" in error_text
-                or "DEADLINE_EXCEEDED" in error_text
+                or "high demand" in error_text.lower()
             )
 
-            if not temporary_error:
+            if not temporary:
 
                 raise
 
-            if attempt >= (
-                MAX_GEMINI_RETRIES - 1
-            ):
+            if attempt >= MAX_GEMINI_RETRIES:
 
-                raise
-
-            delay = (
-                2 ** attempt
-                + random.uniform(
-                    0.5,
-                    1.5
+                print(
+                    "\nGemini remained unavailable "
+                    f"after {MAX_GEMINI_RETRIES} attempts."
                 )
+
+                raise last_error
+
+            wait_time = min(
+                2 ** attempt,
+                20
             )
 
             print(
-                f"\nGemini temporarily unavailable."
+                f"Gemini temporarily unavailable."
             )
 
             print(
-                f"Retrying in {delay:.1f} seconds..."
+                f"Retrying in {wait_time} seconds..."
             )
 
             time.sleep(
-                delay
+                wait_time
             )
 
+    raise last_error
+
 
 # ============================================================
-# REPAIR TRUNCATED JSON
+# Gemini JSON extraction
 # ============================================================
 
-def parse_gemini_json(
-    response_text: str
-):
+def extract_json_array(
+    text: str
+) -> Optional[List[Any]]:
+
     """
-    Parse Gemini JSON.
+    Try several safe ways to recover a JSON array.
 
-    If Gemini accidentally truncates the response near the end,
-    attempt to recover complete objects from the JSON array.
+    Gemini occasionally returns surrounding text even when
+    JSON response mode is requested.
     """
 
-    text = response_text.strip()
+    if not text:
+        return None
 
-    # --------------------------------------------------------
-    # Normal JSON parsing
-    # --------------------------------------------------------
+    text = text.strip()
 
+    # First try direct JSON.
     try:
 
-        return json.loads(
+        parsed = json.loads(
             text
         )
 
-    except json.JSONDecodeError:
+        if isinstance(
+            parsed,
+            list
+        ):
+            return parsed
+
+    except Exception:
         pass
 
-    # --------------------------------------------------------
-    # Attempt recovery from truncated array
-    # --------------------------------------------------------
+    # Try fenced JSON.
+    fenced = re.search(
+        r"```(?:json)?\s*(\[.*?\])\s*```",
+        text,
+        re.DOTALL
+    )
 
-    if not text.startswith("["):
-
-        raise ValueError(
-            "Gemini response did not begin with a JSON array."
-        )
-
-    # Find complete JSON objects in the response.
-    objects = []
-
-    decoder = json.JSONDecoder()
-
-    position = 1
-
-    while position < len(text):
-
-        # Skip whitespace and commas.
-        while (
-            position < len(text)
-            and text[position] in " \n\r\t,"
-        ):
-
-            position += 1
-
-        if position >= len(text):
-            break
-
-        if text[position] == "]":
-            break
+    if fenced:
 
         try:
 
-            obj, end_position = decoder.raw_decode(
-                text,
-                position
+            parsed = json.loads(
+                fenced.group(1)
             )
 
             if isinstance(
-                obj,
-                dict
+                parsed,
+                list
             ):
+                return parsed
 
-                objects.append(
-                    obj
-                )
+        except Exception:
+            pass
 
-            position = end_position
-
-        except json.JSONDecodeError:
-
-            # We reached an incomplete final object.
-            break
-
-    if objects:
-
-        print(
-            "Warning: Gemini returned truncated JSON. "
-            f"Recovered {len(objects)} complete objects."
-        )
-
-        return objects
-
-    raise ValueError(
-        "Could not recover any complete JSON objects."
+    # Find first [ and last ].
+    start = text.find(
+        "["
     )
 
+    end = text.rfind(
+        "]"
+    )
+
+    if start >= 0 and end > start:
+
+        candidate = text[
+            start:end + 1
+        ]
+
+        try:
+
+            parsed = json.loads(
+                candidate
+            )
+
+            if isinstance(
+                parsed,
+                list
+            ):
+                return parsed
+
+        except Exception:
+            pass
+
+    return None
+
 
 # ============================================================
-# FIND RELEVANT TICKERS
+# Gemini semantic relevance
 # ============================================================
 
-def find_relevant_tickers(
+def analyze_with_gemini(
     speech_text: str,
-    top_n: int = DEFAULT_TOP_N
+    topics: List[str],
+    candidates: List[Dict[str, Any]],
+    top_n: int
 ) -> List[Dict[str, Any]]:
 
     if not GEMINI_API_KEY:
 
-        raise RuntimeError(
-            "GEMINI_API_KEY is not set.\n"
-            "Put your Gemini API key in gemapi.txt."
+        print(
+            "\nGemini API key not found."
         )
 
-    # --------------------------------------------------------
-    # Fetch Kalshi
-    # --------------------------------------------------------
-
-    print(
-        "\nFetching active Kalshi markets...\n"
-    )
-
-    events = fetch_live_kalshi_events()
-
-    if not events:
-
         print(
-            "No active events retrieved from Kalshi."
+            "Use --no-gemini or add your key "
+            "to gemapi.txt."
         )
 
         return []
 
-    market_catalog = build_market_catalog(
-        events
-    )
+    # Don't send our internal scoring metadata.
+    clean_candidates = []
 
-    print(
-        f"\nRetrieved {len(events)} active events."
-    )
+    for market in candidates:
 
-    print(
-        f"Retrieved {len(market_catalog)} unique active markets."
-    )
-
-    if not market_catalog:
-        return []
-
-    # --------------------------------------------------------
-    # Topics
-    # --------------------------------------------------------
-
-    topics = get_topic_keywords(
-        speech_text
-    )
-
-    if topics:
-
-        print(
-            "Detected topics: "
-            + ", ".join(topics)
+        clean_candidates.append(
+            clean_for_output(
+                market
+            )
         )
-
-    else:
-
-        print(
-            "No predefined topics detected."
-        )
-
-    # --------------------------------------------------------
-    # Local filter
-    # --------------------------------------------------------
-
-    candidates = filter_markets_locally(
-        speech_text,
-        market_catalog,
-        MAX_GEMINI_CANDIDATES
-    )
-
-    print(
-        f"Local filtering reduced the market universe "
-        f"to {len(candidates)} candidates."
-    )
-
-    if not candidates:
-
-        print(
-            "No markets passed the local filter."
-        )
-
-        return []
-
-    # --------------------------------------------------------
-    # Prompt
-    # --------------------------------------------------------
 
     prompt = f"""
 You are an expert prediction-market analyst.
 
-Analyze the speech below and identify the active Kalshi
-prediction markets that are genuinely relevant to the speech.
+Identify ACTIVE Kalshi prediction markets that are genuinely
+relevant to the speech below.
 
-SPEECH:
+SPEECH
+============================================================
 {speech_text}
 
-DETECTED TOPICS:
+DETECTED TOPICS
+============================================================
 {json.dumps(topics)}
 
-CANDIDATE MARKETS:
-{json.dumps(candidates, indent=2)}
+CANDIDATE MARKETS
+============================================================
+{json.dumps(clean_candidates, indent=2)}
 
-TASK:
+TASK
+============================================================
 
-Select up to {top_n} genuinely relevant markets.
+Select up to {top_n} markets.
 
-A market is highly relevant when:
-
-1. The speaker explicitly discusses the subject measured by
-   the market.
-
-2. The speech directly concerns a variable that determines
-   the market outcome.
-
-3. The speech changes or provides information relevant to the
-   probability of the market outcome.
-
-Avoid weak chains of indirect economic effects.
-
-For example:
-
-Fed policy
-→ interest rates
-→ technology valuations
-→ IPO activity
-→ specific company IPO
-
-is too indirect.
-
-Therefore, a Fed speech should not automatically make a
-specific company IPO market relevant.
-
-Be conservative.
-
-If only two markets are genuinely relevant, return two.
-
-If none are sufficiently relevant, return [].
-
-SCORING:
-
-0.90 - 1.00:
-Directly discussed or extremely closely connected.
-
-0.75 - 0.89:
-Strong direct connection.
-
-0.60 - 0.74:
-Plausible but somewhat indirect.
-
-Below 0.60:
-Do not return.
+Only select a market if the speech has a direct or strong
+economic/policy connection to the contract's actual resolution.
 
 IMPORTANT:
 
-Only return tickers appearing in the candidate list.
+1. DIRECT RELEVANCE
 
-Never invent a ticker.
+Prefer contracts whose outcome is directly about something
+the speaker discusses.
 
-Return ONLY valid JSON.
+For example:
 
-Required format:
+Speech:
+"The Federal Reserve remains focused on inflation."
+
+Market:
+"Will CPI inflation be above X?"
+
+That is directly relevant.
+
+2. STRONG CONNECTION
+
+A market can also be relevant when the speech discusses a
+variable that directly informs the contract.
+
+Example:
+
+Speech:
+"The labor market has weakened."
+
+Market:
+"Will unemployment be above X?"
+
+That can be relevant.
+
+3. DO NOT USE LONG INDIRECT CHAINS
+
+Do not select a market merely because the speech could
+eventually affect the market through several other variables.
+
+4. READ THE ACTUAL CONTRACT
+
+Pay attention to the exact market wording and resolution
+subject.
+
+5. FED SPEECHES
+
+For Federal Reserve speeches, distinguish between:
+
+- near-term Fed rate decisions
+- longer-term federal funds rate levels
+- inflation contracts
+- unemployment/labor contracts
+- GDP contracts
+
+Do not treat every rate-related contract as equally relevant.
+
+6. DO NOT FILL THE LIST
+
+If only one or two markets are genuinely relevant, return
+only those.
+
+7. SCORE
+
+0.90-1.00 = extremely direct
+0.75-0.89 = strong connection
+0.60-0.74 = plausible but somewhat indirect
+
+Do not return anything below 0.60.
+
+8. NEVER INVENT A TICKER
+
+The ticker must exactly match one of the candidate markets.
+
+9. RETURN JSON ONLY
+
+Return exactly:
 
 [
   {{
-    "ticker": "MARKET_TICKER",
-    "event_title": "Event Title",
-    "market_title": "Market Title",
+    "ticker": "EXACT_TICKER",
+    "event_title": "Event title",
+    "market_title": "Market title",
     "relevance_score": 0.95,
     "reasoning": "Brief explanation."
   }}
 ]
 
-Return [] if no market qualifies.
-"""
+If there are no relevant markets:
 
-    # --------------------------------------------------------
-    # Gemini
-    # --------------------------------------------------------
+[]
+"""
 
     print(
         "\nAnalyzing speech for relevant "
         "Kalshi tickers...\n"
     )
 
-    client = genai.Client(
-        api_key=GEMINI_API_KEY
-    )
-
-    response = ask_gemini_with_retry(
-        client,
-        prompt
-    )
-
-    # --------------------------------------------------------
-    # Parse
-    # --------------------------------------------------------
-
     try:
 
-        results = parse_gemini_json(
-            response.text
+        client = genai.Client(
+            api_key=GEMINI_API_KEY
+        )
+
+        response = ask_gemini(
+            client,
+            prompt
         )
 
     except Exception as e:
 
         print(
-            "\nERROR parsing Gemini response:"
+            "\nGemini unavailable:"
         )
 
         print(
@@ -1193,22 +1454,33 @@ Return [] if no market qualifies.
         )
 
         print(
-            "\nRaw Gemini output:"
-        )
-
-        print(
-            response.text
+            "\nFalling back to local candidates."
         )
 
         return []
 
-    if not isinstance(
-        results,
-        list
-    ):
+    response_text = getattr(
+        response,
+        "text",
+        ""
+    )
+
+    results = extract_json_array(
+        response_text
+    )
+
+    if results is None:
 
         print(
-            "Gemini did not return a JSON array."
+            "\nCould not parse Gemini response."
+        )
+
+        print(
+            "\nRaw Gemini output:"
+        )
+
+        print(
+            response_text
         )
 
         return []
@@ -1217,11 +1489,12 @@ Return [] if no market qualifies.
     # Validate tickers
     # --------------------------------------------------------
 
-    valid_tickers = {
-        market[
-            "market_ticker"
-        ]
+    valid_markets = {
+        market["market_ticker"]: market
         for market in candidates
+        if market.get(
+            "market_ticker"
+        )
     }
 
     validated = []
@@ -1238,7 +1511,7 @@ Return [] if no market qualifies.
             "ticker"
         )
 
-        if ticker not in valid_tickers:
+        if ticker not in valid_markets:
             continue
 
         try:
@@ -1260,18 +1533,32 @@ Return [] if no market qualifies.
         if score < MIN_RELEVANCE_SCORE:
             continue
 
+        original = valid_markets[
+            ticker
+        ]
+
         validated.append({
 
             "ticker": ticker,
 
-            "event_title": result.get(
-                "event_title",
-                ""
+            "event_title": (
+                result.get(
+                    "event_title"
+                )
+                or original.get(
+                    "event_title",
+                    ""
+                )
             ),
 
-            "market_title": result.get(
-                "market_title",
-                ""
+            "market_title": (
+                result.get(
+                    "market_title"
+                )
+                or original.get(
+                    "market_title",
+                    ""
+                )
             ),
 
             "relevance_score": score,
@@ -1280,14 +1567,11 @@ Return [] if no market qualifies.
                 "reasoning",
                 ""
             ),
+
         })
 
-    # --------------------------------------------------------
-    # Sort
-    # --------------------------------------------------------
-
     validated.sort(
-        key=lambda item: item[
+        key=lambda x: x[
             "relevance_score"
         ],
         reverse=True
@@ -1297,24 +1581,320 @@ Return [] if no market qualifies.
 
 
 # ============================================================
-# MAIN
+# Main finder
+# ============================================================
+
+def find_relevant_tickers(
+    speech_text: str,
+    top_n: int = 5,
+    use_gemini: bool = True
+) -> List[Dict[str, Any]]:
+
+    topics = get_topic_keywords(
+        speech_text
+    )
+
+    if topics:
+
+        print(
+            "Detected topics: "
+            + ", ".join(
+                topics
+            )
+        )
+
+    else:
+
+        print(
+            "No predefined topics detected."
+        )
+
+    # --------------------------------------------------------
+    # Fetch
+    # --------------------------------------------------------
+
+    print(
+        "\nFetching active Kalshi markets...\n"
+    )
+
+    events = fetch_live_kalshi_events()
+
+    print(
+        f"\nRetrieved {len(events)} active events."
+    )
+
+    if not events:
+
+        print(
+            "No active events retrieved from Kalshi."
+        )
+
+        return []
+
+    # --------------------------------------------------------
+    # Catalog
+    # --------------------------------------------------------
+
+    market_catalog = build_market_catalog(
+        events
+    )
+
+    print(
+        f"Retrieved {len(market_catalog)} "
+        f"currently active markets."
+    )
+
+    if not market_catalog:
+
+        return []
+
+    # --------------------------------------------------------
+    # Local filtering
+    # --------------------------------------------------------
+
+    candidates = filter_markets_locally(
+        speech_text,
+        market_catalog,
+        max_candidates=MAX_GEMINI_CANDIDATES
+    )
+
+    print(
+        f"Local filtering produced "
+        f"{len(candidates)} candidates."
+    )
+
+    save_debug_candidates(
+        candidates
+    )
+
+    # --------------------------------------------------------
+    # No local candidates
+    # --------------------------------------------------------
+
+    if not candidates:
+
+        print(
+            "\nNo local candidates found."
+        )
+
+        print(
+            "This means the speech topics did not match "
+            "the current Kalshi market catalog."
+        )
+
+        return []
+
+    # --------------------------------------------------------
+    # No Gemini
+    # --------------------------------------------------------
+
+    if not use_gemini:
+
+        print(
+            "\nGemini disabled with --no-gemini."
+        )
+
+        print(
+            "\n============================================================"
+        )
+
+        print(
+            "LOCAL CANDIDATES"
+        )
+
+        print(
+            "============================================================"
+        )
+
+        display = []
+
+        for market in candidates[
+            :MAX_LOCAL_DISPLAY
+        ]:
+
+            display.append({
+
+                "ticker": market.get(
+                    "market_ticker"
+                ),
+
+                "event_title": market.get(
+                    "event_title"
+                ),
+
+                "market_title": market.get(
+                    "market_title"
+                ),
+
+                "local_score": market.get(
+                    "_local_score"
+                ),
+
+                "reasons": market.get(
+                    "_local_reasons"
+                ),
+
+            })
+
+        print(
+            json.dumps(
+                display,
+                indent=2
+            )
+        )
+
+        return display[:top_n]
+
+    # --------------------------------------------------------
+    # Gemini
+    # --------------------------------------------------------
+
+    results = analyze_with_gemini(
+        speech_text,
+        topics,
+        candidates,
+        top_n
+    )
+
+    # --------------------------------------------------------
+    # Gemini unavailable
+    # --------------------------------------------------------
+
+    if not results:
+
+        print(
+            "\nGemini returned no validated markets."
+        )
+
+        print(
+            "Returning top local candidates "
+            "instead so the pipeline still produces output."
+        )
+
+        fallback = []
+
+        for market in candidates[
+            :top_n
+        ]:
+
+            fallback.append({
+
+                "ticker": market.get(
+                    "market_ticker"
+                ),
+
+                "event_title": market.get(
+                    "event_title"
+                ),
+
+                "market_title": market.get(
+                    "market_title"
+                ),
+
+                "relevance_score": None,
+
+                "reasoning": (
+                    "Local candidate; "
+                    "Gemini did not validate this result."
+                ),
+
+            })
+
+        return fallback
+
+    return results
+
+
+# ============================================================
+# CLI
+# ============================================================
+
+def parse_args():
+
+    parser = argparse.ArgumentParser(
+        description=(
+            "Find Kalshi markets relevant to a speech."
+        )
+    )
+
+    parser.add_argument(
+        "--no-gemini",
+        action="store_true",
+        help=(
+            "Only run local filtering. "
+            "Useful for testing the Kalshi/API layer."
+        )
+    )
+
+    parser.add_argument(
+        "--speech",
+        type=str,
+        default=None,
+        help=(
+            "Speech text to analyze."
+        )
+    )
+
+    parser.add_argument(
+        "--top",
+        type=int,
+        default=5,
+        help=(
+            "Number of relevant markets to return."
+        )
+    )
+
+    return parser.parse_args()
+
+
+# ============================================================
+# Program entry
 # ============================================================
 
 if __name__ == "__main__":
 
-    sample_speech = (
-        "We remain deeply committed to bringing inflation "
-        "back down to our 2% target. The labor market remains "
-        "tight, and while we've seen progress, the Federal "
-        "Reserve will not hesitate to adjust interest rate "
-        "policy if macroeconomic indicators demand it."
+    args = parse_args()
+
+    print(
+        "\n"
+        + "=" * 60
     )
+
+    print(
+        "KALSHI TICKER FINDER"
+    )
+
+    print(
+        "=" * 60
+    )
+
+    # --------------------------------------------------------
+    # Speech
+    # --------------------------------------------------------
+
+    if args.speech:
+
+        sample_speech = args.speech
+
+    else:
+
+        # Test speech designed to hit current Fed markets.
+        sample_speech = (
+            "The Federal Reserve remains committed to bringing "
+            "inflation back to our 2 percent target. The labor "
+            "market has remained resilient, but we are closely "
+            "watching the balance between inflation and employment. "
+            "If economic conditions require it, the Federal Reserve "
+            "will adjust the target range for the federal funds "
+            "rate."
+        )
 
     try:
 
         matches = find_relevant_tickers(
             sample_speech,
-            top_n=3
+            top_n=args.top,
+            use_gemini=not args.no_gemini
         )
 
         print(

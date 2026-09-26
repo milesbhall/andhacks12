@@ -29,10 +29,6 @@ Two modes:
      and logs the whole exchange to Backboard. If it's NOT surprising,
      it says so and stops (no wasted Kalshi/Backboard calls).
 
-     Add --polymarket to also find related Polymarket US markets and buy
-     the side the statement points to (dry run unless --live is added).
-     Uses polymarket_client.py and its risk limits.
-
   Seed a speaker's baseline without scoring/trading:
        python kalshi_gemini_backboard.py --speaker kevin_warsh \
            --statement "We remain data dependent." --seed
@@ -65,17 +61,6 @@ from datetime import datetime, timezone
 import requests
 
 from speaker_baseline import SurpriseScorer
-
-# Polymarket US is optional: only needed when --polymarket is passed.
-try:
-    import polymarket_client
-except ImportError:
-    polymarket_client = None
-
-# Only auto-trade Polymarket markets Gemini rates at least this relevant.
-POLYMARKET_MIN_RELEVANCE = 0.7
-# Contracts per auto-trade (polymarket_client also enforces $ caps).
-POLYMARKET_TRADE_QTY = 2
 
 # ------------------------------------------------------------------ #
 # CONFIG
@@ -244,59 +229,7 @@ class BackboardClient:
 # 4. PIPELINE -- speaker statement -> surprise score -> (maybe) trade signal
 # ------------------------------------------------------------------ #
 
-def check_polymarket(speaker: str, statement: str, surprise_score: float, live: bool) -> str:
-    """Find Polymarket US markets this statement could move and (dry-run by
-    default) buy the side it points to. Returns a text summary for logging.
-    """
-    if polymarket_client is None:
-        print("polymarket_client.py not found; skipping Polymarket.")
-        return ""
-
-    print("\nSearching Polymarket US for markets this could move...")
-    try:
-        matches = polymarket_client.find_markets(statement, speaker)
-    except Exception as e:
-        print(f"Polymarket search failed: {e}")
-        return ""
-
-    if not matches:
-        print("No relevant Polymarket markets found.")
-        return "Polymarket: no relevant markets."
-
-    lines = []
-    for m in matches:
-        q = m["quote"]
-        print(f"  {m['slug']}  [{m['direction']}, relevance {m['relevance']:.2f}]  "
-              f"bid {q['best_bid']} / ask {q['best_ask']}  -- {m['reason']}")
-        lines.append(f"{m['slug']} {m['direction']} rel={m['relevance']:.2f} "
-                     f"bid={q['best_bid']} ask={q['best_ask']}")
-
-        if m["relevance"] < POLYMARKET_MIN_RELEVANCE:
-            continue
-        side = "yes" if m["direction"] == "YES_UP" else "no"
-        try:
-            trade = polymarket_client.place_trade(
-                m["slug"], side, POLYMARKET_TRADE_QTY, live=live,
-                reason=f"{speaker} surprise={surprise_score:.2f}: {statement[:120]}",
-            )
-        except Exception as e:
-            print(f"    trade skipped: {e}")
-            continue
-        if trade.get("blocked"):
-            status = "BLOCKED: " + "; ".join(trade["blocked"])
-        elif trade.get("sent"):
-            status = "SENT"
-        else:
-            status = "DRY RUN"
-        print(f"    -> buy {side.upper()} x{POLYMARKET_TRADE_QTY} at limit {trade['yes_limit']} "
-              f"(max cost ${trade['max_cost']}): {status}")
-        lines.append(f"  trade {side.upper()} x{POLYMARKET_TRADE_QTY} max ${trade['max_cost']}: {status}")
-
-    return "Polymarket:\n" + "\n".join(lines)
-
-
-def handle_statement(speaker: str, statement: str, ticker: str, seed_only: bool,
-                     use_polymarket: bool = False, live: bool = False):
+def handle_statement(speaker: str, statement: str, ticker: str, seed_only: bool):
     scorer = SurpriseScorer(store_path=BASELINE_STORE_PATH, api_key=GEMINI_API_KEY)
 
     if seed_only:
@@ -321,10 +254,6 @@ def handle_statement(speaker: str, statement: str, ticker: str, seed_only: bool,
         print("\nNot surprising enough to act on. Adding to baseline and stopping.")
         scorer.add_to_baseline(speaker, statement)
         return
-
-    polymarket_summary = ""
-    if use_polymarket:
-        polymarket_summary = check_polymarket(speaker, statement, result.surprise_score, live)
 
     print(f"\nSurprising statement detected. Checking Kalshi market {ticker}...")
 
@@ -352,8 +281,7 @@ def handle_statement(speaker: str, statement: str, ticker: str, seed_only: bool,
 
     backboard = BackboardClient(BACKBOARD_API_KEY)
     log_question = f"[{speaker}] surprise={result.surprise_score:.2f} :: {statement}"
-    log_answer = answer + ("\n\n" + polymarket_summary if polymarket_summary else "")
-    thread_id = backboard.log_exchange(BACKBOARD_THREAD_ID, log_question, log_answer)
+    thread_id = backboard.log_exchange(BACKBOARD_THREAD_ID, log_question, answer)
     print(f"\nLogged to Backboard thread: {thread_id}")
     if not BACKBOARD_THREAD_ID:
         print(
@@ -385,10 +313,6 @@ def build_arg_parser():
                               "and exit, instead of running the pipeline")
     parser.add_argument("--series", default=None,
                          help="Series ticker to filter --search by, e.g. FED, KXWTAOPEN")
-    parser.add_argument("--polymarket", action="store_true",
-                         help="Also find and trade related Polymarket US markets (mode B)")
-    parser.add_argument("--live", action="store_true",
-                         help="Send real Polymarket orders (default is dry run)")
     return parser
 
 
@@ -423,8 +347,7 @@ def main():
         return
 
     if args.speaker and args.statement:
-        handle_statement(args.speaker, args.statement, args.ticker, args.seed,
-                         use_polymarket=args.polymarket, live=args.live)
+        handle_statement(args.speaker, args.statement, args.ticker, args.seed)
         return
 
     if args.question:
