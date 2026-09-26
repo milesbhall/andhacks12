@@ -1,0 +1,16 @@
+# API keys and secrets: never commit these
+*.txt
+!requirements.txt
+*.pem
+*.key
+.env
+
+# Local runtime data
+baselines.json
+polymarket_trades.jsonl
+STOP_TRADING
+
+# Python
+__pycache__/
+*.pyc
+.venv/
