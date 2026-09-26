@@ -27,6 +27,7 @@ import json
 import time
 import re
 import requests
+from datetime import datetime, timezone
 
 from typing import List, Dict, Any, Optional, Tuple
 
@@ -95,9 +96,11 @@ SEMANTIC_BATCH_SIZE = 128
 SEMANTIC_WEIGHT = 0.55
 LEXICAL_WEIGHT = 0.25
 RULE_WEIGHT = 0.20
+TFIDF_FALLBACK_LEXICAL_WEIGHT = 0.25
+TFIDF_FALLBACK_RULE_WEIGHT = 0.75
 
 # Maximum markets from the same event during local selection.
-MAX_MARKETS_PER_EVENT = 2
+MAX_MARKETS_PER_EVENT = 1
 
 # Minimum relevance score for returned markets
 MIN_RELEVANCE_SCORE = 0.60
@@ -120,33 +123,40 @@ def fetch_live_kalshi_events(
 
     url = f"{KALSHI_BASE_URL}/events"
 
-    params = {
-        "limit": limit,
-        "with_nested_markets": True,
-        "status": "open",
-    }
+    events = []
+    cursor = None
+    seen_cursors = set()
 
-    try:
+    while True:
+        params = {
+            "limit": limit,
+            "with_nested_markets": True,
+            "status": "open",
+        }
+        if cursor:
+            params["cursor"] = cursor
 
-        response = requests.get(
-            url,
-            params=params,
-            timeout=20
-        )
+        try:
+            response = requests.get(
+                url,
+                params=params,
+                timeout=20,
+            )
+            response.raise_for_status()
+            data = response.json()
+        except Exception as e:
+            print(f"Warning: Failed to fetch Kalshi events: {e}")
+            break
 
-        response.raise_for_status()
+        events.extend(data.get("events", []))
+        next_cursor = data.get("cursor")
+        if not next_cursor or next_cursor in seen_cursors:
+            break
 
-        data = response.json()
+        seen_cursors.add(next_cursor)
+        cursor = next_cursor
 
-        return data.get("events", [])
-
-    except Exception as e:
-
-        print(
-            f"Warning: Failed to fetch Kalshi events: {e}"
-        )
-
-        return []
+    return events
 
 
 # ============================================================
@@ -200,6 +210,11 @@ def build_market_catalog(
 
                 "event_title": event_title,
 
+                "expected_expiration_time": (
+                    market.get("expected_expiration_time")
+                    or market.get("expiration_time")
+                ),
+
                 "subtitle": market.get(
                     "subtitle",
                     ""
@@ -217,6 +232,45 @@ def build_market_catalog(
             })
 
     return catalog
+
+
+def _days_until_expiration(market: Dict[str, Any]) -> Optional[float]:
+    expiration_time = market.get("expected_expiration_time")
+    if not expiration_time:
+        return None
+
+    try:
+        expiration = datetime.fromisoformat(
+            str(expiration_time).replace("Z", "+00:00")
+        )
+    except ValueError:
+        return None
+
+    if expiration.tzinfo is None:
+        expiration = expiration.replace(tzinfo=timezone.utc)
+
+    return (expiration - datetime.now(timezone.utc)).total_seconds() / 86400
+
+
+def _expiration_hybrid_adjustment(market: Dict[str, Any]) -> float:
+    days_until_expiration = _days_until_expiration(market)
+    if days_until_expiration is None:
+        return 0.0
+    if days_until_expiration <= 30:
+        return 0.20
+    if days_until_expiration <= 90:
+        return 0.12
+    if days_until_expiration <= 180:
+        return 0.02
+    if days_until_expiration <= 365:
+        return -0.08
+    if days_until_expiration <= 730:
+        return -0.16
+    if days_until_expiration <= 1095:
+        return -0.24
+    if days_until_expiration <= 1460:
+        return -0.30
+    return -0.35
 
 
 # ============================================================
@@ -770,6 +824,7 @@ def hybrid_vector_retrieval(
     # Stage 2: semantic vectors on only the top lexical matches
     # --------------------------------------------------------
     semantic_model = _get_semantic_model()
+    has_semantic_scores = False
 
     if semantic_model is not None:
         semantic_indices = stage1_indices[
@@ -801,6 +856,7 @@ def hybrid_vector_retrieval(
                 market_embeddings,
                 query_embedding[0],
             )
+            has_semantic_scores = True
 
         except Exception as e:
             print(
@@ -810,13 +866,13 @@ def hybrid_vector_retrieval(
                 "Continuing with TF-IDF + rule scoring."
             )
             semantic_indices = stage1_indices
-            semantic_scores = lexical_scores[semantic_indices]
+            semantic_scores = np.zeros(len(semantic_indices))
     else:
         print(
             "sentence-transformers is not installed; using TF-IDF + rules."
         )
         semantic_indices = stage1_indices
-        semantic_scores = lexical_scores[semantic_indices]
+        semantic_scores = np.zeros(len(semantic_indices))
 
     # --------------------------------------------------------
     # Existing deterministic rules, evaluated only on the vector
@@ -845,23 +901,29 @@ def hybrid_vector_retrieval(
             topics,
         )
 
-        # Normalize the old rule score into roughly 0-1. The exact
-        # value is less important than preserving its relative effect.
-        rule_score = min(max(local_score / 50.0, -1.0), 1.0)
-        lexical_score = min(
-            max(float(lexical_scores[index]) / max(max_lexical, 1e-9), 0.0),
-            1.0,
-        )
-        semantic_score_normalized = min(
-            max((float(semantic_score) + 1.0) / 2.0, 0.0),
-            1.0,
-        )
-
-        hybrid_score = (
-            SEMANTIC_WEIGHT * semantic_score_normalized
-            + LEXICAL_WEIGHT * lexical_score
-            + RULE_WEIGHT * rule_score
-        )
+        if has_semantic_scores:
+            rule_score = min(max(local_score / 50.0, -1.0), 1.0)
+            lexical_score = min(
+                max(float(lexical_scores[index]) / max(max_lexical, 1e-9), 0.0),
+                1.0,
+            )
+            semantic_score_normalized = min(
+                max((float(semantic_score) + 1.0) / 2.0, 0.0),
+                1.0,
+            )
+            hybrid_score = (
+                SEMANTIC_WEIGHT * semantic_score_normalized
+                + LEXICAL_WEIGHT * lexical_score
+                + RULE_WEIGHT * rule_score
+            )
+        else:
+            lexical_score = min(max(float(lexical_scores[index]), 0.0), 1.0)
+            rule_score = local_score / (abs(local_score) + 10.0)
+            semantic_score_normalized = 0.0
+            hybrid_score = (
+                TFIDF_FALLBACK_LEXICAL_WEIGHT * lexical_score
+                + TFIDF_FALLBACK_RULE_WEIGHT * rule_score
+            )
 
         if "Fed personnel or appointment market" in reasons:
             hybrid_score -= 0.35
@@ -869,9 +931,8 @@ def hybrid_vector_retrieval(
             hybrid_score -= 0.35
         elif "Long-dated contract" in reasons:
             hybrid_score -= 0.25
-        elif "Medium-term contract" in reasons:
-            hybrid_score -= 0.10
 
+        hybrid_score += _expiration_hybrid_adjustment(market)
         hybrid_score = max(0.0, min(hybrid_score, 1.0))
 
         if hybrid_score < MIN_HYBRID_SCORE:
@@ -942,7 +1003,8 @@ def filter_markets_locally_legacy(
         elif "Long-dated contract" in reasons:
             hybrid_score -= 0.30
         elif "Medium-term contract" in reasons:
-            hybrid_score -= 0.10
+            hybrid_score -= 0.05
+        hybrid_score += _expiration_hybrid_adjustment(market)
         hybrid_score = max(0.0, min(hybrid_score, 1.0))
         if hybrid_score < MIN_HYBRID_SCORE:
             continue
