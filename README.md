@@ -47,7 +47,7 @@ We test the hypothesis that speaker-relative surprise predicts market moves, liv
 | `kalshi_trader.py` | Kalshi prices and orders |
 | `polymarket_client.py` | Polymarket US search, prices and orders |
 | `trading_common.py` | Shared risk limits, kill switch, fees and trade log for both venues |
-| `backboard_client.py` | Logs every signal and trade to a Backboard thread |
+| `backboard_client.py` | Backboard memory: saves every signal and its trades, keeps a log per run, and answers questions in the dashboard's "Ask the desk" tab |
 | `tiger_store.py` | Stores signals, prices and trades as Tiger Data time series |
 | `solana_proof.py` | Writes a hash of each signal to Solana, a public timestamp that proves when we made the call |
 | `speechtxt.py` | ElevenLabs text-to-speech: reads transcript text aloud (the dashboard does the speech-to-text upload) |

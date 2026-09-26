@@ -51,14 +51,15 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 RESULTS_DIR = os.path.join(SCRIPT_DIR, "results")
 
 
-def _backboard_log(question: str, answer: str):
-    """Best effort: log to Backboard if a key exists."""
+def _backboard_record(record: dict, run: str):
+    """Best effort: save the signal to Backboard memory + the run's thread."""
     try:
         import backboard_client
-        return backboard_client.log(question, answer)
+        if backboard_client.enabled():
+            backboard_client.record_signal(record, run=run or "adhoc")
+            print("  Saved to Backboard memory.")
     except Exception as e:
-        print(f"  (Backboard log skipped: {e})")
-        return None
+        print(f"  (Backboard skipped: {e})")
 
 
 def _solana_proof(record: dict):
@@ -121,13 +122,7 @@ def act_on(result, speaker: str, venues, live: bool, qty: int, stance_only: bool
         print("  Trades:")
         market_router.print_trades(trades)
 
-    lines = [f"{t.get('venue')} {t.get('side', '').upper()} {t.get('market')}: "
-             f"{t.get('error') or tc.trade_status(t)}" for t in trades]
-    _backboard_log(
-        f"[{speaker}] {result.direction} z={result.z:+.1f} :: {result.statement[:300]}",
-        f"Stance {result.stance:+.2f} vs usual {result.baseline_mean:+.2f}. {result.summary}\n"
-        + "\n".join(lines),
-    )
+    _backboard_record(record, source)
     return record
 
 

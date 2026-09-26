@@ -26,3 +26,4 @@ solana_keypair.json
 .streamlit/secrets.toml
 pipe_test.log
 pipe_err.log
+backboard_state.json

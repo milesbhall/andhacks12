@@ -157,7 +157,64 @@ with st.sidebar:
     st.caption(f"Limits: ${tc.MAX_DOLLARS_PER_ORDER:.0f}/order, ${tc.MAX_DOLLARS_PER_DAY:.0f}/day "
                f"across venues. Kill switch: STOP_TRADING file.")
 
-tab_analyze, tab_replay, tab_history = st.tabs(["Analyze", "Replay", "History"])
+tab_desk, tab_analyze, tab_replay, tab_history = st.tabs(["Ask the desk", "Analyze", "Replay", "History"])
+
+with tab_desk:
+    import backboard_client as bb
+    st.subheader("Ask the desk")
+    st.caption("Answers come from Backboard memory: every surprise signal and the orders it triggered.")
+    if not bb.enabled():
+        st.info("Add a Backboard key (backboardapi.txt or BACKBOARD_API_KEY), then run "
+                "`python backboard_client.py --setup`.")
+    else:
+        left, right = st.columns([3, 2])
+        with left:
+            history = st.session_state.setdefault("desk_chat", [])
+            for turn in history:
+                with st.chat_message(turn["role"]):
+                    st.markdown(turn["text"])
+                    if turn.get("note"):
+                        st.caption(turn["note"])
+            examples = ["When was Warsh most hawkish, and what did we buy?",
+                        "Which markets have we traded after hawkish surprises?",
+                        "What is Warsh's usual stance?"]
+            pick = st.pills("Try", examples, key="desk_pick") if hasattr(st, "pills") else None
+            question = st.chat_input("Ask about past signals and trades") or pick
+            if question and question != st.session_state.get("desk_last"):
+                st.session_state["desk_last"] = question
+                history.append({"role": "user", "text": question})
+                with st.spinner("Searching memory..."):
+                    try:
+                        r = bb.ask(question)
+                        history.append({"role": "assistant", "text": r["answer"] or "(no answer)",
+                                        "note": f"{len(r['memories'])} memories used · {r['model']}"})
+                    except Exception as e:
+                        history.append({"role": "assistant", "text": f"Backboard error: {e}"})
+                st.rerun()
+        with right:
+            st.markdown("**What the desk remembers**")
+            query = st.text_input("Search memories", placeholder="e.g. rate hike, Polymarket, Warsh")
+            try:
+                mems = bb.search_memories(query, limit=15) if query else bb.list_memories()
+            except Exception as e:
+                mems = []
+                st.warning(f"Backboard unavailable: {e}")
+            signals = [m for m in mems if (m.get("metadata") or {}).get("kind") == "signal"]
+            c1, c2 = st.columns(2)
+            c1.metric("Memories", len(mems))
+            c2.metric("Signals", len(signals))
+            for m in mems[:30]:
+                meta = m.get("metadata") or {}
+                tag = meta.get("direction") or meta.get("kind", "")
+                with st.container(border=True):
+                    st.caption(f"{tag} · {str(m.get('created_at', ''))[:16]}")
+                    st.write(m.get("content", ""))
+            runs = bb.runs()
+            if runs:
+                st.markdown("**Run logs (Backboard threads)**")
+                run = st.selectbox("Run", runs, label_visibility="collapsed")
+                for msg in bb.run_log(run):
+                    st.text(msg.get("content", ""))
 
 with tab_analyze:
     st.subheader("How surprising is this, for this speaker?")
