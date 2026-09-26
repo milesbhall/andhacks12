@@ -752,6 +752,8 @@ def hybrid_vector_retrieval(
     speech_text: str,
     market_catalog: List[Dict[str, Any]],
     max_candidates: int = MAX_GEMINI_CANDIDATES,
+    prepared_index: Optional["MarketCatalogIndex"] = None,
+    use_semantic: bool = True,
 ) -> List[Dict[str, Any]]:
     """
     Fast two-stage vector retrieval.
@@ -773,7 +775,14 @@ def hybrid_vector_retrieval(
         return []
 
     speech_vector_text = normalize_text(speech_text)
-    market_texts = [_market_vector_text(m) for m in market_catalog]
+    if prepared_index is None:
+        market_texts = [_market_vector_text(m) for m in market_catalog]
+        vectorizer = None
+        matrix = None
+    else:
+        market_texts = prepared_index.market_texts
+        vectorizer = prepared_index.vectorizer
+        matrix = prepared_index.market_matrix
 
     # --------------------------------------------------------
     # Stage 1: very fast sparse-vector retrieval
@@ -788,19 +797,19 @@ def hybrid_vector_retrieval(
             max_candidates=max_candidates,
         )
 
-    print(
-        f"Vector stage 1: indexing {len(market_catalog):,} markets with TF-IDF..."
-    )
+    if prepared_index is None:
+        print(
+            f"Vector stage 1: indexing {len(market_catalog):,} markets with TF-IDF..."
+        )
+        vectorizer = TfidfVectorizer(
+            ngram_range=(1, 2),
+            min_df=2,
+            max_df=0.98,
+            sublinear_tf=True,
+            max_features=150000,
+        )
+        matrix = vectorizer.fit_transform(market_texts)
 
-    vectorizer = TfidfVectorizer(
-        ngram_range=(1, 2),
-        min_df=2,
-        max_df=0.98,
-        sublinear_tf=True,
-        max_features=150000,
-    )
-
-    matrix = vectorizer.fit_transform(market_texts)
     query_matrix = vectorizer.transform([speech_vector_text])
     lexical_scores = cosine_similarity(query_matrix, matrix).ravel()
 
@@ -823,7 +832,7 @@ def hybrid_vector_retrieval(
     # --------------------------------------------------------
     # Stage 2: semantic vectors on only the top lexical matches
     # --------------------------------------------------------
-    semantic_model = _get_semantic_model()
+    semantic_model = _get_semantic_model() if use_semantic else None
     has_semantic_scores = False
 
     if semantic_model is not None:
@@ -867,10 +876,13 @@ def hybrid_vector_retrieval(
             )
             semantic_indices = stage1_indices
             semantic_scores = np.zeros(len(semantic_indices))
-    else:
+    elif use_semantic:
         print(
             "sentence-transformers is not installed; using TF-IDF + rules."
         )
+        semantic_indices = stage1_indices
+        semantic_scores = np.zeros(len(semantic_indices))
+    else:
         semantic_indices = stage1_indices
         semantic_scores = np.zeros(len(semantic_indices))
 
@@ -970,6 +982,40 @@ def hybrid_vector_retrieval(
             break
 
     return selected
+
+
+class MarketCatalogIndex:
+    """A reusable TF-IDF index for repeated local ranking against one catalog."""
+
+    def __init__(self, market_catalog: List[Dict[str, Any]]):
+        self.market_catalog = market_catalog
+        self.market_texts = [_market_vector_text(market) for market in market_catalog]
+        self.vectorizer = None
+        self.market_matrix = None
+
+        if TfidfVectorizer is not None and cosine_similarity is not None and market_catalog:
+            self.vectorizer = TfidfVectorizer(
+                ngram_range=(1, 2),
+                min_df=2,
+                max_df=0.98,
+                sublinear_tf=True,
+                max_features=150000,
+            )
+            self.market_matrix = self.vectorizer.fit_transform(self.market_texts)
+
+    def rank_live(
+        self,
+        speech_text: str,
+        max_candidates: int = MAX_GEMINI_CANDIDATES,
+    ) -> List[Dict[str, Any]]:
+        """Rank one transcript update without refitting or invoking embeddings."""
+        return hybrid_vector_retrieval(
+            speech_text,
+            self.market_catalog,
+            max_candidates=max_candidates,
+            prepared_index=self if self.vectorizer is not None else None,
+            use_semantic=False,
+        )
 
 
 # ============================================================

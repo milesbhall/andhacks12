@@ -242,6 +242,7 @@ async def stream_realtime_audio(
     })
     uri = f"wss://api.elevenlabs.io/v1/speech-to-text/realtime?{params}"
     transcript_segments = []
+    save_transcript(output_path, source, transcript_segments)
     session_started = asyncio.get_running_loop().create_future()
 
     async with websockets.connect(
