@@ -4,33 +4,39 @@ kalshi_ticker_finder.py
 
 Find active Kalshi prediction markets relevant to a speech or statement.
 
+This file is designed to work in two ways:
+
+1. Directly from the command line:
+
+       python kalshi_ticker_finder.py --speech "The Federal Reserve..."
+
+2. From another Python program:
+
+       from kalshi_ticker_finder import find_relevant_tickers
+
+       results = find_relevant_tickers(transcript)
+
+The second method is intended for integration with a separate
+speech transcription program.
+
 Pipeline:
 
-    Speech
-       ↓
+    Speech transcript
+          ↓
     Detect topics
-       ↓
-    Fetch active Kalshi events/markets
-       ↓
-    Broad local candidate filter
-       ↓
-    Diversify candidates by event
-       ↓
-    Gemini semantic relevance analysis
-       ↓
+          ↓
+    Fetch active Kalshi events
+          ↓
+    Build market catalog
+          ↓
+    Local candidate filtering
+          ↓
+    Gemini semantic analysis
+          ↓
     Validate tickers
-       ↓
-    Relevant Kalshi markets
+          ↓
+    Return relevant Kalshi markets
 
-Usage:
-
-    python kalshi_ticker_finder.py
-
-    python kalshi_ticker_finder.py --no-gemini
-
-    python kalshi_ticker_finder.py --speech "The Federal Reserve..."
-
-    python kalshi_ticker_finder.py --top 10
 
 Environment:
 
@@ -70,9 +76,7 @@ GEMINI_API_KEY = os.environ.get(
 ).strip()
 
 if not GEMINI_API_KEY:
-
     try:
-
         with open(
             os.path.join(
                 SCRIPT_DIR,
@@ -80,23 +84,16 @@ if not GEMINI_API_KEY:
             ),
             encoding="utf-8"
         ) as f:
-
             GEMINI_API_KEY = f.read().strip()
 
     except FileNotFoundError:
-
         GEMINI_API_KEY = ""
 
 
-# Override with:
-#
-# export GEMINI_MODEL="gemini-3.8-flash"
-#
 GEMINI_MODEL = os.environ.get(
     "GEMINI_MODEL",
     "gemini-3.8-flash"
 )
-
 
 KALSHI_BASE_URL = (
     "https://api.elections.kalshi.com/trade-api/v2"
@@ -110,11 +107,10 @@ MAX_GEMINI_CANDIDATES = 100
 # Number of candidates displayed in --no-gemini mode.
 MAX_LOCAL_DISPLAY = 30
 
-# Maximum markets from the same event during the
-# diversified selection stage.
+# Maximum markets from the same event during local selection.
 MAX_MARKETS_PER_EVENT = 4
 
-# Gemini relevance threshold.
+# Minimum Gemini relevance score.
 MIN_RELEVANCE_SCORE = 0.60
 
 # Maximum Gemini attempts for temporary failures.
@@ -293,10 +289,6 @@ TOPIC_KEYWORDS = {
 def normalize_text(text: str) -> str:
     """
     Normalize text for keyword matching.
-
-    IMPORTANT:
-    This preserves word boundaries so that a keyword like
-    "ai" does NOT match unrelated words such as "remain".
     """
 
     text = str(text or "").lower()
@@ -328,16 +320,12 @@ def contains_keyword(
     keyword: str
 ) -> bool:
     """
-    Match a keyword or phrase using word boundaries.
+    Match a keyword using word boundaries.
 
     This prevents:
-        "ai" from matching "remain"
-        "fed" from matching arbitrary substrings
 
-    while still allowing:
-        "federal reserve"
-        "rate cut"
-        "10-year"
+        "ai" from matching "remain"
+        "fed" from matching unrelated substrings
     """
 
     normalized_text = normalize_text(text)
@@ -736,7 +724,7 @@ def score_market_locally(
             )
 
     # --------------------------------------------------------
-    # Strong Fed-specific market language
+    # Strong Fed-specific language
     # --------------------------------------------------------
 
     fed_terms = [
@@ -771,7 +759,7 @@ def score_market_locally(
         )
 
     # --------------------------------------------------------
-    # Strong macro variable matches
+    # Strong macro-variable matches
     # --------------------------------------------------------
 
     variable_terms = [
@@ -923,10 +911,7 @@ def score_market_locally(
             score += 15
 
     # --------------------------------------------------------
-    # Current/near-term monetary policy boost
-    #
-    # This is intentionally modest. Gemini still makes the
-    # semantic decision.
+    # Near-term monetary-policy boost
     # --------------------------------------------------------
 
     if (
@@ -965,11 +950,7 @@ def score_market_locally(
             )
 
     # --------------------------------------------------------
-    # Long-term Fed markets get a modest penalty when the
-    # speech is clearly about current monetary policy.
-    #
-    # This prevents 2035/2036 rate contracts from crowding
-    # out upcoming Fed decision markets.
+    # Long-term penalty
     # --------------------------------------------------------
 
     if (
@@ -991,41 +972,33 @@ def score_market_locally(
             )
 
     # --------------------------------------------------------
-    # Penalize obviously unrelated categories
+    # Obviously unrelated categories
     # --------------------------------------------------------
 
-    unrelated_penalties = {
+    unrelated_terms = [
+        "nfl",
+        "nba",
+        "mlb",
+        "nhl",
+        "super bowl",
+        "touchdown",
+        "game winner",
+        "oscar",
+        "grammy",
+        "movie",
+        "box office",
+        "celebrity",
+    ]
 
-        "sports": [
-            "nfl",
-            "nba",
-            "mlb",
-            "nhl",
-            "super bowl",
-            "touchdown",
-            "game winner",
-        ],
+    if any(
+        contains_keyword(
+            market_text,
+            term
+        )
+        for term in unrelated_terms
+    ):
 
-        "entertainment": [
-            "oscar",
-            "grammy",
-            "movie",
-            "box office",
-            "celebrity",
-        ],
-    }
-
-    for category, terms in unrelated_penalties.items():
-
-        if any(
-            contains_keyword(
-                market_text,
-                term
-            )
-            for term in terms
-        ):
-
-            score -= 15
+        score -= 15
 
     return score, reasons
 
@@ -1076,15 +1049,11 @@ def filter_markets_locally(
         reverse=True
     )
 
-    # --------------------------------------------------------
-    # First pass:
-    # prioritize event diversity.
-    # --------------------------------------------------------
-
     selected = []
 
     event_counts = {}
 
+    # First pass: diversity.
     for market in scored:
 
         event_ticker = market.get(
@@ -1110,57 +1079,6 @@ def filter_markets_locally(
 
         if len(selected) >= max_candidates:
             break
-
-    # --------------------------------------------------------
-    # Fill remaining slots if necessary.
-    #
-    # We still enforce the event cap here. This is important:
-    # otherwise the second pass could undo diversification.
-    # --------------------------------------------------------
-
-    selected_tickers = {
-        market["market_ticker"]
-        for market in selected
-    }
-
-    if len(selected) < max_candidates:
-
-        for market in scored:
-
-            ticker = market.get(
-                "market_ticker"
-            )
-
-            if ticker in selected_tickers:
-                continue
-
-            event_ticker = market.get(
-                "event_ticker",
-                ""
-            )
-
-            count = event_counts.get(
-                event_ticker,
-                0
-            )
-
-            if count >= MAX_MARKETS_PER_EVENT:
-                continue
-
-            selected.append(
-                market
-            )
-
-            selected_tickers.add(
-                ticker
-            )
-
-            event_counts[event_ticker] = (
-                count + 1
-            )
-
-            if len(selected) >= max_candidates:
-                break
 
     return selected
 
@@ -1226,7 +1144,7 @@ def save_debug_candidates(
 
 
 # ============================================================
-# Gemini retry helper
+# Gemini
 # ============================================================
 
 def is_temporary_gemini_error(
@@ -1260,8 +1178,11 @@ def ask_gemini(
     prompt: str
 ):
     """
-    Send the Gemini request with retries for temporary
-    service failures.
+    Send the Gemini request using the Chat API.
+
+    Using client.chats.create() avoids the automatic-function-
+    calling warning associated with directly using
+    client.models.generate_content().
     """
 
     config = types.GenerateContentConfig(
@@ -1282,10 +1203,13 @@ def ask_gemini(
                 f"{attempt}/{MAX_GEMINI_RETRIES}..."
             )
 
-            response = client.models.generate_content(
+            chat = client.chats.create(
                 model=GEMINI_MODEL,
-                contents=prompt,
                 config=config
+            )
+
+            response = chat.send_message(
+                prompt
             )
 
             return response
@@ -1309,9 +1233,6 @@ def ask_gemini(
 
                 raise last_error
 
-            # Exponential backoff with a small random
-            # component so repeated requests are less likely
-            # to collide with the service recovery window.
             base_wait = min(
                 2 ** attempt,
                 30
@@ -1350,18 +1271,10 @@ def extract_json_array(
     text: str
 ) -> Optional[List[Any]]:
 
-    """
-    Safely recover a JSON array from Gemini output.
-    """
-
     if not text:
         return None
 
     text = text.strip()
-
-    # --------------------------------------------------------
-    # Direct JSON
-    # --------------------------------------------------------
 
     try:
 
@@ -1378,10 +1291,6 @@ def extract_json_array(
 
     except Exception:
         pass
-
-    # --------------------------------------------------------
-    # Fenced JSON
-    # --------------------------------------------------------
 
     fenced = re.search(
         r"```(?:json)?\s*(\[.*?\])\s*```",
@@ -1406,10 +1315,6 @@ def extract_json_array(
 
         except Exception:
             pass
-
-    # --------------------------------------------------------
-    # First [ through last ]
-    # --------------------------------------------------------
 
     start = text.find(
         "["
@@ -1445,7 +1350,7 @@ def extract_json_array(
 
 
 # ============================================================
-# Gemini semantic relevance
+# Gemini semantic analysis
 # ============================================================
 
 def analyze_with_gemini(
@@ -1454,20 +1359,6 @@ def analyze_with_gemini(
     candidates: List[Dict[str, Any]],
     top_n: int
 ) -> Tuple[Optional[List[Dict[str, Any]]], str]:
-
-    """
-    Returns:
-
-        (results, status)
-
-    status can be:
-
-        "success"
-        "no_relevant_markets"
-        "parse_error"
-        "unavailable"
-        "error"
-    """
 
     if not GEMINI_API_KEY:
 
@@ -1482,15 +1373,10 @@ def analyze_with_gemini(
 
         return None, "unavailable"
 
-    clean_candidates = []
-
-    for market in candidates:
-
-        clean_candidates.append(
-            clean_for_output(
-                market
-            )
-        )
+    clean_candidates = [
+        clean_for_output(market)
+        for market in candidates
+    ]
 
     prompt = f"""
 You are an expert prediction-market analyst.
@@ -1527,45 +1413,19 @@ RELEVANCE STANDARD
 Prefer contracts whose outcome is directly about something
 the speaker discusses.
 
-Example:
-
-Speech:
-"The Federal Reserve remains focused on inflation."
-
-Market:
-"Will CPI inflation be above X?"
-
-This is directly relevant.
-
 2. STRONG CONNECTION
 
 A market can be relevant when the speech discusses a variable
 that directly informs the contract.
 
-Example:
-
-Speech:
-"The labor market has weakened."
-
-Market:
-"Will unemployment be above X?"
-
-This can be relevant.
-
 3. AVOID LONG INDIRECT CHAINS
 
-Do NOT select a market merely because the speech could
-eventually affect the market through several intermediate
-variables.
-
-For example, do not select a long-term stock market contract
-just because interest rates can affect stocks.
+Do not select a market merely because the speech could
+eventually affect it through several intermediate variables.
 
 4. READ THE ACTUAL CONTRACT
 
 Pay attention to the exact wording of the market.
-
-The event title alone is not enough.
 
 5. FEDERAL RESERVE SPEECHES
 
@@ -1587,12 +1447,9 @@ Fed-related contract relevant.
 Prefer markets whose resolution horizon matches the subject
 of the speech.
 
-For a current Fed speech, an upcoming October 2026 Fed
-decision can be substantially more relevant than a contract
-about the federal funds rate at the end of 2036.
-
-Do not select a distant contract merely because it contains
-the words "Federal Reserve" or "federal funds."
+For a current Fed speech, an upcoming Fed decision can be
+substantially more relevant than a contract about the federal
+funds rate many years in the future.
 
 7. DO NOT FILL THE LIST
 
@@ -1686,20 +1543,9 @@ If there are no sufficiently relevant markets:
 
         return None, "parse_error"
 
-    # --------------------------------------------------------
-    # IMPORTANT:
-    #
-    # An empty Gemini array is a legitimate answer.
-    # It does NOT mean Gemini failed.
-    # --------------------------------------------------------
-
     if not results:
 
         return [], "no_relevant_markets"
-
-    # --------------------------------------------------------
-    # Validate tickers against the exact candidate universe.
-    # --------------------------------------------------------
 
     valid_markets = {
         market["market_ticker"]: market
@@ -1797,7 +1643,6 @@ If there are no sufficiently relevant markets:
         reverse=True
     )
 
-    # Gemini gave an array, but none survived validation.
     if not validated:
 
         return [], "no_relevant_markets"
@@ -1814,6 +1659,35 @@ def find_relevant_tickers(
     top_n: int = 5,
     use_gemini: bool = True
 ) -> List[Dict[str, Any]]:
+
+    """
+    Main function for other Python programs.
+
+    Example:
+
+        transcript = "The Federal Reserve..."
+        results = find_relevant_tickers(transcript)
+
+    Returns a list of dictionaries such as:
+
+        [
+            {
+                "ticker": "KXRATECUT-26DEC31",
+                "event_title": "Fed rate cut before 2027?",
+                "market_title": "...",
+                "relevance_score": 0.85,
+                "reasoning": "..."
+            }
+        ]
+    """
+
+    if not speech_text or not speech_text.strip():
+
+        print(
+            "No speech text was provided."
+        )
+
+        return []
 
     topics = get_topic_keywords(
         speech_text
@@ -1835,7 +1709,7 @@ def find_relevant_tickers(
         )
 
     # --------------------------------------------------------
-    # Fetch
+    # Fetch active events
     # --------------------------------------------------------
 
     print(
@@ -1857,7 +1731,7 @@ def find_relevant_tickers(
         return []
 
     # --------------------------------------------------------
-    # Catalog
+    # Build catalog
     # --------------------------------------------------------
 
     market_catalog = build_market_catalog(
@@ -1892,25 +1766,16 @@ def find_relevant_tickers(
         candidates
     )
 
-    # --------------------------------------------------------
-    # No local candidates
-    # --------------------------------------------------------
-
     if not candidates:
 
         print(
             "\nNo local candidates found."
         )
 
-        print(
-            "The speech topics did not match "
-            "the current Kalshi market catalog."
-        )
-
         return []
 
     # --------------------------------------------------------
-    # No Gemini
+    # Local-only mode
     # --------------------------------------------------------
 
     if not use_gemini:
@@ -1969,12 +1834,10 @@ def find_relevant_tickers(
             )
         )
 
-        return display[
-            :top_n
-        ]
+        return display[:top_n]
 
     # --------------------------------------------------------
-    # Gemini
+    # Gemini analysis
     # --------------------------------------------------------
 
     results, status = analyze_with_gemini(
@@ -1985,9 +1848,7 @@ def find_relevant_tickers(
     )
 
     # --------------------------------------------------------
-    # Gemini produced legitimate empty result.
-    #
-    # DO NOT fall back to arbitrary local candidates.
+    # Gemini found nothing
     # --------------------------------------------------------
 
     if status == "no_relevant_markets":
@@ -2000,10 +1861,7 @@ def find_relevant_tickers(
         return []
 
     # --------------------------------------------------------
-    # Gemini unavailable / failed.
-    #
-    # For an API failure, local candidates are still useful,
-    # but clearly label them as unvalidated.
+    # Gemini unavailable
     # --------------------------------------------------------
 
     if status in {
@@ -2052,10 +1910,6 @@ def find_relevant_tickers(
 
         return fallback
 
-    # --------------------------------------------------------
-    # Successful Gemini validation.
-    # --------------------------------------------------------
-
     return results or []
 
 
@@ -2075,8 +1929,7 @@ def parse_args():
         "--no-gemini",
         action="store_true",
         help=(
-            "Only run local filtering. "
-            "Useful for testing the Kalshi/API layer."
+            "Only run local filtering."
         )
     )
 
@@ -2086,6 +1939,16 @@ def parse_args():
         default=None,
         help=(
             "Speech text to analyze."
+        )
+    )
+
+    parser.add_argument(
+        "--speech-file",
+        type=str,
+        default=None,
+        help=(
+            "Path to a text file containing "
+            "a speech transcript."
         )
     )
 
@@ -2123,25 +1986,51 @@ if __name__ == "__main__":
     )
 
     # --------------------------------------------------------
-    # Speech
+    # Get speech
     # --------------------------------------------------------
+
+    sample_speech = None
 
     if args.speech:
 
         sample_speech = args.speech
 
+    elif args.speech_file:
+
+        try:
+
+            with open(
+                args.speech_file,
+                "r",
+                encoding="utf-8"
+            ) as f:
+
+                sample_speech = f.read()
+
+        except Exception as e:
+
+            print(
+                f"\nERROR reading speech file: {e}"
+            )
+
+            raise SystemExit(1)
+
     else:
 
-        # Test speech designed to hit current Fed markets.
+        # Built-in test speech.
         sample_speech = (
-            "The Federal Reserve remains committed to bringing "
-            "inflation back to our 2 percent target. The labor "
-            "market has remained resilient, but we are closely "
-            "watching the balance between inflation and employment. "
-            "If economic conditions require it, the Federal Reserve "
-            "will adjust the target range for the federal funds "
-            "rate."
+            "The Federal Reserve remains committed to "
+            "bringing inflation back to our 2 percent target. "
+            "The labor market has remained resilient, but we "
+            "are closely watching the balance between inflation "
+            "and employment. If economic conditions require it, "
+            "the Federal Reserve will adjust the target range "
+            "for the federal funds rate."
         )
+
+    # --------------------------------------------------------
+    # Run
+    # --------------------------------------------------------
 
     try:
 
@@ -2183,8 +2072,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
 
         print(
-            "\nProgram interrupted."
-        )
+            "\nProgram interrupted.")
 
     except Exception as e:
 
