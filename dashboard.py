@@ -196,10 +196,13 @@ def live_panel():
     left, right = st.columns([3, 2])
     with left:
         if spoken:
-            chart = pd.DataFrame({"z-score": [c["z"] for c in spoken],
-                                  "surprise line": [2.0] * len(spoken),
-                                  "surprise line (dovish)": [-2.0] * len(spoken)})
-            st.line_chart(chart, height=220)
+            start = pd.Timestamp(s["chunks"][0]["time"])
+            minutes = [round((pd.Timestamp(c["time"]) - start).total_seconds() / 60, 2) for c in spoken]
+            chart = pd.DataFrame({"minutes into speech": minutes,
+                                  "z-score": [c["z"] for c in spoken],
+                                  "hawkish line (+2)": [2.0] * len(spoken),
+                                  "dovish line (-2)": [-2.0] * len(spoken)}).set_index("minutes into speech")
+            st.line_chart(chart, height=220, x_label="minutes into speech", y_label="z-score")
         st.markdown("**Transcript**")
         for c in reversed(s["chunks"][-12:]):
             if c["role"] != "speaker":
