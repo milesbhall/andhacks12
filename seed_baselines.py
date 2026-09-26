@@ -47,6 +47,7 @@ import json
 import os
 import re
 import statistics
+import time
 
 import requests
 
@@ -244,10 +245,28 @@ def main():
         scorer.store._save()
         print(f"Cleared existing baseline for {args.speaker}.")
 
-    for number, chunk in enumerate(all_chunks, start=1):
-        scorer.add_to_baseline(args.speaker, chunk)
-        if number % 10 == 0 or number == len(all_chunks):
-            print(f"  embedded {number}/{len(all_chunks)}")
+    # Skip chunks already in the baseline, so a re-run resumes instead of duplicating.
+    already = set(entry["statement"] for entry in scorer.store.data.get(args.speaker, []))
+    todo = [chunk for chunk in all_chunks if chunk not in already]
+    if len(todo) < len(all_chunks):
+        print(f"  {len(all_chunks) - len(todo)} chunks already embedded; resuming with {len(todo)}.")
+
+    for number, chunk in enumerate(todo, start=1):
+        # Free Gemini tier allows ~100 embeddings/minute: wait and retry on 429.
+        for attempt in range(6):
+            try:
+                scorer.add_to_baseline(args.speaker, chunk)
+                break
+            except Exception as e:
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    print("  rate limited; waiting 30s...")
+                    time.sleep(30)
+                else:
+                    raise
+        else:
+            raise RuntimeError("Still rate limited after several retries.")
+        if number % 10 == 0 or number == len(todo):
+            print(f"  embedded {number}/{len(todo)}")
 
     stats = calibrate(scorer, args.speaker)
     print("\nCalibration (surprise of the speaker's OWN past answers vs. their baseline):")

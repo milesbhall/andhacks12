@@ -45,7 +45,7 @@ from dataclasses import dataclass, field
 
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-EMBEDDING_MODEL = "text-embedding-004"
+EMBEDDING_MODEL = "gemini-embedding-001"  # text-embedding-004 was retired (404)
 
 # Anything above this is flagged as "surprising" and worth acting on.
 # Start conservative; tune this against your backtest set.
