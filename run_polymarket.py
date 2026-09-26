@@ -14,21 +14,32 @@ prints the top 3 with the same keys as the Kalshi runner:
     ticker, event_title, market_title, relevance_score, reasoning
 plus Polymarket extras: direction (YES_UP / YES_DOWN), side, best_bid, best_ask.
 
-Add --watch to re-run every time the transcript file changes (live speech).
+--watch mirrors `run_kalshi_ticker2.py --watch`: download the Polymarket
+catalog once, index it with Dylan's MarketCatalogIndex (same TF-IDF ranking
+code), and re-rank on every new sentence of live_transcript.json, with no
+Gemini call per sentence. Results go to live_polymarket_recommendations.json in the same
+format as live_recommendations.json, plus current Polymarket prices.
 """
 
 import argparse
 import json
 import os
+import re
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 os.environ.setdefault("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
-from polymarket_client import find_markets
+from polymarket_client import PUBLIC_BASE_URL, PolymarketPublic, find_markets
 
 
 INPUT_PATH = Path(__file__).with_name("20260916.json")
+LIVE_INPUT_PATH = Path(__file__).with_name("live_transcript.json")
+LIVE_RESULTS_PATH = Path(__file__).with_name("live_polymarket_recommendations.json")
+# Sports is ~90% of Polymarket US and never relevant to a Fed speech.
+CATEGORIES = ["politics", "macro", "finance", "geopolitics", "economics", "technology",
+              "crypto", "culture", "climate", "science"]
 MIN_RELEVANCE_SCORE = 0.60   # same cutoff as kalshi_ticker2
 TOP_N = 3                    # same as run_kalshi_ticker2
 MAX_TEXT_CHARS = 6000        # keep the Gemini prompt small on long live transcripts (uses the latest part)
@@ -94,6 +105,137 @@ def find_relevant_markets(speech_text: str, top_n: int = TOP_N) -> list:
     return results[:top_n]
 
 
+def fetch_polymarket_catalog(categories=CATEGORIES) -> list:
+    """All open Polymarket US markets in kalshi_ticker2's catalog format."""
+    public = PolymarketPublic()
+    catalog, seen = [], set()
+    for category in categories:
+        offset = 0
+        while True:
+            markets = public._get("/v1/markets", {"limit": 500, "offset": offset, "active": "true",
+                                                  "closed": "false", "categories": category}).get("markets", [])
+            for m in markets:
+                slug = m.get("slug")
+                if not slug or slug in seen or m.get("category") == "sports":
+                    continue
+                seen.add(slug)
+                description = (m.get("description") or "").strip()
+                # Kalshi-style question from the rules: "This market will settle to Yes if X." -> "Will X?"
+                first = re.split(r"(?<=\.)\s", description, maxsplit=1)[0]
+                rule = re.sub(r"^This market will (settle|resolve) to [\"']?Yes[\"']? if\s+", "", first, flags=re.I)
+                question = f"Will {rule.rstrip('.')}?" if rule != first else (first or m.get("question", ""))
+                outcome = (m.get("title") or "").strip()
+                side = (m.get("marketSides") or [{}])[0]
+                catalog.append({
+                    "market_ticker": slug,
+                    "market_title": question,
+                    # Outcomes of one question share a slug prefix (…-2026-10-28-hike25 / -cut25),
+                    # like a Kalshi event; the ranker keeps one market per event.
+                    "event_ticker": slug.rsplit("-", 1)[0],
+                    "event_title": f"{m.get('question', '')}: {outcome}" if outcome else m.get("question", ""),
+                    "expected_expiration_time": m.get("endDate"),
+                    "subtitle": m.get("category", ""),
+                    "yes_sub_title": outcome or (side.get("team") or {}).get("name") or "",
+                    "no_sub_title": "",
+                })
+            offset += len(markets)
+            if len(markets) < 500:
+                break
+    return catalog
+
+
+def _recommendations_with_prices(ranked: list) -> list:
+    """Same fields as run_kalshi_ticker2._recommendations_from_local_rank, plus live prices."""
+    public = PolymarketPublic()
+    out = []
+    for market in ranked:
+        try:
+            q = public.bbo(market["market_ticker"])
+        except Exception:
+            q = {"best_bid": None, "best_ask": None}
+        out.append({
+            "ticker": market["market_ticker"],
+            "event_title": market.get("event_title", ""),
+            "market_title": market.get("market_title", ""),
+            "relevance_score": float(market["_hybrid_score"]),
+            "reasoning": "; ".join(market.get("_local_reasons", [])) or "Selected by cached local relevance ranking.",
+            "best_bid": q.get("best_bid"),
+            "best_ask": q.get("best_ask"),
+        })
+    return out
+
+
+def _save_live_recommendations(path: Path, recommendations: list, context: str, update_number: int) -> None:
+    payload = {
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "transcript_update": update_number,
+        "context": context,
+        "recommendations": recommendations,
+    }
+    temporary_path = path.with_name(path.name + ".tmp")
+    temporary_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    temporary_path.replace(path)
+
+
+def watch_live_transcript(transcript_path: Path, poll_interval: float = 0.5, context_characters: int = 3000) -> None:
+    """Same loop as run_kalshi_ticker2.watch_live_transcript, over the Polymarket catalog."""
+    from kalshi_ticker2 import MarketCatalogIndex
+    from run_kalshi_ticker2 import _read_transcript_payload, _split_complete_sentences
+
+    print("Fetching the Polymarket market catalog once...")
+    market_catalog = fetch_polymarket_catalog()
+    if not market_catalog:
+        raise RuntimeError("No Polymarket markets were fetched; cannot start live ranking.")
+    market_index = MarketCatalogIndex(market_catalog)
+    if market_index.vectorizer is None:
+        raise RuntimeError("Live watch mode requires scikit-learn so the market index can be cached.")
+    print(f"Indexed {len(market_catalog):,} markets. Watching {transcript_path} for committed speech.")
+
+    payload = _read_transcript_payload(transcript_path)
+    segments = payload.get("segments", []) if payload else []
+    seen_segments = len(segments) if isinstance(segments, list) else 0
+    context, pending_sentence, pending_since, update_number = "", "", None, 0
+
+    def rank_context(text: str) -> None:
+        nonlocal update_number
+        window = text[-context_characters:]
+        ranked = market_index.rank_live(window, max_candidates=TOP_N)
+        recommendations = _recommendations_with_prices(ranked)
+        update_number += 1
+        _save_live_recommendations(LIVE_RESULTS_PATH, recommendations, window, update_number)
+        print(f"\n--- Live Polymarket recommendations {update_number} ---")
+        print(json.dumps(recommendations, indent=2, ensure_ascii=False) if recommendations
+              else "No markets currently meet the relevance threshold.")
+
+    while True:
+        payload = _read_transcript_payload(transcript_path)
+        segments = payload.get("segments", []) if payload else []
+        if not isinstance(segments, list):
+            segments = []
+        if len(segments) < seen_segments:          # transcriber restarted
+            seen_segments, context, pending_sentence, pending_since = 0, "", "", None
+        new_segments = segments[seen_segments:]
+        seen_segments = len(segments)
+        for segment in new_segments:
+            text = segment.get("text") if isinstance(segment, dict) else None
+            if not isinstance(text, str) or not text.strip():
+                continue
+            pending_sentence = f"{pending_sentence} {text.strip()}".strip()
+            if pending_since is None:
+                pending_since = time.monotonic()
+            completed, pending_sentence = _split_complete_sentences(pending_sentence)
+            for sentence in completed:
+                context = f"{context} {sentence}".strip()[-context_characters:]
+                rank_context(context)
+            if completed:
+                pending_since = time.monotonic() if pending_sentence else None
+        if pending_sentence and pending_since is not None and time.monotonic() - pending_since >= 3.0:
+            context = f"{context} {pending_sentence}".strip()[-context_characters:]
+            pending_sentence, pending_since = "", None
+            rank_context(context)
+        time.sleep(poll_interval)
+
+
 def run_once(transcript_path: Path) -> list:
     speech_text = load_transcript_text(transcript_path)
     matches = find_relevant_markets(speech_text, top_n=TOP_N)
@@ -103,43 +245,22 @@ def run_once(transcript_path: Path) -> list:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Rank Polymarket markets against a transcript JSON file."
-    )
-    parser.add_argument(
-        "transcript",
-        nargs="?",
-        type=Path,
-        default=INPUT_PATH,
-        help=f"Transcript JSON (default: {INPUT_PATH.name}).",
-    )
+    parser = argparse.ArgumentParser(description="Rank Polymarket markets against a transcript JSON file.")
+    parser.add_argument("transcript", nargs="?", type=Path, default=None,
+                        help="Transcript JSON (defaults to the live transcript in --watch mode).")
     parser.add_argument("--watch", action="store_true",
-                        help="Re-run whenever the transcript file changes (live speech).")
-    parser.add_argument("--interval", type=float, default=15.0,
-                        help="With --watch: minimum seconds between runs.")
+                        help="Cache the Polymarket catalog once and rerank as new transcript sentences arrive.")
+    parser.add_argument("--poll-interval", type=float, default=0.5)
+    parser.add_argument("--context-characters", type=int, default=3000)
     args = parser.parse_args()
 
-    transcript_path = args.transcript.expanduser().resolve()
-    if not args.watch:
-        run_once(transcript_path)
+    default_path = LIVE_INPUT_PATH if args.watch else INPUT_PATH
+    transcript_path = (args.transcript or default_path).expanduser().resolve()
+    if args.watch:
+        watch_live_transcript(transcript_path, poll_interval=max(args.poll_interval, 0.1),
+                              context_characters=max(args.context_characters, 500))
         return
-
-    last_mtime = None
-    print(f"Watching {transcript_path.name} (Ctrl+C to stop)...")
-    while True:
-        try:
-            mtime = transcript_path.stat().st_mtime
-        except FileNotFoundError:
-            mtime = None
-        if mtime and mtime != last_mtime:
-            last_mtime = mtime
-            try:
-                run_once(transcript_path)
-            except Exception as e:
-                print(f"(skipped this update: {e})")
-            time.sleep(args.interval)
-        else:
-            time.sleep(1.0)
+    run_once(transcript_path)
 
 
 if __name__ == "__main__":
