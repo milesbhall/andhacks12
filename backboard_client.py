@@ -22,6 +22,7 @@ USAGE
   python backboard_client.py --setup                  # create the assistant, store baselines
   python backboard_client.py --memories               # list what the desk remembers
   python backboard_client.py --search "rate hike"     # search memories
+  python backboard_client.py --import-results results/replay_20260916.json
   python backboard_client.py --ask "When was Warsh most hawkish and what did we trade?"
 ------------------------------------------------------------------------
 """
@@ -29,6 +30,7 @@ USAGE
 import argparse
 import json
 import os
+import time
 from datetime import datetime, timezone
 
 import requests
@@ -77,8 +79,12 @@ def enabled() -> bool:
 def _request(method: str, path: str, json_body=None, params=None, timeout=60):
     if not API_KEY:
         raise RuntimeError("No Backboard key: put it in backboardapi.txt or BACKBOARD_API_KEY.")
-    resp = requests.request(method, BASE_URL + path, params=params, json=json_body, timeout=timeout,
-                            headers={"X-API-Key": API_KEY, "Content-Type": "application/json"})
+    for attempt in range(3):   # Backboard occasionally returns a one-off 500
+        resp = requests.request(method, BASE_URL + path, params=params, json=json_body, timeout=timeout,
+                                headers={"X-API-Key": API_KEY, "Content-Type": "application/json"})
+        if resp.status_code < 500:
+            break
+        time.sleep(2 * (attempt + 1))
     if resp.status_code >= 400:
         raise RuntimeError(f"Backboard {method} {path} failed ({resp.status_code}): {resp.text[:300]}")
     return resp.json() if resp.text else {}
@@ -134,7 +140,7 @@ def log_message(run: str, content: str, metadata: dict = None) -> dict:
     body = {"content": content, "thread_id": thread_id(run), "send_to_llm": "false",
             "memory": "off", "stream": False}
     if metadata:
-        body["metadata"] = metadata
+        body["metadata"] = {k: str(v) for k, v in metadata.items() if v is not None}
     return _request("POST", "/threads/messages", body)
 
 
@@ -157,7 +163,8 @@ def runs() -> list:
 def add_memory(content: str, metadata: dict = None) -> dict:
     body = {"content": content}
     if metadata:
-        body["metadata"] = metadata
+        # Backboard 500s on numeric metadata values; send everything as text.
+        body["metadata"] = {k: str(v) for k, v in metadata.items() if v is not None}
     return _request("POST", f"/assistants/{assistant_id()}/memories", body)
 
 
@@ -201,7 +208,7 @@ def record_signal(record: dict, run: str, when: str = None):
                f"ask {m['quote']['best_ask']})" for m in record.get("matches", [])[:5]]
 
     memory = (f"[{run}] {record['speaker']} sounded {record['direction']} (z={record['z']:+.1f}, stance "
-              f"{record['stance']:+.2f} vs usual {record['baseline_mean']:+.2f}): {record['summary']}. "
+              f"{record['stance']:+.2f} vs usual {record['baseline_mean']:+.2f}): {record['summary'].rstrip('.')}. "
               + (f"Orders: {'; '.join(trades)}." if trades else "No orders placed."))
     meta = {"kind": "signal", "run": run, "speaker": record["speaker"], "direction": record["direction"],
             "z": record["z"], "stance": record["stance"], "logged_at": when}
@@ -225,21 +232,47 @@ def record_signal(record: dict, run: str, when: str = None):
 # ASK
 # ------------------------------------------------------------------ #
 
+def _answer_with_gemini(question: str, memories: list) -> str:
+    """Write the answer from Backboard's retrieved memories using our own Gemini key."""
+    import polymarket_client
+    from google import genai
+    notes = "\n".join(f"- {m.get('content', '')}" for m in memories) or "(no memories found)"
+    client = genai.Client(api_key=polymarket_client.GEMINI_API_KEY)
+    model = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
+    resp = client.models.generate_content(
+        model=model, contents=f"{SYSTEM_PROMPT}\n\nMemories:\n{notes}\n\nQuestion: {question}")
+    return resp.text.strip()
+
+
 def ask(question: str, run: str = "questions") -> dict:
-    """Plain-English question answered from the desk's memories."""
+    """Plain-English question answered from the desk's memories.
+
+    Normal path: Backboard's chat, which pulls in the memories itself. If the
+    Backboard account has no LLM credits, Backboard still does the memory
+    search and Gemini writes the answer.
+    """
     body = {"content": question, "thread_id": thread_id(run), "memory": "Readonly",
             "memory_response_citation": True, "stream": False,
             "llm_provider": ASK_PROVIDER, "model_name": ASK_MODEL}
+    resp = {}
     try:
-        resp = _request("POST", "/threads/messages", body, timeout=120)
-    except RuntimeError as e:
-        if "model" not in str(e).lower() and "provider" not in str(e).lower():
-            raise
-        body.pop("llm_provider"); body.pop("model_name")   # use Backboard's default model
-        resp = _request("POST", "/threads/messages", body, timeout=120)
-    return {"answer": resp.get("content") or resp.get("message", ""),
-            "memories": resp.get("retrieved_memories") or [],
-            "model": f"{resp.get('model_provider')}/{resp.get('model_name')}"}
+        try:
+            resp = _request("POST", "/threads/messages", body, timeout=120)
+        except RuntimeError as e:
+            if "model" not in str(e).lower() and "provider" not in str(e).lower():
+                raise
+            body.pop("llm_provider"); body.pop("model_name")   # use Backboard's default model
+            resp = _request("POST", "/threads/messages", body, timeout=120)
+    except RuntimeError:
+        resp = {}
+    answer = resp.get("content") or resp.get("message") or ""
+    if answer and "out of credits" not in answer.lower() and resp.get("model_name"):
+        return {"answer": answer, "memories": resp.get("retrieved_memories") or [],
+                "model": f"Backboard {resp.get('model_provider')}/{resp.get('model_name')}"}
+
+    memories = search_memories(question, limit=10)
+    return {"answer": _answer_with_gemini(question, memories), "memories": memories,
+            "model": f"Backboard memory search + Gemini {os.environ.get('GEMINI_MODEL', 'gemini-3.5-flash-lite')}"}
 
 
 # Backwards-compatible helper (older code called backboard_client.log)
@@ -249,18 +282,38 @@ def log(question: str, answer: str):
     return log_message("general", f"{question}\n\n{answer}")
 
 
+def import_results(path: str) -> int:
+    """Load a saved pipeline run (results/<run>.json) into Backboard without rerunning it."""
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    run = data.get("run") or os.path.splitext(os.path.basename(path))[0]
+    count = 0
+    for record in data.get("records", []):
+        if record.get("direction") in ("HAWKISH", "DOVISH"):
+            record_signal(record, run=run, when=str(data.get("created", ""))[:16].replace("T", " ") + " UTC")
+            count += 1
+    return count
+
+
+def delete_memory(memory_id: str):
+    return _request("DELETE", f"/assistants/{assistant_id()}/memories/{memory_id}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Backboard memory for the desk")
     parser.add_argument("--setup", action="store_true", help="Create the assistant and store speaker baselines")
     parser.add_argument("--memories", action="store_true")
     parser.add_argument("--search")
     parser.add_argument("--ask")
+    parser.add_argument("--import-results", metavar="RESULTS_JSON", help="Load a saved run, e.g. results/replay_20260916.json")
     args = parser.parse_args()
 
     if args.setup:
         print("assistant:", assistant_id())
         remember_baselines()
         print("Stored speaker baselines. Memories:", len(list_memories()))
+    elif args.import_results:
+        print(f"Imported {import_results(args.import_results)} signals.")
     elif args.memories:
         for m in list_memories():
             print(f"- {m.get('content')}")
