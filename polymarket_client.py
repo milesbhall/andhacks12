@@ -1,4 +1,4 @@
-"""
+﻿"""
 polymarket_client.py
 ====================
 Polymarket US piece of the pipeline. It does three jobs:
@@ -73,7 +73,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PUBLIC_BASE_URL = "https://gateway.polymarket.us"
 TRADING_BASE_URL = "https://api.polymarket.us"
 
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
 
 TAKER_FEE_THETA = 0.0695
 

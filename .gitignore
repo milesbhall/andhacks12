@@ -14,3 +14,5 @@ STOP_TRADING
 __pycache__/
 *.pyc
 .venv/
+
+*.log
