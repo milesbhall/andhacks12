@@ -42,7 +42,7 @@ RPC_URLS = {
     "devnet": "https://api.devnet.solana.com",
     "mainnet-beta": "https://api.mainnet-beta.solana.com",
 }
-MEMO_PROGRAM_ID = "MemoSq4gqABAXKb96qnH8TyNSSC5Um9SA7g3ByvdTtQ"
+MEMO_PROGRAM_ID = "Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo"   # SPL Memo (deployed on devnet and mainnet)
 
 
 def _rpc(method: str, params: list):
@@ -120,11 +120,11 @@ def explorer_url(signature: str) -> str:
 def verify(signature: str, retries: int = 10) -> dict:
     """Reads a receipt back: block time + memo text."""
     for _ in range(retries):
-        tx = _rpc("getTransaction", [signature, {"encoding": "json", "commitment": "confirmed",
+        tx = _rpc("getTransaction", [signature, {"encoding": "jsonParsed", "commitment": "confirmed",
                                                  "maxSupportedTransactionVersion": 0}])
         if tx:
-            memo = next((line.split("] ", 1)[-1] for line in tx["meta"]["logMessages"]
-                         if "Memo (len" in line), None)
+            memo = next((ix.get("parsed") for ix in tx["transaction"]["message"]["instructions"]
+                         if ix.get("programId") == MEMO_PROGRAM_ID), None)
             return {"signature": signature, "slot": tx["slot"], "block_time": tx.get("blockTime"),
                     "memo": memo, "explorer": explorer_url(signature)}
         time.sleep(2)
