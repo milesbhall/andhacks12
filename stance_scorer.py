@@ -42,11 +42,11 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TRANSCRIPT_DIR = os.path.join(SCRIPT_DIR, "transcripts")
 STANCE_STORE_PATH = os.path.join(SCRIPT_DIR, "stance_baselines.json")
 
-GEMINI_MODEL = os.environ.get("STANCE_MODEL", "gemini-3.8-flash")
-# Latest model first. The free tier only allows ~20 requests/day on
-# gemini-3.8-flash, so fall back down this list if it's out of quota.
-# Enabling billing on the Gemini API project removes the problem.
-MODEL_CHAIN = [GEMINI_MODEL, "gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-flash-lite-latest"]
+GEMINI_MODEL = os.environ.get("STANCE_MODEL", "gemini-3.5-flash-lite")
+# Flash-Lite: fastest and cheapest, with much higher free-tier limits than
+# gemini-3.8-flash (20 requests/day). Pinned to one version so the baseline
+# and live scores come from the same model. Fallback only if it's down.
+MODEL_CHAIN = [GEMINI_MODEL, "gemini-3.1-flash-lite"]
 Z_THRESHOLD = 2.0
 MIN_ANSWER_WORDS = 20      # skip "Thank you." / "Sure." answers
 BATCH_SIZE = 8             # answers scored per Gemini call (saves quota)
@@ -258,3 +258,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

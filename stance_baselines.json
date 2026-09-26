@@ -5,283 +5,283 @@
    "20260729"
   ],
   "n": 46,
-  "mean": 0.17391304347826086,
-  "stdev": 0.2599621900674217,
+  "mean": 0.2043478260869565,
+  "stdev": 0.2612316327965183,
   "entries": [
    {
     "date": "20260617",
     "stance": 0.5,
-    "summary": "Maintained rates but strongly committed to restoring price stability.",
+    "summary": "Maintained rates, acknowledges solid growth, emphasizes strong unanimous commitment to price stability.",
     "text": "Good day. It’s an honor, a true honor, to be back at the Federal Reserve and to take up this duty at a time of such consequence. I’ve been especially heartened by the warm welcome of old friends and new colleagues, both, and I’ve listened closely to my fellow FOMC members. I’ve heard a lot of new id"
    },
    {
     "date": "20260617",
     "stance": 0.0,
-    "summary": "Procedural remarks on the timeline of task force operations.",
+    "summary": "Procedural remarks regarding internal task force timelines and operations.",
     "text": "So I think it’ll depend on the task force and also depends on the urgency in which we need clear answers. My expectation—I’m still in the business of recruiting and finalizing them—my expectation is the task forces will begin work in the next couple of weeks, and we’ll start to get some more informa"
    },
    {
     "date": "20260617",
     "stance": 0.5,
-    "summary": "Reaffirmed commitment to the two percent inflation target.",
+    "summary": "Reaffirms strict adherence to the 2 percent inflation target, rejecting target adjustments.",
     "text": "Let me break that into two pieces. First on the inflation framework review, their remit is, what are the drivers of inflation? What’s the Fed’s responsibility for inflation? In part, how do we measure inflation? But that’ll overlap with my data group. On the 2 percent inflation objective, that is th"
    },
    {
     "date": "20260617",
     "stance": 0.5,
-    "summary": "Strong commitment to price stability and dropping forward guidance.",
+    "summary": "Emphasizes commitment to price stability and notes inflation is determined by monetary policy.",
     "text": "Sure. So quite a bit there. Let me—let me try to break that into pieces. First, we have the capability and commitment to deliver on our price-stability objective of 2 percent. That’s exactly what we’re going to do. In the Fed’s review of its strategy over the last any number of years—in January, the"
    },
    {
     "date": "20260617",
     "stance": 0.0,
-    "summary": "Balanced discussion on the uneven restrictiveness of monetary policy.",
+    "summary": "Discusses uneven restrictiveness of monetary policy across different sectors.",
     "text": "Yeah. I—I’ve heard characterizations, both inside in the Fed about that. I’ll give you my own. It’s uneven. And, if I look at the housing markets as one example, Fed policy isn’t the, the single determinant of the state of the housing market, but broadly I would say, there, Fed policy appears to be "
    },
    {
     "date": "20260617",
     "stance": 0.0,
-    "summary": "Discussion on dot plots and upcoming communications review.",
+    "summary": "Discusses communications, dot plots, and institutional review without signaling policy changes.",
     "text": "I’m going to have to give you the same answer I gave to, to Ms. Smith; we’ve got a task force for that. I’ll give you a little bit more. I reviewed the dot plots, and when I saw the submissions, I noted that all the submissions were coming in with pencils, you know those kinds with the big erasers. "
    },
    {
     "date": "20260617",
     "stance": 0.0,
-    "summary": "Institutional remarks on communication and press conference utility.",
+    "summary": "Discusses press conference strategy and institutional review processes.",
     "text": "Well, this one’s probably got another 15 or 20 minutes in it, so I don’t want to prejudge the outcome. Press conferences can be a very useful way to communicate with households, businesses, and more broadly, through using the likes of you. I had a great old mentor named George Shultz, and his mantra"
    },
    {
     "date": "20260617",
     "stance": 0.5,
-    "summary": "Strong commitment to address elevated inflation and deliver stability.",
+    "summary": "Highlights elevated inflation and reiterates a strong, unambiguous commitment to deliver price stability.",
     "text": "So I can’t do much better than, than the Committee just did, so let me—let me restate it. Inflation remains elevated relative to the Committee’s 2 percent goal, in part reflecting supply shocks that have driven price increases in certain sectors, including energy. That paragraph goes on to say, but "
    },
    {
     "date": "20260617",
     "stance": 0.0,
-    "summary": "Discusses data quality and modernization; no specific policy signal provided.",
+    "summary": "Discusses improving economic data sources and analytics for real-time decisions.",
     "text": "So you’re answering my question. So let me say, I don’t want to prejudge the outcome. I also don’t want to say too much about what they’re going to do because I still have a phone call or two to make before I’ve nailed down the people that are doing that. I’m interested [in] what the outside experts"
    },
    {
     "date": "20260617",
     "stance": 0.0,
-    "summary": "Emphasizes data-driven decision-making and commitment to the price-stability objective.",
+    "summary": "Emphasizes market data reliance and commitment to the price-stability objective.",
     "text": "So I think financial markets perform best when they react to incoming data. I think they—the financial markets work less efficiently when they ask a question: How will the Federal Reserve react to that incoming information? The more that markets are paying attention to what’s happening in the real e"
    },
    {
     "date": "20260617",
     "stance": 0.0,
-    "summary": "Procedural remarks regarding committee consensus and internal discussion processes.",
+    "summary": "Describes committee consensus and discussion on a single policy proposal.",
     "text": "There was one proposal on the table. There was no discussion of any other proposals. The discussion on that proposal, I would say, was quite limited. The group was unanimous and unambiguous on it. It has been the practice of this central bank and others to have a range of alternatives. Today we had "
    },
    {
     "date": "20260617",
     "stance": 0.0,
-    "summary": "Discusses internal task force best practices and institutional decision-making.",
+    "summary": "Discusses task force best practices and internal deliberations for stability goals.",
     "text": "Yeah. I’m glad they’re in the practice of giving you two questions, because my answer to your first question was to be very curt. I’ve got nothing more to say than the statement itself. And to the point of the question I got before: Market reactions to what we say, unfiltered, I think is more helpfu"
    },
    {
     "date": "20260617",
     "stance": 0.0,
-    "summary": "Reiterates commitment to price stability; avoids commenting on market reactions.",
+    "summary": "Reiterates institutional commitment to long-term price stability without market commentary.",
     "text": "We were in such a good place. This is why we don’t do third questions, I presume. I’m not going to offer any commentary on market reaction over the last 30 or 60 minutes. What we’ve given markets is a new chapter for the central bank, some fresh thinking. What we’ve given markets, and households, an"
    },
    {
     "date": "20260617",
-    "stance": 0.5,
-    "summary": "Focuses on preventing second-order inflation effects; hawkish commitment to price stability.",
+    "stance": 0.0,
+    "summary": "Focuses on preventing broader inflation spread from specific commodity price shocks.",
     "text": "If I told somebody in the milk aisle that I had a task force for that, I think that would be doing a very poor job, so I appreciate it. If I saw somebody in the grocery store, what I would say to them is that we cannot have a very significant effect on particular prices. The price of oil in the mark"
    },
    {
     "date": "20260617",
     "stance": 0.0,
-    "summary": "Discusses Fed independence and communication with fiscal authorities.",
+    "summary": "Affirms Fed independence and broad-lens communication with the Treasury.",
     "text": "So, on the President, I, I don’t have anything for you. With respect to the Treasury Secretary, he has been posting pictures of our breakfasts, so I don’t think I can—I don’t think I can deny that. The long tradition at the central bank is that the Fed Chairman and the Treasury Secretary meet weekly"
    },
    {
     "date": "20260617",
     "stance": 0.0,
-    "summary": "Discusses AI's long-term economic impact; no immediate policy signal.",
+    "summary": "Discusses AI's long-term economic impact and committee evaluation timing.",
     "text": "So the Committee had a discussion of productivity today. AI came up. The way I thought about it before and socialized with the group is that artificial intelligence, the latest generation of general purpose technology, is perhaps as important a change in the economy and business and households that "
    },
    {
     "date": "20260617",
     "stance": 0.5,
-    "summary": "Acknowledges policy restrictiveness and emphasizes work remains on price stability.",
+    "summary": "Emphasizes price stability and notes ongoing work needed to fight inflation.",
     "text": "So that’s your second question. I’m going to give the same answer that I gave before. I’d say, as I think about the conduct of policy, what matters is what’s the effect of policy, not what do we say, but what happens. And the best way I can describe is, it’s uneven. I do see some restrictiveness on "
    },
    {
     "date": "20260617",
     "stance": 0.0,
-    "summary": "Procedural comment regarding committee consensus and future meeting schedule.",
+    "summary": "Procedural comment on committee diversity of views and future meetings.",
     "text": "That judgment you expressed was not expressed by any of the 19 people around the table. We’ll be meeting in six weeks, and we’ll take up the issue again."
    },
    {
     "date": "20260617",
     "stance": 0.0,
-    "summary": "Discusses economic theory regarding supply and demand balance.",
+    "summary": "Discussion of economic concepts regarding supply, demand, and data collection.",
     "text": "It’s a good question. At the central bank and in the economics profession, what we spend most of our time doing is counting demand. It’s easier. We can see it. We can count it. We can check it. We can revise it. What we do, though, is we infer supply. You’ll notice in the second paragraph of what on"
    },
    {
     "date": "20260617",
     "stance": 0.0,
-    "summary": "Discusses data gathering and research improvements for better decision-making.",
+    "summary": "Administrative discussion on data gathering and statistical research.",
     "text": "In a word, no. In a few words, much of this data gathering happens in other government agencies to which we owe a tremendous amount of respect, a tremendous amount of deference. But, if in the course of this, we come up with recommendations, which Fed staff have already begun to develop, about thing"
    },
    {
     "date": "20260617",
     "stance": 0.0,
-    "summary": "Administrative remarks regarding institutional oversight and internal projects.",
+    "summary": "Institutional remarks regarding internal building projects and the Inspector General.",
     "text": "I heard something about that. I don’t think I’m breaking any news, but my view is, when you show up at a new institution, you should go meet with the Inspector General, just as a matter of good practice. It’s a practice that I hope to continue. I’ve had one meeting with the Inspector General, and he"
    },
    {
     "date": "20260617",
     "stance": 0.0,
-    "summary": "Neutral observation of divided committee views on future rate paths.",
+    "summary": "Balanced description of divided policy rate projections among colleagues.",
     "text": "So my read of what I heard in the room reflected, I must admit, in the SEPs, is half of my colleagues thought the policy rate, given all those developments, should be at this level or lower between now and year-end and the other half thought higher. That 19th voter was me, and I didn’t submit one. T"
    },
    {
     "date": "20260617",
     "stance": 0.5,
-    "summary": "Reiterates firm commitment to achieving price stability goals.",
+    "summary": "Reiterates firm commitment to delivering on price stability by year-end.",
     "text": "That’s the commitment that the FOMC made, and it’s a commitment that I hope we live up to. Commitment we made was to deliver price stability. I expect us to live up to it. By the time we get to the end of this year, as I mentioned, I wouldn’t be surprised if there was a new communications framework,"
    },
    {
     "date": "20260617",
     "stance": 0.5,
-    "summary": "Emphasizes institutional credibility through delivering on price stability objectives.",
+    "summary": "Stresses the importance of delivering on price-stability objectives to overcome inflation.",
     "text": "It’s going to be a very unsatisfactory answer to the final question. The Federal Reserve has a lot of responsibilities, not just in monetary policy, but in supervision and regulation, consumer affairs, and payments. My own view is our credibility comes from delivering on what we’re saying we’re goin"
    },
    {
     "date": "20260617",
-    "stance": -0.5,
-    "summary": "Optimistic view on labor market and productivity suggests a dovish policy bias.",
+    "stance": 0.0,
+    "summary": "Balanced remarks on stable labor markets and productivity-led growth.",
     "text": "Yeah. So, so the Committee—if I were to try to capture how the Committee thought about it, the Committee thought that the labor markets were stable. There were some people around the Committee who thought that it was trending better than that. Trends matter more than data points. What’s happening ov"
    },
    {
     "date": "20260729",
-    "stance": 0.5,
-    "summary": "Emphasizes solid growth, elevated inflation, and unwavering commitment to the 2% target.",
+    "stance": 0.7,
+    "summary": "Maintained rates at 3.5-3.75%, emphasizing resolute focus on 2% inflation target.",
     "text": "Good day. My second FOMC Committee meeting as Chairman has come quickly. It’s probably too early to call it a streak, but our discussions again were collegial and constructive. I’m truly lucky to work with colleagues so capable and mission focused, and so determined, like I am, to sharpen the perfor"
    },
    {
     "date": "20260729",
     "stance": 0.5,
-    "summary": "Notes material tightening in nominal and real rates driven by market reaction.",
+    "summary": "Observing material tightening in nominal and real market rates.",
     "text": "Yeah, so I think officially it’s eight weeks and four days. But, I’m not counting. [Laughter] The message from markets is the message from markets. What I’ve really been trying to do, Steve, as I think you appreciate—and your colleagues appreciate— is getting an unfiltered message from markets. Gett"
    },
    {
     "date": "20260729",
     "stance": 0.5,
-    "summary": "Highlights solid output, robust labor markets, and ongoing market-based financial tightening.",
+    "summary": "Noting solid economy and ongoing tightening in Treasury and bond markets.",
     "text": "I’m sorry—it’s your question. So interpreting markets is an imperfect business. We central bankers, like market pros, can think these things are overdetermined. But let me offer some speculation. First, as we said in the FOMC statement that you got at two o’clock, the economy—output is solid. Capex "
    },
    {
     "date": "20260729",
-    "stance": 0.5,
-    "summary": "Reiterates strong resolve to deliver price stability and win the battle against inflation.",
+    "stance": 0.7,
+    "summary": "Emphasizing unwavering commitment to price stability and winning the inflation battle.",
     "text": "So I guess I shouldn’t give you their best arguments. I’ll give you some others. [Laughter] So you’re right. I asked for a good family fight, and I got one. That’s the purpose; that’s the design feature. I come into this meeting, even this press conference, heartened by what I’ve experienced the las"
    },
    {
     "date": "20260729",
     "stance": 0.0,
-    "summary": "Discusses data dependence, trends over single data points, and data review task force.",
+    "summary": "Discussing data dependence and evaluation of economic data trends.",
     "text": "So, in two words, not much—not much—I’d like to believe that the Committee shares my views, which is the historic problem with data dependence is the data and the dependence. We are not relying on any one individual piece of data as cover or as an excuse or as validation. What I care about, and what"
    },
    {
     "date": "20260729",
     "stance": 0.5,
-    "summary": "Acknowledges higher market rates and observes financial tightening affecting the real economy.",
+    "summary": "Highlighting higher market rates and financial tightening affecting the real economy.",
     "text": "There’s a lot in there, Neil. So rates are higher today than they were 42 days ago. Markets have made decisions because we stepped back, in part, from trying to influence those. Market judgments have moved up on what nominal rates are across the Treasury curve. That doesn’t mean we take them as—by d"
    },
    {
     "date": "20260729",
-    "stance": 0.0,
-    "summary": "Describes committee discussions as watchful thinking amid diverse views and a 9-3 vote.",
+    "stance": 0.3,
+    "summary": "Describing the current period as one of watchful thinking on policy.",
     "text": "Well, I think, you know, the vote—the vote was 9 to 3. The broader discussion, to my ear, over the course of the last days showed a lot of agreement on the hard questions—the four questions I raised at the outset about what’s really happening in the economy with the shocks and absent the shocks. Wha"
    },
    {
     "date": "20260729",
-    "stance": 0.5,
-    "summary": "Warns interest rates could rise further if inflation stays elevated; stresses 2% target.",
+    "stance": 0.7,
+    "summary": "Signaling higher interest rates could be used if inflation remains elevated.",
     "text": "So that’s—that was the discussion the last two days. Is that the dominant remedy? If inflation continues to be elevated through the forecast period, interest rates could well be part of that solution. But I wouldn’t say it’s in isolation. I tried to describe in my remarks today the point that I made"
    },
    {
     "date": "20260729",
-    "stance": 0.0,
-    "summary": "Focusing on understanding underlying inflation dynamics and broadening growth.",
+    "stance": 0.5,
+    "summary": "Focuses on understanding broad inflation shocks to achieve lower inflation.",
     "text": "First, on the premise of your question, it was almost as if you were listening to our discussion in the last day and a half. A lot of our focus was on trying to understand and identify underlying inflation dynamics amid shocks. We take these shocks seriously. There’ve been a series of them that have"
    },
    {
     "date": "20260729",
     "stance": 0.5,
-    "summary": "Denies a policy pause, hinting at further rate hikes ahead.",
+    "summary": "Notes high economic growth and rising rates, signaling tighter policy stance.",
     "text": "So I wouldn’t characterize what we did as anything like a pause. I would characterize what we did as a rigorous review of the economic situation. I would characterize what we did as a review of the big, hard questions. And I’d characterize it as a view of what our own homework is to try to resolve t"
    },
    {
     "date": "20260729",
     "stance": 0.0,
-    "summary": "Discusses preparation and big-picture questions for Jackson Hole speech.",
+    "summary": "Discusses framework reviews and institutional processes without policy signals.",
     "text": "I look at it like a blank piece of paper right now. I, I have not begun consideration with the incredible team here what would go into that document. I think you characterized it correctly. Historically, at least for my first tour of duty at the Fed, the more recent periods—it would be sort of a set"
    },
    {
     "date": "20260729",
-    "stance": 0.5,
-    "summary": "Prioritizes price stability over employment due to elevated inflation.",
+    "stance": 0.0,
+    "summary": "Discusses dual mandate principles and economic supply-demand balance.",
     "text": "Yeah, so let me go back to first principles, Nick. I don’t believe that either part of our mandate is generally at war with the other part. I do not believe that price stability and full employment is an either-or proposition. There have been policymakers over the last several generations who have t"
    },
    {
     "date": "20260729",
     "stance": 0.0,
-    "summary": "Notes agreement on objectives and observes market-driven restrictiveness.",
+    "summary": "Notes market reaction to real-time events and committee consensus.",
     "text": "Yeah, so I’m going to let the—I’ll let the dissenters speak for themselves. The way I heard it over the last two days was overwhelming agreement on objectives and authority and commitment. I didn’t hear anybody walking away from it. The judgments as to how best to achieve the price stability—that wa"
    },
    {
     "date": "20260729",
     "stance": 0.0,
-    "summary": "Emphasizes communication strategy and avoiding spoon-feeding the markets.",
+    "summary": "Discusses communication strategy and avoiding market spoon-feeding.",
     "text": "Yeah, so it’s a good question. Surprise is not the objective function. Surprise is not what we’re solving for. We have a clear North Star. What we’re solving for is how to make the best decisions. Almost everything else should be in service to that goal. By not spoon-feeding markets, by not previewi"
    },
    {
     "date": "20260729",
-    "stance": 0.0,
-    "summary": "Explains reaction function and transition away from forward guidance.",
+    "stance": 0.5,
+    "summary": "Notes that rising underlying inflation inclines policymakers to tighten policy.",
     "text": "So, not very concerned—that’s a short answer to the question. When some people that follow the Fed say, “Well, we don’t want your forecast—we don’t want your dot—we just want your reaction function,” part of me hears the—“What we really want is your forecast; what we really want is your dot.” In ter"
    },
    {
     "date": "20260729",
     "stance": 0.0,
-    "summary": "Discusses analyzing a broad set of inflation data to guide policy.",
+    "summary": "Discusses inflation measurement strategies and broader data evaluation.",
     "text": "Yeah, so I’ll give two answers. First, let me give the proper, standard answer. The, the Federal Reserve every January outlines a statement of purposes and strategy, and in that strategy document, which I believe was dated January of this year, it describes a measure of PCE inflation as the—as the o"
    },
    {
     "date": "20260729",
     "stance": 0.0,
-    "summary": "Institutional remarks on policy strategy, credibility, and decision-making.",
+    "summary": "Procedural remarks on strategy, tools, and institutional credibility.",
     "text": "Yeah. So, believe it or not, this press conference is not all I’ve done today. We have spent an inordinate amount of time in the last two—two days—two weeks looking at our monetary policy strategy, evaluating our tools—thinking hard about the sources of data that we have at our disposal and we wish "
    },
    {
     "date": "20260729",
     "stance": 0.0,
-    "summary": "Procedural discussion on establishing expert task forces to inform decisions.",
+    "summary": "Discussion of internal governance, task forces, and institutional structure.",
     "text": "Yeah, so I selected 15 incredible subject market—subject matter experts to tackle five of the most important questions that, if we get the answers right, we’re going to do a far better job in delivering. And if we get the answers wrong, we have a problem. The comfort that I can give you and your lis"
    },
    {
     "date": "20260729",
     "stance": 0.5,
-    "summary": "Expresses comfort with tighter financial conditions to deliver on remit.",
+    "summary": "Notes tighter financial conditions and expresses commitment to delivering inflation target.",
     "text": "Sure. So, Ann, I hear from you what I hear more broadly from households and businesses: impatience. “Deliver it already.” This is not a—this is not an excuse. This is a fact—this FOMC—this Board has been in business for eight and a half weeks. This—the, the patience—the impatience that households an"
    },
    {
     "date": "20260729",
     "stance": 0.0,
-    "summary": "Explains the role of market prices as unfiltered policy information.",
+    "summary": "Discusses use of market information and communication for price stability.",
     "text": "So we’re not going to be constrained by market prices. We’re not going to be constrained or take verbatim from what the market’s doing. But I think it’s useful, Ann, to understand that markets can be a very good source of information—not a determinative source—not a perfect source. But if we’re tryi"
    },
    {
     "date": "20260729",
     "stance": 0.0,
-    "summary": "Institutional remarks on Fed collaboration, communication, and commitment.",
+    "summary": "General remarks on press conferences, board confidence, and committee unity.",
     "text": "So, apparently, it was news that I had a press conference. Let me just see if I can offer some clarity on that. Between now and year-end, my predecessors and the Federal Reserve committed to press conferences this year. I’m committing to press conferences this year. That might be news to the people "
    }
   ]
