@@ -36,34 +36,16 @@ Two modes:
 ------------------------------------------------------------------------
 SETUP
 ------------------------------------------------------------------------
-1. Install dependencies (RSA signing shells out to the `openssl` CLI, so
-   no `cryptography` package is needed -- just make sure `openssl` is on
-   your PATH, which it is on virtually every Mac/Linux/WSL box):
+1. Install dependencies:
        pip install requests google-genai --break-system-packages
 
 2. Put these files beside this script:
-
     privkey.txt       Kalshi RSA private key in PEM format
     kalshikey.txt     Kalshi API key ID
     gemapi.txt        Gemini API key
     backboardapi.txt  Backboard API key
 
-    Environment variables with the names below override these files.
-
-   KALSHI_API_KEY_ID        Your Kalshi API key ID (a UUID, from Kalshi
-                             account settings -> API Keys)
-   KALSHI_PRIVATE_KEY_PATH  Path to the RSA private key .pem file Kalshi
-                             gave you when you created that API key
-                             (Kalshi auth is API-key-ID + RSA key pair,
-                             not a single bearer token)
-
-   GEMINI_API_KEY            Your Google AI Studio / Gemini API key
-
-   BACKBOARD_API_KEY         Your Backboard API key (Settings -> API Keys
-                             in the Backboard dashboard)
-
-3. Also keep speaker_baseline.py in the same folder -- this script
-   imports SurpriseScorer from it.
+3. Keep speaker_baseline.py in the same folder.
 ------------------------------------------------------------------------
 """
 
@@ -104,9 +86,6 @@ GEMINI_MODEL = "gemini-2.5-flash"
 
 BACKBOARD_API_KEY = os.environ.get("BACKBOARD_API_KEY") or _read_secret_file("backboardapi.txt")
 BACKBOARD_BASE_URL = "https://app.backboard.io/api"
-# Optional: reuse an existing Backboard thread id across runs so the
-# conversation history accumulates. Leave blank to start a new thread
-# every run.
 BACKBOARD_THREAD_ID = os.environ.get("BACKBOARD_THREAD_ID", "")
 
 # Default market to look up if no ticker is given.
@@ -130,7 +109,6 @@ class KalshiClient:
         self.private_key_path = private_key_path
         if not os.path.isfile(private_key_path):
             raise RuntimeError(f"No private key file at {private_key_path}")
-        # Fail fast if openssl isn't available, with a clear message.
         try:
             subprocess.run(
                 ["openssl", "version"], capture_output=True, check=True
@@ -143,12 +121,7 @@ class KalshiClient:
             )
 
     def _sign(self, method: str, path: str) -> tuple[str, str]:
-        """Returns (timestamp_ms, base64_signature) per Kalshi's RSA-PSS scheme.
-
-        Kalshi signs: timestamp_ms + METHOD + path (no query string, no host).
-        Signing is delegated to the `openssl` CLI so no extra pip packages
-        are required.
-        """
+        """Returns (timestamp_ms, base64_signature) per Kalshi's RSA-PSS scheme."""
         timestamp_ms = str(int(time.time() * 1000))
         message = f"{timestamp_ms}{method.upper()}{path}".encode("utf-8")
 
@@ -157,7 +130,7 @@ class KalshiClient:
                 "openssl", "dgst", "-sha256",
                 "-sign", self.private_key_path,
                 "-sigopt", "rsa_padding_mode:pss",
-                "-sigopt", "rsa_pss_saltlen:-1",  # salt length == digest length
+                "-sigopt", "rsa_pss_saltlen:-1",
             ],
             input=message,
             capture_output=True,
@@ -194,10 +167,6 @@ class KalshiClient:
         return resp.json()
 
     def list_events(self, series_ticker: str = None, limit: int = 20) -> dict:
-        """Events group related markets under one series -- this is usually
-        the easier way to browse what's currently live and find real
-        tickers, rather than guessing market tickers directly.
-        """
         path = "/trade-api/v2/events"
         url = f"{KALSHI_BASE_URL}/events"
         params = {"limit": limit, "with_nested_markets": True}
@@ -227,7 +196,7 @@ def ask_gemini(prompt: str) -> str:
 
 
 # ------------------------------------------------------------------ #
-# 3. BACKBOARD -- persist the exchange to a thread (memory/history)
+# 3. BACKBOARD -- persist the exchange to a thread
 # ------------------------------------------------------------------ #
 
 class BackboardClient:
@@ -237,10 +206,6 @@ class BackboardClient:
         self.headers = {"X-API-Key": api_key, "Content-Type": "application/json"}
 
     def log_exchange(self, thread_id: str, question: str, answer: str) -> str:
-        """Sends a message to a Backboard thread recording what was asked and
-        what Gemini answered, so it's retrievable later. Returns the thread_id
-        (a new one is created if none was given).
-        """
         content = (
             f"[Kalshi/Gemini integration log -- {datetime.now(timezone.utc).isoformat()}]\n\n"
             f"Question: {question}\n\n"
@@ -290,7 +255,6 @@ def handle_statement(speaker: str, statement: str, ticker: str, seed_only: bool)
         scorer.add_to_baseline(speaker, statement)
         return
 
-    # -- Surprising: pull live Kalshi data and get Gemini's read on it --
     print(f"\nSurprising statement detected. Checking Kalshi market {ticker}...")
 
     kalshi = KalshiClient(KALSHI_API_KEY_ID, KALSHI_PRIVATE_KEY_PATH)
@@ -325,8 +289,6 @@ def handle_statement(speaker: str, statement: str, ticker: str, seed_only: bool)
             "to the same thread on future runs."
         )
 
-    # Now that it's been scored and acted on, fold it into the baseline
-    # so future statements are compared against an up-to-date history.
     scorer.add_to_baseline(speaker, statement)
 
 
@@ -388,7 +350,6 @@ def main():
         handle_statement(args.speaker, args.statement, args.ticker, args.seed)
         return
 
-    # Fall back to mode A: direct market lookup.
     if args.question:
         question = args.question
     else:
