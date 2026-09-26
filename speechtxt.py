@@ -4,9 +4,9 @@ import base64
 import json
 import os
 import shutil
-import sys
 import urllib.parse
 from datetime import datetime, timezone
+from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -17,6 +17,7 @@ import websockets
 SCRIPT_DIR = Path(__file__).resolve().parent
 API_KEY_PATH = SCRIPT_DIR / "elevenapi.txt"
 OUTPUT_PATH = SCRIPT_DIR / "live_transcript.json"
+FED_LIVE_PAGE = "https://www.federalreserve.gov/live-broadcast.htm"
 SAMPLE_RATE = 16000
 AUDIO_CHUNK_BYTES = 3200
 
@@ -102,43 +103,94 @@ def transcribe_file(audio_path: Path, output_path: Path, language: str) -> None:
     print(text)
 
 
+class BrightcoveEmbedParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.video = None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag != "video":
+            return
+
+        attributes = dict(attrs)
+        required = ("data-video-id", "data-account", "data-player", "data-embed")
+        if all(attributes.get(name) for name in required):
+            self.video = tuple(attributes[name] for name in required)
+
+
+def resolve_brightcove_player_url(page_url: str) -> str:
+    response = requests.get(page_url, timeout=30)
+    response.raise_for_status()
+    parser = BrightcoveEmbedParser()
+    parser.feed(response.text)
+    if not parser.video:
+        raise RuntimeError("The Federal Reserve page does not currently expose a Brightcove video.")
+
+    video_id, account, player, embed = parser.video
+    return (
+        f"https://players.brightcove.net/{account}/{player}_{embed}/index.html"
+        f"?videoId={urllib.parse.quote(video_id)}"
+    )
+
+
+def resolve_hosted_audio(source: str) -> tuple[str, dict[str, str]]:
+    try:
+        import yt_dlp
+    except ImportError as exc:
+        raise RuntimeError(
+            "The Fed page uses Brightcove. Install its resolver with "
+            "`/usr/local/bin/python3 -m pip install yt-dlp`."
+        ) from exc
+
+    if urllib.parse.urlparse(source).hostname == "www.federalreserve.gov":
+        source = resolve_brightcove_player_url(source)
+
+    with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True}) as downloader:
+        info = downloader.extract_info(source, download=False)
+
+    formats = info.get("formats", [])
+    audio_formats = [
+        media_format for media_format in formats
+        if media_format.get("url")
+        and media_format.get("protocol", "").startswith("m3u8")
+        and media_format.get("vcodec") == "none"
+    ]
+    if not audio_formats and info.get("url"):
+        audio_formats = [info]
+    if not audio_formats:
+        raise RuntimeError("No HLS audio rendition was found for this stream.")
+
+    media_format = audio_formats[0]
+    return media_format["url"], media_format.get("http_headers", {})
+
+
 async def ffmpeg_audio_chunks(source: str):
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
-        raise RuntimeError(
-            "ffmpeg is required for live stream URLs. Install it with `brew install ffmpeg`."
-        )
+        try:
+            import imageio_ffmpeg
+            ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+        except ImportError as exc:
+            raise RuntimeError(
+                "Audio decoding needs FFmpeg. Install it with `brew install ffmpeg` "
+                "or `/usr/local/bin/python3 -m pip install imageio-ffmpeg`."
+            ) from exc
 
     parsed_source = urllib.parse.urlparse(source)
     direct_media_suffixes = (
         ".aac", ".m3u8", ".m4a", ".mp3", ".mp4", ".ogg", ".ts", ".wav", ".webm",
     )
     looks_like_direct_media = parsed_source.path.lower().endswith(direct_media_suffixes)
-    yt_dlp = shutil.which("yt-dlp")
-    if not looks_like_direct_media and yt_dlp:
-        resolver = await asyncio.create_subprocess_exec(
-            yt_dlp,
-            "--no-warnings",
-            "--format", "bestaudio/best",
-            "--get-url",
-            source,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        resolved_output, resolver_error = await resolver.communicate()
-        if resolver.returncode == 0 and resolved_output.strip():
-            source = resolved_output.decode("utf-8").splitlines()[0].strip()
-        else:
-            detail = resolver_error.decode("utf-8", errors="replace").strip()
-            raise RuntimeError(f"yt-dlp could not resolve the stream URL: {detail}")
-    elif not looks_like_direct_media and parsed_source.hostname in {
-        "youtube.com", "www.youtube.com", "youtu.be", "www.youtube-nocookie.com",
-    }:
-        raise RuntimeError(
-            "YouTube URLs require yt-dlp. Install it with `brew install yt-dlp`."
-        )
+    headers = {}
+    if not looks_like_direct_media:
+        source, headers = await asyncio.to_thread(resolve_hosted_audio, source)
 
     command = [ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin"]
+    if headers:
+        formatted_headers = "".join(
+            f"{name}: {value}\r\n" for name, value in headers.items()
+        )
+        command.extend(["-headers", formatted_headers])
     command.extend([
         "-i", source,
         "-vn", "-ac", "1", "-ar", str(SAMPLE_RATE),
@@ -151,58 +203,30 @@ async def ffmpeg_audio_chunks(source: str):
         stderr=asyncio.subprocess.DEVNULL,
     )
     try:
+        buffered_audio = bytearray()
         while True:
             chunk = await process.stdout.read(AUDIO_CHUNK_BYTES)
             if not chunk:
                 break
-            yield chunk
+            buffered_audio.extend(chunk)
+            while len(buffered_audio) >= AUDIO_CHUNK_BYTES:
+                yield bytes(buffered_audio[:AUDIO_CHUNK_BYTES])
+                del buffered_audio[:AUDIO_CHUNK_BYTES]
+        if buffered_audio:
+            yield bytes(buffered_audio)
         return_code = await process.wait()
         if return_code:
             raise RuntimeError(f"ffmpeg exited with status {return_code}.")
     finally:
         if process.returncode is None:
-            process.terminate()
+            process.kill()
             await process.wait()
-
-
-async def microphone_audio_chunks():
-    try:
-        import sounddevice as sd
-    except ImportError as exc:
-        raise RuntimeError(
-            "Microphone mode requires sounddevice. Install it with "
-            "`/usr/local/bin/python3 -m pip install sounddevice`."
-        ) from exc
-
-    loop = asyncio.get_running_loop()
-    audio_queue = asyncio.Queue(maxsize=20)
-
-    def enqueue_audio(data: bytes) -> None:
-        if not audio_queue.full():
-            audio_queue.put_nowait(data)
-
-    def audio_callback(indata, frames, timing, status) -> None:
-        if status:
-            print(f"Microphone warning: {status}", file=sys.stderr)
-        loop.call_soon_threadsafe(enqueue_audio, bytes(indata))
-
-    with sd.RawInputStream(
-        samplerate=SAMPLE_RATE,
-        blocksize=AUDIO_CHUNK_BYTES // 2,
-        channels=1,
-        dtype="int16",
-        callback=audio_callback,
-    ):
-        print("Transcribing microphone input. Press Ctrl+C to stop.")
-        while True:
-            yield await audio_queue.get()
 
 
 async def stream_realtime_audio(
     source: str,
     output_path: Path,
     language: str,
-    microphone: bool,
 ) -> None:
     api_key = load_api_key()
     if not api_key:
@@ -265,18 +289,17 @@ async def stream_realtime_audio(
         receiver = asyncio.create_task(receive_transcripts())
         try:
             await asyncio.wait_for(asyncio.shield(session_started), timeout=20)
-            chunks = (
-                microphone_audio_chunks()
-                if microphone
-                else ffmpeg_audio_chunks(source)
-            )
-            async for audio_chunk in chunks:
+            loop = asyncio.get_running_loop()
+            next_send_time = loop.time()
+            async for audio_chunk in ffmpeg_audio_chunks(source):
                 await websocket.send(json.dumps({
                     "message_type": "input_audio_chunk",
                     "audio_base_64": base64.b64encode(audio_chunk).decode("ascii"),
                     "sample_rate": SAMPLE_RATE,
                     "commit": False,
                 }))
+                next_send_time += len(audio_chunk) / (SAMPLE_RATE * 2)
+                await asyncio.sleep(max(0.0, next_send_time - loop.time()))
         finally:
             if not receiver.done():
                 try:
@@ -306,13 +329,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Transcribe a Fed speech with ElevenLabs and save Kalshi-compatible JSON."
     )
-    source = parser.add_mutually_exclusive_group(required=True)
+    source = parser.add_mutually_exclusive_group()
     source.add_argument("--file", type=Path, help="Local audio recording to transcribe.")
     source.add_argument(
         "--url",
+        default=FED_LIVE_PAGE,
         help="Live stream URL (direct media/HLS, or a hosted page when yt-dlp supports it).",
     )
-    source.add_argument("--mic", action="store_true", help="Transcribe audio from the selected microphone.")
     parser.add_argument("--output", type=Path, default=OUTPUT_PATH, help="Output transcript JSON path.")
     parser.add_argument("--language", default="en", help="Audio language code (default: en).")
     return parser
@@ -327,8 +350,8 @@ def main() -> None:
         transcribe_file(args.file.expanduser().resolve(), output_path, args.language)
         return
 
-    source = "microphone" if args.mic else "live stream"
-    asyncio.run(stream_realtime_audio(source, output_path, args.language, args.mic))
+    source = args.url
+    asyncio.run(stream_realtime_audio(source, output_path, args.language))
 
 
 if __name__ == "__main__":
