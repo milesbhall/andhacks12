@@ -43,7 +43,7 @@ We test the hypothesis that speaker-relative surprise predicts market moves, liv
 | `stance_scorer.py` | Gemini scores each answer -1 (dovish) to +1 (hawkish); surprise = z-score vs. that speaker's past answers |
 | `fed_transcripts.py` | Downloads Fed press conference PDFs and splits them into Chair answers vs. reporter questions |
 | `market_router.py` | Finds related markets on Kalshi and Polymarket and trades them the same way |
-| `kalshi_ticker_finder.py` | Searches all ~130k live Kalshi markets for ones related to a statement |
+| `kalshi_ticker2.py` | Searches all ~130k live Kalshi markets for ones related to a statement (keyword + semantic filter, then Gemini ranks) |
 | `kalshi_trader.py` | Kalshi prices and orders |
 | `polymarket_client.py` | Polymarket US search, prices and orders |
 | `trading_common.py` | Shared risk limits, kill switch, fees and trade log for both venues |
@@ -54,7 +54,7 @@ We test the hypothesis that speaker-relative surprise predicts market moves, liv
 
 **Data and config:** `transcripts/` (parsed press conferences), `stance_baselines.json` (each speaker's usual stance), `Dockerfile` and `deploy/` (DigitalOcean), `.streamlit/secrets.example.toml` (Auth0).
 
-**Work in progress:** `kalshi_ticker2.py` and `run_kalshi_ticker2.py` (next version of the Kalshi market search).
+`run_kalshi_ticker2.py` runs the Kalshi market search on its own against a transcript.
 
 ## Quick start
 

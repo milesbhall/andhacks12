@@ -13,7 +13,7 @@ Every match looks the same regardless of venue:
      "relevance": 0-1, "reason": str,
      "quote": {"best_bid": float, "best_ask": float}}
 
-Kalshi markets come from the teammate's kalshi_ticker_finder (used as-is,
+Kalshi markets come from the teammate's kalshi_ticker2 (used as-is,
 not modified). Its full-catalog download takes ~2.5 minutes, so this module
 caches the catalog for CATALOG_TTL_SECONDS. The first call is slow; every
 call after that is fast.
@@ -63,7 +63,9 @@ _catalog_memory = {"time": 0, "events": None}
 # ------------------------------------------------------------------ #
 
 def _load_kalshi_finder():
-    import kalshi_ticker_finder as finder
+    import kalshi_ticker2 as finder
+    # Use the same high-quota Gemini model as the rest of the pipeline.
+    finder.GEMINI_MODEL = os.environ["GEMINI_MODEL"]
 
     if getattr(finder, "_router_cache_installed", False):
         return finder
@@ -109,9 +111,27 @@ def _gemini_json(prompt: str) -> dict:
     raise RuntimeError("Gemini unavailable.")
 
 
+# Who the speaker is, in the words market titles use. The Kalshi search keys
+# on topic words ("Federal Reserve", "interest rates"), which a Chair's answer
+# often never says out loud.
+SPEAKER_CONTEXT = {
+    "kevin_warsh": "Federal Reserve Chair on interest rates and inflation",
+    "jerome_powell": "Federal Reserve Chair on interest rates and inflation",
+    "donald_trump": "President Donald Trump",
+}
+
+
+# Series whose outcome doesn't follow from stance: which words get said, and
+# how individual officials vote. A hawkish surprise says nothing about either.
+KALSHI_SKIP_SERIES = ("KXFEDMENTION", "KXFEDDISSENT")
+
+
 def find_kalshi(statement: str, speaker: str = "", context: str = "", top_n: int = 5) -> list:
     finder = _load_kalshi_finder()
-    tickers = finder.find_relevant_tickers(statement, top_n=top_n, use_gemini=True)
+    who = SPEAKER_CONTEXT.get(speaker, speaker.replace("_", " ").title())
+    query = f"{who}: {statement}" + (f"\n{context}" if context else "")
+    tickers = [t for t in finder.find_relevant_tickers(query, top_n=top_n + 3)
+               if not str(t.get("ticker", "")).startswith(KALSHI_SKIP_SERIES)][:top_n]
     if not tickers:
         return []
 
