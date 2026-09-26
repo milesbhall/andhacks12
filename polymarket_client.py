@@ -290,11 +290,19 @@ def _ask_gemini_json(prompt: str) -> dict:
     from google.genai import types
 
     client = genai.Client(api_key=GEMINI_API_KEY)
-    response = client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.2),
-    )
+    models = [GEMINI_MODEL, "gemini-3.1-flash-lite"]
+    for attempt in range(6):
+        try:
+            response = client.models.generate_content(
+                model=models[min(attempt // 3, 1)],   # switch model after 3 failures
+                contents=prompt,
+                config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.2),
+            )
+            break
+        except Exception as e:
+            if attempt == 5 or not any(c in str(e) for c in ("429", "RESOURCE_EXHAUSTED", "503", "UNAVAILABLE", "500")):
+                raise
+            time.sleep(5 + 5 * (attempt % 3))   # per-minute quota resets quickly
     text = response.text.strip()
     text = re.sub(r"^```(json)?|```$", "", text).strip()
     return json.loads(text)
@@ -334,6 +342,7 @@ def find_markets(statement: str, speaker: str = "", top_n: int = 5, context: str
                     candidates[slug] = {
                         "slug": slug,
                         "event": event.get("title"),
+                        "question": market.get("question") or market.get("title"),
                         "category": event.get("category"),
                         "rules": (market.get("description") or "")[:400],
                     }

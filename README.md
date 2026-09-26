@@ -33,7 +33,8 @@ We test the hypothesis that speaker-relative surprise predicts market moves, liv
 
 | File | What it does |
 |---|---|
-| `pipeline.py` | The whole system: statement or replay -> stance surprise -> markets -> trades -> logs |
+| `live.py` | Trades while the speech is happening: reads the live transcript, scores each passage in about a second, and places orders on markets picked before the speech |
+| `pipeline.py` | The same system for one statement or a full replay after the fact |
 | `dashboard.py` | Streamlit demo screen (`streamlit run dashboard.py`) |
 
 **Pieces the pipeline uses**
@@ -50,19 +51,27 @@ We test the hypothesis that speaker-relative surprise predicts market moves, liv
 | `backboard_client.py` | Backboard memory: saves every signal and its trades, keeps a log per run, and answers questions in the dashboard's "Ask the desk" tab |
 | `tiger_store.py` | Stores signals, prices and trades as Tiger Data time series |
 | `solana_proof.py` | Writes a hash of each signal to Solana, a public timestamp that proves when we made the call |
-| `speechtxt.py` | ElevenLabs text-to-speech: reads transcript text aloud (the dashboard does the speech-to-text upload) |
+| `speechtxt.py` | ElevenLabs Scribe v2 Realtime: turns live audio (Fed broadcast, stream URL or file) into `live_transcript.json` |
+| `run_kalshi_ticker2.py` / `run_polymarket.py` | Top 3 Kalshi / Polymarket markets for a transcript, same input and output format (`--watch` on the Polymarket one reruns as the live transcript grows) |
 
-**Data and config:** `transcripts/` (parsed press conferences), `stance_baselines.json` (each speaker's usual stance), `Dockerfile` and `deploy/` (DigitalOcean), `.streamlit/secrets.example.toml` (Auth0).
+**Data and config:** `transcripts/` (parsed press conferences), `stance_baselines.json` (each speaker's usual stance), `.streamlit/secrets.example.toml` (Auth0).
 
-`run_kalshi_ticker2.py` runs the Kalshi market search on its own against a transcript.
 
 ## Quick start
 
 ```
 pip install -r requirements.txt
+
+# live speech: transcriber in one terminal, trader in another, dashboard in a third
+python speechtxt.py --url https://www.federalreserve.gov/live-broadcast.htm
+python live.py --speaker kevin_warsh
+streamlit run dashboard.py
+
+# demo without audio: feed the Sept 16 transcript at 10x speed
+python live.py --simulate 20260916 --speed 10
+
 python pipeline.py --replay 20260916 --venues polymarket     # replay the Sept 16 press conference (dry run)
 python pipeline.py --statement "..."                          # score one statement
-streamlit run dashboard.py
 ```
 
 Keys go in gitignored files next to the code (`gemapi.txt`, `polymarketkey.txt`, `polymarketsecret.txt`, `kalshikey.txt` + `privkey.txt`, `elevenapi.txt`, `backboardapi.txt`, `tigerdb.txt`) or in environment variables. Orders are dry runs unless you pass `--live`.

@@ -27,3 +27,6 @@ solana_keypair.json
 pipe_test.log
 pipe_err.log
 backboard_state.json
+live_state.json
+live_state.json.tmp
+live_transcript.json

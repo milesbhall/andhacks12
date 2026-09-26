@@ -157,7 +157,70 @@ with st.sidebar:
     st.caption(f"Limits: ${tc.MAX_DOLLARS_PER_ORDER:.0f}/order, ${tc.MAX_DOLLARS_PER_DAY:.0f}/day "
                f"across venues. Kill switch: STOP_TRADING file.")
 
-tab_desk, tab_analyze, tab_replay, tab_history = st.tabs(["Ask the desk", "Analyze", "Replay", "History"])
+tab_live, tab_desk, tab_analyze, tab_replay, tab_history = st.tabs(["Live", "Ask the desk", "Analyze", "Replay", "History"])
+
+LIVE_STATE_PATH = os.path.join(SCRIPT_DIR, "live_state.json")
+
+
+@st.fragment(run_every=1.0)
+def live_panel():
+    if not os.path.isfile(LIVE_STATE_PATH):
+        st.info("Nothing running. Start a session:\n\n"
+                "`python live.py --simulate 20260916 --speed 10`  (demo)\n\n"
+                "or `python speechtxt.py --url <stream>` + `python live.py`  (real speech)")
+        return
+    try:
+        with open(LIVE_STATE_PATH, encoding="utf-8") as f:
+            s = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return
+    base = s["baseline"]
+    spoken = [c for c in s["chunks"] if c.get("z") is not None]
+    last = spoken[-1] if spoken else None
+    alerts = s.get("alerts", [])
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Status", s["status"].split(" (")[0].capitalize())
+    c2.metric("Latest stance", f"{last['stance']:+.2f}" if last else "—",
+              delta=f"z {last['z']:+.1f}" if last else None, delta_color="off")
+    c3.metric("Surprises", len(alerts))
+    c4.metric("Signal → order", f"{alerts[-1]['latency_ms'] / 1000:.1f}s" if alerts else "—")
+    st.caption(f"{s['speaker']} · source: {s['source']} · usual stance {base['mean']:+.2f} "
+               f"(spread {base['stdev']:.2f}) · {'LIVE ORDERS' if s.get('live_orders') else 'dry run'}")
+
+    if alerts:
+        a = alerts[-1]
+        (st.error if a["direction"] == "HAWKISH" else st.success)(
+            f"**{a['direction']} surprise** (z {a['z']:+.1f}): {a['summary']} · "
+            f"{a['orders']} order(s) in {a['latency_ms'] / 1000:.1f}s")
+
+    left, right = st.columns([3, 2])
+    with left:
+        if spoken:
+            chart = pd.DataFrame({"z-score": [c["z"] for c in spoken],
+                                  "surprise line": [2.0] * len(spoken),
+                                  "surprise line (dovish)": [-2.0] * len(spoken)})
+            st.line_chart(chart, height=220)
+        st.markdown("**Transcript**")
+        for c in reversed(s["chunks"][-12:]):
+            if c["role"] != "speaker":
+                st.caption(f"Question: {c['text'][:220]}")
+                continue
+            tag = c["direction"] if c["direction"] in ("HAWKISH", "DOVISH") else "in line"
+            st.markdown(f"`{c['stance']:+.2f} · z {c['z']:+.1f} · {tag}`  {c['text'][:300]}")
+    with right:
+        st.markdown("**Orders**")
+        if s["trades"]:
+            st.dataframe(pd.DataFrame(s["trades"])[["venue", "market", "side", "qty", "yes_limit", "max_cost", "status"]],
+                         width="stretch", hide_index=True, height=240)
+        else:
+            st.caption("None yet.")
+        st.markdown("**Ready to trade** (picked before the speech)")
+        for d, ms in s["watchlist"].items():
+            st.caption(f"{d}: " + (", ".join(f"{m['side'].upper()} {m['market']}" for m in ms) or "—"))
+
+
+with tab_live:
+    live_panel()
 
 with tab_desk:
     import backboard_client as bb

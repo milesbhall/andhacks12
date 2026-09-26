@@ -121,9 +121,9 @@ SPEAKER_CONTEXT = {
 }
 
 
-# Series whose outcome doesn't follow from stance: which words get said, and
-# how individual officials vote. A hawkish surprise says nothing about either.
-KALSHI_SKIP_SERIES = ("KXFEDMENTION", "KXFEDDISSENT")
+# Series whose outcome doesn't follow from stance: which words get said, how
+# individual officials vote, and data releases for months already measured.
+KALSHI_SKIP_SERIES = ("KXFEDMENTION", "KXFEDDISSENT", "KXCPI", "KXPCE", "KXGDP", "KXPAYROLLS", "KXU3")
 
 
 def find_kalshi(statement: str, speaker: str = "", context: str = "", top_n: int = 5) -> list:
