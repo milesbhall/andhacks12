@@ -57,7 +57,12 @@ def current_user():
 
 
 def can_trade_live(email) -> bool:
-    return bool(email) and email.lower() in ALLOWED_TRADERS
+    allowed = set(ALLOWED_TRADERS)
+    try:
+        allowed |= {e.strip().lower() for e in st.secrets.get("allowed_traders", [])}
+    except Exception:
+        pass
+    return bool(email) and email.lower() in allowed
 
 
 # ------------------------------------------------------------------ #
