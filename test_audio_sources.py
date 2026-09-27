@@ -34,7 +34,7 @@ class AudioSourceTests(unittest.TestCase):
                  patch.object(speechtxt, "transcribe_file") as batch, \
                  patch.object(speechtxt, "stream_realtime_audio", new_callable=AsyncMock) as realtime:
                 speechtxt.main()
-            realtime.assert_awaited_once_with(str(audio), output, "en")
+            realtime.assert_awaited_once_with(str(audio), output, "en", 1.0)
             batch.assert_not_called()
 
     def test_extensionless_local_file_goes_directly_to_ffmpeg(self):

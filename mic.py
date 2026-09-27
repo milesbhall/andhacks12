@@ -78,7 +78,7 @@ async def run(device=None):
         audio.put(bytes(indata))
 
     params = urlencode({"model_id": "scribe_v2_realtime", "audio_format": "pcm_16000",
-                        "commit_strategy": "vad", "vad_silence_threshold_secs": 1.0,
+                        "commit_strategy": "vad", "vad_silence_threshold_secs": 0.7,
                         "language_code": "en"})
     uri = f"wss://api.elevenlabs.io/v1/speech-to-text/realtime?{params}"
     segments = []

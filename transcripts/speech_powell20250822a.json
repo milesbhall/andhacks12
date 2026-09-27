@@ -1,0 +1,258 @@
+{
+ "date": "20250822",
+ "source": "https://www.federalreserve.gov/newsevents/speech/powell20250822a.htm",
+ "title": "Speech by Chair Powell on the economic outlook and framework review",
+ "speaker_key": "jerome_powell",
+ "segments": [
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "At “Labor Markets in Transition: Demographics, Productivity, and Macroeconomic Policy,” an economic symposium sponsored by the Federal Reserve Bank of Kansas City, Jackson Hole, Wyoming"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "Over the course of this year, the U.S. economy has shown resilience in a context of sweeping changes in economic policy. In terms of the Fed's dual-mandate goals, the labor market remains near maximum employment, and inflation, though still somewhat elevated, has come down a great deal from its post-pandemic highs. At the same time, the balance of risks appears to be shifting."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "In my remarks today, I will first address the current economic situation and the near-term outlook for monetary policy. I will then turn to the results of our second public review of our monetary policy framework, as captured in the revised Statement on Longer-Run Goals and Monetary Policy Strategy that we released today."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "Current Economic Conditions and Near-Term Outlook When I appeared at this podium one year ago, the economy was at an inflection point. Our policy rate had stood at 5-1/4 to 5-1/2 percent for more than a year. That restrictive policy stance was appropriate to help bring down inflation and to foster a sustainable balance between aggregate demand and supply. Inflation had moved much closer to our objective, and the labor market had cooled from its formerly overheated state. Upside risks to inflation had diminished. But the unemployment rate had increased by almost a full percentage point, a development that historically has not occurred outside of recessions.1 Over the subsequent three Federal Open Market Committee (FOMC) meetings, we recalibrated our policy stance, setting the stage for the labor market to remain in balance near maximum employment over the past year (figure 1)."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "This year, the economy has faced new challenges. Significantly higher tariffs across our trading partners are remaking the global trading system. Tighter immigration policy has led to an abrupt slowdown in labor force growth. Over the longer run, changes in tax, spending, and regulatory policies may also have important implications for economic growth and productivity. There is significant uncertainty about where all of these polices will eventually settle and what their lasting effects on the economy will be."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "Changes in trade and immigration policies are affecting both demand and supply. In this environment, distinguishing cyclical developments from trend, or structural, developments is difficult. This distinction is critical because monetary policy can work to stabilize cyclical fluctuations but can do little to alter structural changes."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "The labor market is a case in point. The July employment report released earlier this month showed that payroll job growth slowed to an average pace of only 35,000 per month over the past three months, down from 168,000 per month during 2024 (figure 2).2 This slowdown is much larger than assessed just a month ago, as the earlier figures for May and June were revised down substantially.3 But it does not appear that the slowdown in job growth has opened up a large margin of slack in the labor market—an outcome we want to avoid. The unemployment rate, while edging up in July, stands at a historically low level of 4.2 percent and has been broadly stable over the past year. Other indicators of labor market conditions are also little changed or have softened only modestly, including quits, layoffs, the ratio of vacancies to unemployment, and nominal wage growth. Labor supply has softened in line with demand, sharply lowering the \"breakeven\" rate of job creation needed to hold the unemployment rate constant. Indeed, labor force growth has slowed considerably this year with the sharp falloff in immigration, and the labor force participation rate has edged down in recent months."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "Overall, while the labor market appears to be in balance, it is a curious kind of balance that results from a marked slowing in both the supply of and demand for workers. This unusual situation suggests that downside risks to employment are rising. And if those risks materialize, they can do so quickly in the form of sharply higher layoffs and rising unemployment."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "At the same time, GDP growth has slowed notably in the first half of this year to a pace of 1.2 percent, roughly half the 2.5 percent pace in 2024 (figure 3). The decline in growth has largely reflected a slowdown in consumer spending. As with the labor market, some of the slowing in GDP likely reflects slower growth of supply or potential output."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "Turning to inflation, higher tariffs have begun to push up prices in some categories of goods. Estimates based on the latest available data indicate that total PCE prices rose 2.6 percent over the 12 months ending in July. Excluding the volatile food and energy categories, core PCE prices rose 2.9 percent, above their level a year ago. Within core, prices of goods increased 1.1 percent over the past 12 months, a notable shift from the modest decline seen over the course of 2024. In contrast, housing services inflation remains on a downward trend, and nonhousing services inflation is still running at a level a bit above what has been historically consistent with 2 percent inflation (figure 4).4"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "The effects of tariffs on consumer prices are now clearly visible. We expect those effects to accumulate over coming months, with high uncertainty about timing and amounts. The question that matters for monetary policy is whether these price increases are likely to materially raise the risk of an ongoing inflation problem. A reasonable base case is that the effects will be relatively short lived—a one-time shift in the price level. Of course, \"one-time\" does not mean \"all at once.\" It will continue to take time for tariff increases to work their way through supply chains and distribution networks. Moreover, tariff rates continue to evolve, potentially prolonging the adjustment process."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "It is also possible, however, that the upward pressure on prices from tariffs could spur a more lasting inflation dynamic, and that is a risk to be assessed and managed. One possibility is that workers, who see their real incomes decline because of higher prices, demand and get higher wages from employers, setting off adverse wage–price dynamics. Given that the labor market is not particularly tight and faces increasing downside risks, that outcome does not seem likely."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "Another possibility is that inflation expectations could move up, dragging actual inflation with them. Inflation has been above our target for more than four years and remains a prominent concern for households and businesses. Measures of longer-term inflation expectations, however, as reflected in market- and survey-based measures, appear to remain well anchored and consistent with our longer-run inflation objective of 2 percent."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "Of course, we cannot take the stability of inflation expectations for granted. Come what may, we will not allow a one-time increase in the price level to become an ongoing inflation problem."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "Putting the pieces together, what are the implications for monetary policy? In the near term, risks to inflation are tilted to the upside, and risks to employment to the downside—a challenging situation. When our goals are in tension like this, our framework calls for us to balance both sides of our dual mandate. Our policy rate is now 100 basis points closer to neutral than it was a year ago, and the stability of the unemployment rate and other labor market measures allows us to proceed carefully as we consider changes to our policy stance. Nonetheless, with policy in restrictive territory, the baseline outlook and the shifting balance of risks may warrant adjusting our policy stance."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "Monetary policy is not on a preset course. FOMC members will make these decisions, based solely on their assessment of the data and its implications for the economic outlook and the balance of risks. We will never deviate from that approach."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "Evolution of Monetary Policy Framework Turning to my second topic, our monetary policy framework is built on the unchanging foundation of our mandate from Congress to foster maximum employment and stable prices for the American people. We remain fully committed to fulfilling our statutory mandate, and the revisions to our framework will support that mission across a broad range of economic conditions. Our revised Statement on Longer-Run Goals and Monetary Policy Strategy, which we refer to as our consensus statement, describes how we pursue our dual-mandate goals. It is designed to give the public a clear sense of how we think about monetary policy, and that understanding is important both for transparency and accountability, and for making monetary policy more effective."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "The changes we made in this review are a natural progression, grounded in our ever-evolving understanding of our economy. We continue to build upon the initial consensus statement adopted in 2012 under Chair Ben Bernanke's leadership. Today's revised statement is the outcome of the second public review of our framework, which we conduct at five-year intervals. This year's review included three elements: Fed Listens events at Reserve Banks around the country, a flagship research conference, and policymaker discussions and deliberations, supported by staff analysis, at a series of FOMC meetings.5"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "In approaching this year's review, a key objective has been to make sure that our framework is suitable across a broad range of economic conditions. At the same time, the framework needs to evolve with changes in the structure of the economy and our understanding of those changes. The Great Depression presented different challenges from those of the Great Inflation and the Great Moderation, which in turn are different from the ones we face today.6"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "At the time of the last review, we were living in a new normal, characterized by the proximity of interest rates to the effective lower bound (ELB), along with low growth, low inflation, and a very flat Phillips curve—meaning that inflation was not very responsive to slack in the economy.7 To me, a statistic that captures that era is that our policy rate was stuck at the ELB for seven long years following the onset of the Global Financial Crisis (GFC) in late 2008. Many here will recall the sluggish growth and painfully slow recovery of that era. It appeared highly likely that if the economy experienced even a mild downturn, our policy rate would be back at the ELB very quickly, probably for another extended period. Inflation and inflation expectations could then decline in a weak economy, raising real interest rates as nominal rates were pinned near zero. Higher real rates would further weigh on job growth and reinforce the downward pressure on inflation and inflation expectations, triggering an adverse dynamic."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "The economic conditions that brought the policy rate to the ELB and drove the 2020 framework changes were thought to be rooted in slow-moving global factors that would persist for an extended period—and might well have done so, if not for the pandemic.8 The 2020 consensus statement included several features that addressed the ELB-related risks that had become increasingly prominent over the preceding two decades. We emphasized the importance of anchored longer-term inflation expectations to support both our price-stability and maximum-employment goals. Drawing on an extensive literature on strategies to mitigate risks associated with the ELB, we adopted flexible average inflation targeting—a \"makeup\" strategy to ensure that inflation expectations would remain well anchored even with the ELB constraint.9 In particular, we said that, following periods when inflation had been running persistently below 2 percent, appropriate monetary policy would likely aim to achieve inflation moderately above 2 percent for some time."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "In the event, rather than low inflation and the ELB, the post-pandemic reopening brought the highest inflation in 40 years to economies around the world. Like most other central banks and private-sector analysts, through year-end 2021 we thought that inflation would subside fairly quickly without a sharp tightening in our policy stance (figure 5).10 When it became clear that this was not the case, we responded forcefully, raising our policy rate by 5.25 percentage points over 16 months. That action, combined with the unwinding of pandemic supply disruptions, contributed to inflation moving much closer to our target without the painful rise in unemployment that has accompanied previous efforts to counter high inflation."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "Elements of the Revised Consensus Statement This year's review considered how economic conditions have evolved over the past five years. During this period, we saw that the inflation situation can change rapidly in the face of large shocks. In addition, interest rates are now substantially higher than was the case during the era between the GFC and the pandemic. With inflation above target, our policy rate is restrictive—modestly so, in my view. We cannot say for certain where rates will settle out over the longer run, but their neutral level may now be higher than during the 2010s, reflecting changes in productivity, demographics, fiscal policy, and other factors that affect the balance between saving and investment (figure 6). During the review, we discussed how the 2020 statement's focus on the ELB may have complicated communications about our response to high inflation. We concluded that the emphasis on an overly specific set of economic conditions may have led to some confusion, and, as a result, we made several important changes to the consensus statement to reflect that insight."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "First, we removed language indicating that the ELB was a defining feature of the economic landscape. Instead, we noted that our \"monetary policy strategy is designed to promote maximum employment and stable prices across a broad range of economic conditions.\" The difficulty of operating near the ELB remains a potential concern, but it is not our primary focus. The revised statement reiterates that the Committee is prepared to use its full range of tools to achieve its maximum-employment and price-stability goals, particularly if the federal funds rate is constrained by the ELB."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "Second, we returned to a framework of flexible inflation targeting and eliminated the \"makeup\" strategy. As it turned out, the idea of an intentional, moderate inflation overshoot had proved irrelevant. There was nothing intentional or moderate about the inflation that arrived a few months after we announced our 2020 changes to the consensus statement, as I acknowledged publicly in 2021.11"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "Well-anchored inflation expectations were critical to our success in bringing down inflation without a sharp increase in unemployment. Anchored expectations promote the return of inflation to target when adverse shocks drive inflation higher, and limit the risk of deflation when the economy weakens.12 Further, they allow monetary policy to support maximum employment in economic downturns without compromising price stability. Our revised statement emphasizes our commitment to act forcefully to ensure that longer-term inflation expectations remain well anchored, to the benefit of both sides of our dual mandate. It also notes that \"price stability is essential for a sound and stable economy and supports the well-being of all Americans.\" This theme came through loud and clear at our Fed Listens events.13 The past five years have been a painful reminder of the hardship that high inflation imposes, especially on those least able to meet the higher costs of necessities."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "Third, our 2020 statement said that we would mitigate \"shortfalls,\" rather than \"deviations,\" from maximum employment. The use of \"shortfalls\" reflected the insight that our real-time assessments of the natural rate of unemployment—and hence of \"maximum employment\"—are highly uncertain.14 The later years of the post-GFC recovery featured employment running for an extended period above mainstream estimates of its sustainable level, along with inflation running persistently below our 2 percent target. In the absence of inflationary pressures, it might not be necessary to tighten policy based solely on uncertain real-time estimates of the natural rate of unemployment.15"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "We still have that view, but our use of the term \"shortfalls\" was not always interpreted as intended, raising communications challenges. In particular, the use of \"shortfalls\" was not intended as a commitment to permanently forswear preemption or to ignore labor market tightness. Accordingly, we removed \"shortfalls\" from our statement. Instead, the revised document now states more precisely that \"the Committee recognizes that employment may at times run above real-time assessments of maximum employment without necessarily creating risks to price stability.\" Of course, preemptive action would likely be warranted if tightness in the labor market or other factors pose risks to price stability."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "The revised statement also notes that maximum employment is \"the highest level of employment that can be achieved on a sustained basis in a context of price stability.\" This focus on promoting a strong labor market underscores the principle that \"durably achieving maximum employment fosters broad-based economic opportunities and benefits for all Americans.\" The feedback we received at Fed Listens events reinforced the value of a strong labor market for American households, employers, and communities."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "Fourth, consistent with the removal of \"shortfalls,\" we made changes to clarify our approach in periods when our employment and inflation objectives are not complementary. In those circumstances, we will follow a balanced approach in promoting them. The revised statement now more closely aligns with the original 2012 language. We take into account the extent of departures from our goals and the potentially different time horizons over which each is projected to return to a level consistent with our dual mandate. These principles guide our policy decisions today, as they did over the 2022–24 period, when the departure from our 2 percent inflation target was the overriding concern."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "In addition to these changes, there is a great deal of continuity with past statements. The document continues to explain how we interpret the mandate Congress has given us and describes the policy framework that we believe will best promote maximum employment and price stability. We continue to believe that monetary policy must be forward looking and consider the lags in its effects on the economy. For this reason, our policy actions depend on the economic outlook and the balance of risks to that outlook. We continue to believe that setting a numerical goal for employment is unwise, because the maximum level of employment is not directly measurable and changes over time for reasons unrelated to monetary policy."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "We also continue to view a longer-run inflation rate of 2 percent as most consistent with our dual-mandate goals. We believe that our commitment to this target is a key factor helping keep longer-term inflation expectations well anchored. Experience has shown that 2 percent inflation is low enough to ensure that inflation is not a concern in household and business decisionmaking while also providing a central bank with some policy flexibility to provide accommodation during economic downturns."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "Finally, the revised consensus statement retained our commitment to conduct a public review roughly every five years. There is nothing magic about a five-year pace. That frequency allows policymakers to reassess structural features of the economy and to engage with the public, practitioners, and academics on the performance of our framework. It is also consistent with several global peers."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "Conclusion In closing, I want to thank President Schmid and all his staff who work so diligently to host this outstanding event annually. Counting a couple of virtual appearances during the pandemic, this is the eighth time I have had the honor to speak from this podium. Each year, this symposium offers the opportunity for Federal Reserve leaders to hear ideas from leading economic thinkers and focus on the challenges we face. The Kansas City Fed was wise to lure Chair Volcker to this national park more than 40 years ago, and I am proud to be part of that tradition."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "1. For example, after the July 2024 employment report, the 3-month average of the unemployment rate had increased more than 0.5 percentage point above its lowest value over the previous 12 months. For more information, see Claudia Sahm (2019), \"Direct Stimulus Payments to Individuals,\" in Heather Boushey, Ryan Nunn, and Jay Shambaugh, eds., Recession Ready: Fiscal Policies to Stabilize the American Economy (PDF) (Washington: Hamilton Project and Washington Center for Equitable Growth, May), pp. 67–92. Return to text"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "2. In early September, the Bureau of Labor Statistics will publish a preliminary estimate of benchmark revisions to the level of nonfarm payrolls as of March 2025, based on data from the Quarterly Census of Employment and Wages. Data available to date suggest that the level of nonfarm payrolls will be revised down materially. The final benchmark revision will be incorporated into the monthly employment data in February 2026. Return to text"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "3. The total downward revision of 258,000 between May and June was spread across private-sector industries as well as state and local government employment, particularly education, and reflected both additional information from surveyed establishments and the re-estimation of seasonal factors. Return to text"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "4. Using the consumer price index and other information, an estimate of the contribution of housing services to 12-month core PCE inflation in July was 0.7 percentage point, while core services excluding housing contributed 2.0 percentage points. The contribution from each of these categories remains slightly above its average during the 2002–07 period, during which core PCE inflation averaged about 2 percent. In contrast, the contribution of core goods to 12-month core PCE inflation in July was about 0.25 percentage point, compared with the 2002–07 average of −0.25 percentage point. Return to text"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "5. For more details, see the information available on the Board's website at https://www.federalreserve.gov/monetarypolicy/review-of-monetary-policy-strategy-tools-and-communications-2025.htm. Return to text"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "6. See Jerome H. Powell (2019), \"Challenges for Monetary Policy,\" speech delivered at \"Challenges for Monetary Policy,\" a symposium sponsored by the Federal Reserve Bank of Kansas City, held in Jackson Hole, Wyo., August 23. Return to text"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "7. See François Gourio, Benjamin K. Johannsen, and David López-Salido (2025), \"The Origins, Structure, and Results of the Federal Reserve's 2019–20 Review of Its Monetary Policy Framework,\" Finance and Economics Discussion Series 2025-065 (Washington: Board of Governors of the Federal Reserve System, August). Return to text"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "8. A 2020 paper by Caldara and others discusses the structural factors behind the slow evolution of changes in the natural rate of unemployment, trend productivity growth, the natural rate of interest, and the slope of the Phillips curve; see Dario Caldara, Etienne Gagnon, Enrique Martínez-García, and Christopher J. Neely (2020), \"Monetary Policy and Economic Performance since the Financial Crisis,\" Finance and Economics Discussion Series 2020-065 (Washington: Board of Governors of the Federal Reserve System, August). Return to text"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "9. See David Reifschneider and John C. Williams (2000), \"Three Lessons for Monetary Policy in a Low-Inflation Era,\" Journal of Money, Credit and Banking, vol. 32 (November), pp. 936–66; Michael T. Kiley and John M. Roberts (2017), \"Monetary Policy in a Low Interest Rate World (PDF),\" Brookings Papers on Economic Activity, Spring, pp. 317–72; James Hebden, Edward P. Herbst, Jenny Tang, Giorgio Topa, and Fabian Winkler (2020), \"How Robust Are Makeup Strategies to Key Alternative Assumptions?\" Finance and Economics Discussion Series 2020-069 (Washington: Board of Governors of the Federal Reserve System, August); and Ben S. Bernanke, Michael T. Kiley, and John M. Roberts (2019), \"Monetary Policy Strategies for a Low-Rate Environment,\" AEA Papers and Proceedings, vol. 109 (May), pp. 421–26. On average inflation targeting, see Thomas M. Mertens and John C. Williams (2019), \"Monetary Policy Frameworks and the Effective Lower Bound on Interest Rates,\" AEA Papers and Proceedings, vol. 109 (May), pp. 427–32. Return to text"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "10. See Ekaterina Peneva, Daniel Villar, and Jeremy Rudd (2025), \"Retrospective on the Board Staff's Inflation Forecast Errors since 2019,\" Finance and Economics Discussion Series 2025-069 (Washington: Board of Governors of the Federal Reserve System, August). Return to text"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "11. See Ina Hajdini, Adam Shapiro, A. Lee Smith, and Daniel Villar (2025), \"Inflation since the Pandemic: Lessons and Challenges,\" Finance and Economics Discussion Series 2025-070 (Washington: Board of Governors of the Federal Reserve System, August)."
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "See also, for example, Jerome H. Powell (2021), \"Transcript of Chair Powell's Press Conference (PDF),\" December 15. Return to text"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "12. See Hess Chung, Callum Jones, Antoine Lepetit, and Fernando M. Martin (2025), \"Implications of Inflation Dynamics for Monetary Policy Strategy,\" Finance and Economics Discussion Series 2025-072 (Washington: Board of Governors of the Federal Reserve System, August). Return to text"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "13. For additional information, see the report Fed Listens: Perspectives from the Public, which summarizes the 10 Fed Listens events hosted by the Board and the Federal Reserve Banks during 2025. Return to text"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "14. See Christopher Foote, Shigeru Fujita, Amanda Michaud, and Joshua Montes (2025), \"Assessing Maximum Employment,\" Finance and Economics Discussion Series 2025-067 (Washington: Board of Governors of the Federal Reserve System, August). Return to text"
+  },
+  {
+   "speaker": "JEROME_POWELL",
+   "role": "chair",
+   "text": "15. See Brent Bundick, Isabel Cairó, and Nicolas Petrosky-Nadeau (2025), \"Labor Market Dynamics, Monetary Policy Tradeoffs, and a Shortfalls Approach to Pursuing Maximum Employment,\" Finance and Economics Discussion Series 2025-068 (Washington: Board of Governors of the Federal Reserve System, August). Return to text"
+  }
+ ]
+}

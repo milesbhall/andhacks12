@@ -154,13 +154,27 @@ def resolve_hosted_audio(source: str) -> tuple[str, dict[str, str]]:
         and media_format.get("protocol", "").startswith("m3u8")
         and media_format.get("vcodec") == "none"
     ]
-    if not audio_formats and info.get("url"):
-        audio_formats = [info]
     if not audio_formats:
-        raise RuntimeError("No HLS audio rendition was found for this stream.")
+        picked = _pick_audio_format(info)
+        audio_formats = [picked] if picked else []
+    if not audio_formats:
+        raise RuntimeError("No audio rendition was found for this stream.")
 
     media_format = audio_formats[0]
     return media_format["url"], media_format.get("http_headers", {})
+
+
+def _pick_audio_format(info: dict):
+    """YouTube and most hosts: prefer an audio-only rendition (any protocol), then any
+    HLS rendition that carries audio (live streams), then whatever yt-dlp resolved."""
+    formats = [f for f in info.get("formats") or [] if f.get("url")]
+    audio_only = [f for f in formats if f.get("vcodec") == "none" and f.get("acodec") not in (None, "none")]
+    if audio_only:
+        return max(audio_only, key=lambda f: f.get("abr") or 0)
+    hls = [f for f in formats if str(f.get("protocol", "")).startswith("m3u8") and f.get("acodec") != "none"]
+    if hls:
+        return min(hls, key=lambda f: f.get("height") or 0)     # smallest video = least bandwidth
+    return info if info.get("url") else None
 
 
 async def ffmpeg_audio_chunks(source: str):
@@ -234,6 +248,7 @@ async def stream_realtime_audio(
     source: str,
     output_path: Path,
     language: str,
+    speed: float = 1.0,
 ) -> None:
     api_key = load_api_key()
     if not api_key:
@@ -311,7 +326,7 @@ async def stream_realtime_audio(
                     "sample_rate": SAMPLE_RATE,
                     "commit": False,
                 }))
-                next_send_time = max(next_send_time, loop.time()) + len(audio_chunk) / (SAMPLE_RATE * 2)
+                next_send_time = max(next_send_time, loop.time()) + len(audio_chunk) / (SAMPLE_RATE * 2) / max(speed, 0.25)
                 await asyncio.sleep(max(0.0, next_send_time - loop.time()))
         finally:
             if not receiver.done():
@@ -361,6 +376,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--output", type=Path, default=OUTPUT_PATH, help="Output transcript JSON path.")
     parser.add_argument("--language", default="en", help="Audio language code (default: en).")
+    parser.add_argument("--speed", type=float, default=1.0,
+                        help="Play a --realtime-file faster than real time (e.g. 2 or 4).")
     return parser
 
 
@@ -379,7 +396,7 @@ def main() -> None:
             raise FileNotFoundError(f"Audio file not found: {source}")
     else:
         source = args.url
-    asyncio.run(stream_realtime_audio(source, output_path, args.language))
+    asyncio.run(stream_realtime_audio(source, output_path, args.language, args.speed))
 
 
 if __name__ == "__main__":

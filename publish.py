@@ -99,8 +99,16 @@ def build_payload() -> dict:
                 "candidates": _items(data.get("candidates"), rec_fields, 20),
                 "recommendations": _items(data.get("recommendations"), rec_fields, 20),
             }
+    hearing = ""
+    partial = _load(os.path.join(SCRIPT_DIR, "live_partial.json")) or {}
+    try:   # only show what the mic hears right now (stale text is dropped after 8 s)
+        age = (datetime.now(timezone.utc) - datetime.fromisoformat(partial.get("updated_at"))).total_seconds()
+        if age < 8:
+            hearing = str(partial.get("text") or "")[:300]
+    except (TypeError, ValueError):
+        pass
     return {"published_at": datetime.now(timezone.utc).isoformat(),
-            "live_updated_at": live_updated_at, "live": live, "recommenders": recs}
+            "live_updated_at": live_updated_at, "live": live, "recommenders": recs, "hearing": hearing}
 
 
 def send(url: str, token: str, payload: dict) -> bool:
@@ -135,7 +143,7 @@ def main():
         if args.once:
             print("sent" if last_hash else "not sent")
             return
-        time.sleep(1.0)
+        time.sleep(0.5)
 
 
 if __name__ == "__main__":

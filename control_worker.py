@@ -36,12 +36,20 @@ import requests
 ROOT = Path(__file__).resolve().parent
 MANIFEST = ROOT / 'control_worker_processes.json'
 LOCK_PATH = ROOT / 'control_worker.lock'
-ALLOWED_SOURCE_HOSTS = {'www.federalreserve.gov'}
-WEB_MODES = ('dry', 'demo')
+ALLOWED_SOURCE_HOSTS = {'www.federalreserve.gov', 'www.youtube.com', 'youtube.com', 'm.youtube.com', 'youtu.be'}
+WEB_MODES = ('dry', 'demo', 'live')   # live needs the typed confirmation checked in control.php
+SPEEDS = (1, 2, 3, 4, 5, 10, 20)
 POLL_SECONDS = 2
 ARCHIVE_SECONDS = 60
 MAX_SESSION_SECONDS = 2 * 60 * 60
 REPLAY_SPEED = 10
+
+
+def replay_catalog() -> list:
+    try:
+        return json.loads((ROOT / 'transcripts' / 'catalog.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return []
 
 
 def validate_url(value: str, allowed_hosts=ALLOWED_SOURCE_HOSTS) -> str:
@@ -68,15 +76,21 @@ def known_speakers() -> set:
 
 def clean_options(raw) -> dict:
     raw = raw if isinstance(raw, dict) else {}
-    mode = raw.get('mode') if raw.get('mode') in WEB_MODES else 'dry'   # never 'live' from the web
+    mode = raw.get('mode') if raw.get('mode') in WEB_MODES else 'dry'
+    if mode == 'live' and raw.get('confirm_live') != 'LIVE':
+        mode = 'dry'
     speaker = raw.get('speaker') if raw.get('speaker') in known_speakers() else 'kevin_warsh'
     try:
         qty = max(1, min(5, int(raw.get('qty', 2))))
     except (TypeError, ValueError):
         qty = 2
     venues = [v for v in ('kalshi', 'polymarket') if v in (raw.get('venues') or [])] or ['kalshi', 'polymarket']
+    try:
+        speed = float(raw.get('speed', 0))
+    except (TypeError, ValueError):
+        speed = 0
     return {'mode': mode, 'speaker': speaker, 'qty': qty, 'venues': venues,
-            'recommenders': bool(raw.get('recommenders'))}
+            'speed': speed if speed in SPEEDS else 0, 'recommenders': True}
 
 
 def _read_secret(name: str, env: str) -> str:
@@ -197,12 +211,14 @@ def run_job(job: dict):
 def build_archive() -> dict:
     import trading_common as tc
     replays = []
-    for path in sorted((ROOT / 'results').glob('replay_*.json'), reverse=True)[:6]:
+    order = {f"replay_{i['id']}": n for n, i in enumerate(replay_catalog())}
+    labels = {f"replay_{i['id']}": i['label'] for i in replay_catalog()}
+    for path in sorted((ROOT / 'results').glob('replay_*.json'), key=lambda p: order.get(p.stem, -1))[:30]:
         try:
             data = json.loads(path.read_text(encoding='utf-8'))
         except (OSError, ValueError):
             continue
-        replays.append({'name': path.stem, 'created': data.get('created'),
+        replays.append({'name': path.stem, 'label': labels.get(path.stem, path.stem), 'created': data.get('created'),
                         'records': [_trim_record(r) for r in data.get('records', [])]})
     trades = []
     try:
@@ -227,7 +243,7 @@ def build_archive() -> dict:
             signals = [{k: (str(v) if k == 'time' else v) for k, v in dict(r).items()} for r in rows]
     except Exception:
         signals = []
-    replay_dates = sorted(p.stem for p in (ROOT / 'transcripts').glob('20*.json'))
+    replay_dates = [{'id': i['id'], 'label': i['label'], 'speaker': i['speaker']} for i in replay_catalog()]
     return {'updated_at': datetime.now(timezone.utc).isoformat(), 'replays': replays,
             'trades': trades[-200:][::-1], 'signals': signals, 'replay_dates': replay_dates,
             'speakers': sorted(known_speakers())}
@@ -356,11 +372,14 @@ class Worker:
         elif kind == 'mic':
             self.source = 'laptop microphone'
         elif kind == 'replay':
-            date = str(command.get('replay_date') or '')
-            if not (len(date) == 8 and date.isdigit() and (ROOT / 'transcripts' / f'{date}.json').is_file()):
-                raise ValueError('Unknown press conference date')
-            self.source_value = date
-            self.source = f'replay {date[:4]}-{date[4:6]}-{date[6:]} x{REPLAY_SPEED}'
+            rid = str(command.get('replay_date') or '')
+            item = next((i for i in replay_catalog() if i.get('id') == rid), None)
+            if not item or not (ROOT / 'transcripts' / f'{rid}.json').is_file():
+                raise ValueError('Unknown replay')
+            self.opts['speaker'] = item['speaker'] if item['speaker'] in known_speakers() else self.opts['speaker']
+            self.source_value = rid
+            self.replay_speed = self.opts['speed'] or REPLAY_SPEED
+            self.source = f"replay {item.get('date', rid)} x{self.replay_speed:g}"
         else:
             raise ValueError('Invalid source type')
         self.kind = kind
@@ -376,7 +395,7 @@ class Worker:
         desk = ['live.py', '--speaker', o['speaker'], '--fast', '--mode', o['mode'],
                 '--qty', str(o['qty']), '--venues', *o['venues'], '--source-label', self.source]
         if kind == 'replay':
-            desk += ['--simulate', self.source_value, '--speed', str(REPLAY_SPEED)]
+            desk += ['--simulate', self.source_value, '--speed', str(self.replay_speed)]
         elif kind == 'mic':
             desk += ['--source', 'mic', '--surprises-only']
         self.phase, self.message = 'starting', f"Loading markets ({o['mode']} mode)"
@@ -408,7 +427,10 @@ class Worker:
                 if self.kind == 'mic':
                     self._launch('audio', ['mic.py'])
                 elif self.kind in ('upload', 'url'):
-                    self._launch('audio', ['speechtxt.py', self.source_flag, self.source_value])
+                    audio = ['speechtxt.py', self.source_flag, self.source_value]
+                    if self.opts['speed'] and self.opts['speed'] > 1:
+                        audio += ['--speed', f"{self.opts['speed']:g}"]
+                    self._launch('audio', audio)
                 self.phase = 'running'
                 self.message = f"{self.opts['mode'].upper()} session active · {self.opts['speaker'].replace('_', ' ')}"
             elif time.monotonic() - self.started_at > 90:

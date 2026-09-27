@@ -285,5 +285,756 @@
     "text": "So, apparently, it was news that I had a press conference. Let me just see if I can offer some clarity on that. Between now and year-end, my predecessors and the Federal Reserve committed to press conferences this year. I’m committing to press conferences this year. That might be news to the people "
    }
   ]
+ },
+ "jerome_powell": {
+  "dates": [
+   "20250730",
+   "20250917",
+   "20251029",
+   "20251210"
+  ],
+  "n": 123,
+  "mean": -0.09796747967479674,
+  "stdev": 0.2745579132403877,
+  "entries": [
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Kept rates unchanged, noting solid growth, balanced labor market, and somewhat elevated inflation.",
+    "text": "Good afternoon. My colleagues and I remain squarely focused on achieving our dual-mandate goals of maximum employment and stable prices for the benefit of the American people. Despite elevated uncertainty, the economy is in a solid position. The unemployment rate remains low, and the labor market is"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.5,
+    "summary": "Defends modestly restrictive policy stance while noting solid labor market and inflation above target.",
+    "text": "So, as you know, today we decided to leave our policy rate where it’s been, which—where I would characterize as modestly restrictive. Inflation is running a bit above 2 percent, as I mentioned, even excluding tariff effects. The labor market’s solid— historically low unemployment. Financial conditio"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Procedural remarks on incoming data and no decisions made yet for September.",
+    "text": "So you’re right. We do have—this is an, an, an intermeeting period when we’ll get two full rounds of employment and inflation data before the time of the September meeting. We have made no decisions about September—we don’t do that in advance. We’ll be taking that information into consideration and "
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Procedural clarification regarding statement language and economic uncertainty.",
+    "text": "So, essentially, the statement in the—in the—in our statement about uncertainty reflects what’s gone on since the last meeting. So, at the time of the last meeting, uncertainty had, had, had moved down a little bit, but it was more or less even this time. So we took out, you know, “had diminished” b"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Discussion of ongoing trade negotiations, tariffs, and lingering uncertainties without policy signal.",
+    "text": "No, I think we’re still—so you’re right, it’s been a very dynamic time for these trade negotiations, and lots and lots of events in the intermeeting period, but we’re still, you know, a ways away from seeing where things settle down. We are clearly getting more and more information. And, you know, I"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.5,
+    "summary": "Justifies restrictive stance due to inflation above target and solid labor market.",
+    "text": "So the GDP and PDFP numbers came in pretty much right where we expected them to come in. You’ve got to look at the whole picture. So, certainly, as I mentioned in my opening remarks, economic activity data, GDP, private domestic final purchases—which we think is a narrower but better signal for futu"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Balanced discussion on labor market balance, declining job creation, and watching downside risks.",
+    "text": "You know, the, the main number you have to look at now is the unemployment rate, because if, if—it’s true that the, you know, demand for workers in the form of, let’s call it—say—just say, payroll jobs—that number has come down, but so has the breakeven number, kind of in tandem. So, you know, as lo"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.5,
+    "summary": "Reiterates need for modestly restrictive policy stance given inflation above target.",
+    "text": "So on, on the dissents, you know, what you—what you want from everybody and also from a dissenter is a clear explanation for—of what your thinking is and what are the arguments you’re making. And that’s—we had that today. So I think, basically, this was—this was quite a good meeting all around the t"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Policy is modestly restrictive; future neutral adjustments will depend on data.",
+    "text": "So let me say, my own estimate is modestly restrictive. And there are—there are a range of views of what the neutral rate is at this moment for, for our economy. And so others may say it’s more restrictive or less restrictive even. You know, we’re—we’re going to be—at some point, when we return to m"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Monitoring tariff pass-through effects on consumer prices empirically and slowly.",
+    "text": "I think you have to think of this as still quite early days. And so I think what we’re seeing now is substantial amounts of tariff revenue being collected, on the order of $30 billion a month, which is, you know, substantially higher than, than before. And the evidence seems to be, mostly not paid, "
+   },
+   {
+    "date": "20250730",
+    "stance": 0.5,
+    "summary": "Committed to controlling inflation efficiently while balancing risks to employment.",
+    "text": "You could argue we are, a bit, “looking through” goods inflation by not raising rates. You know, we haven’t reacted to, to new inflation. But, I mean, I wouldn’t—I wouldn’t insist upon that. But I don’t think—I think the base case—I said—as I said, a reasonable base case is that these are one-time—o"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Tax law extension seen as having minimal macroeconomic stimulus effect.",
+    "text": "So, of course, let me just—ritual disclaimer that we don’t express any judgments or anything, right, on, on fiscal legislation or other legislation, for that matter. But I would say, when you think that, you know, the biggest part of the bill was, was making permanent existing law on, on taxes, I do"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Focus solely on dual mandate, ignoring government borrowing costs.",
+    "text": "No, that’s—you know, we, we have a mandate, and that’s maximum employment and price stability. And it is—it’s not something we do, to consider the cost to the government of our rate changes. We have to be able to look at the goal variables Congress has given us—use the tools they have given us to ac"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Procedural comment on presidential visit to the Federal Reserve.",
+    "text": "Not for me to say. I will say, we had a—we had a nice visit with the President. It was an honor to host him. It’s not something that happens very often at the Federal Reserve—to have the President come over, let alone to visit a building—but it was—it was a good visit."
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Procedural remarks on ongoing Federal Reserve building construction projects.",
+    "text": "So, you know, we—this project was hatched and conceived almost a decade ago now, and we went through the very long process of clearing it through historic preservation at the National Capital Planning Commission and a lot of back-and-forth there. It was very constructive. We started out to do the wo"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Inflation largely returning to target despite tariff and insurance effects.",
+    "text": "So inflation—when you talk about these 12-month inflation measures, you’re always battling residual seasonality. So we’ll have, for example, two months of high inflation, sometimes early in the year, and then inflation turns lower. And a lot of that may just be an artifact. So that’s why we look at "
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Discusses economic data importance and Fed history, not policy.",
+    "text": "I’m not going to comment on the Administration’s proposal. I do think—as I’ve said, I think that we—you know, we’re, we’re getting the data that we need to do our jobs. And I think it’s really important that, that good data helps not just the Fed—it helps the government, but it also helps the privat"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Discusses tariff pass-through effects on inflation without policy signaling.",
+    "text": "Well, what, what may be giving—it’s not our policy stance. What may be giving—some companies will certainly be taking advantage of the fact of the tariffs and all of the discussion of how they’re going to—you know, companies will raise prices when and as they can. And you—so you saw it famously in t"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Discusses housing sector dynamics and broad economic goals neutrally.",
+    "text": "Well, so the housing—the housing is a—is a special case. Right? Our—we don’t set—we don’t set mortgage rates at the Fed, right? We set an overnight rate, and the rates that go into mortgages are longer-term rates, like Treasury rates—it might be 30-year rates, it might be shorter than that, but it’s"
+   },
+   {
+    "date": "20250730",
+    "stance": -0.5,
+    "summary": "Signals potential move toward a more neutral policy stance.",
+    "text": "I mean, ultimately, it’s—it could be any—it could be any of those things. Right? But, but, you know, if you saw that the risks to the two goals were moving into balance, if they were fully in balance, that would imply that you should move toward a more—a more neutral stance of policy. This is—this i"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Weighs risks of cutting rates too soon or too late.",
+    "text": "I think—we’ll, we’ll, we’ll look at everything. You know, it’s—as I mentioned, you know, a pretty reasonable base case is that this will be a one-time price increase. And, in the end, we’ll make sure that that’s the case. We’re just trying to do that efficiently. We’re—and “efficiently” means gettin"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Discusses division of labor between Fed and Treasury.",
+    "text": "So this goes back to the division of labor between the Fed and the Treasury—as you, I’m sure, know—and, you know, the, the, the Treasury only speaks to the— speaks to the dollar. It’s not—it’s not something that’s been a topic of, of, you know, major discussion at all at, at—at the—at the Fed. I won"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Discusses reliance on government data sources.",
+    "text": "Yeah, we’re—so we’re monitoring the situation. We do, of course— I mean, as you know, during the pandemic, we looked at a whole lot of new kinds of data. People are looking at big data sets that you can get from all sorts of places. And we do all of that. But at the same—we really need—the governmen"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Discusses the importance of central bank independence.",
+    "text": "I’ll just say that—so I, I think that having an independent central bank has been an institutional arrangement that has served the public well. And as long as it serves the public well, it should continue and be respected. If it didn’t serve the public well, then, then it wouldn’t be something that "
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Neutral review of consumer spending and dual mandate variables.",
+    "text": "Consumer spending had been very, very strong for the last couple of years and had—repeatedly, forecasters, not just us, had been forecasting it would slow down. And now maybe it finally has. So I would say, you know, if you talk to credit card companies, for example, they will tell you that the cons"
+   },
+   {
+    "date": "20250730",
+    "stance": -0.5,
+    "summary": "Leaning dovish, noting labor market downside risks and slowing demand.",
+    "text": "So I’m not going to talk about any individual’s—you know, any individual’s comments. I wouldn’t do that. But, look, I think what we know is that private- sector job creation, you know, certainly in the last report—we’ll see on Friday—but had come down a bit. And, and if you—if you take the QCEW adju"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.5,
+    "summary": "Leaning hawkish, noting inflation above target justifies restrictive policy.",
+    "text": "Sure. So, you know, we have—we have an economic go-round, where people talk about the economy, and then the next—to—then to—that’s yesterday. And then today, we have a monetary policy go-round, all the way around the table—everyone gives their views. So the discussion around policy was—the majority "
+   },
+   {
+    "date": "20250730",
+    "stance": 0.5,
+    "summary": "Leaning hawkish, emphasizing tight policy is needed to lower inflation.",
+    "text": "It’s not, not quite the way I would put it. You know, I said that’s why we think policy should, should be restrictive, is because, you know, inflation is above target. When we—when we have risks to both goals—one of them is farther away from goal than the other, and that’s inflation. Maximum employm"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.5,
+    "summary": "Leaning hawkish, citing inflation above target and restrictive stance needed.",
+    "text": "It’s going to be the total—hard to answer that specifically. PDFP, I think, for the first half—private domestic final purchases, or final sales, as people call it—was 1.6 on the first half. GDP, I believe, was 1.2 percent. So that’s the whole half. You mentioned the quarters. So those are slower. Bu"
+   },
+   {
+    "date": "20250730",
+    "stance": 0.0,
+    "summary": "Neutral data-dependent stance balancing employment and inflation risks.",
+    "text": "I’m not going to—I’m not going to say that. No. I, I, I just think we’re going to need to see the data, and it can go in many different directions—the inflation data and, and the employment data. And we’ll just—we’re going to make a judgment based on all of the data and based on that balance-of-risk"
+   },
+   {
+    "date": "20250917",
+    "stance": -0.5,
+    "summary": "Lowered interest rate by 25 bps due to labor market risks.",
+    "text": "Good afternoon. My colleagues and I remain squarely focused on achieving our dual-mandate goals of maximum employment and stable prices for the benefit of the American people. While the unemployment rate remains low, it has edged up, job gains have slowed, and downside risks to employment have risen"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Reiterates dual-mandate goals and institutional independence.",
+    "text": "So we did welcome a new Committee member today, as we always do, and the Committee remains united in pursuing our dual-mandate goals. We’re strongly committed to maintaining our independence, and beyond that I really don’t have anything to share."
+   },
+   {
+    "date": "20250917",
+    "stance": -0.5,
+    "summary": "Discusses slowing labor supply and demand, and rising unemployment.",
+    "text": "You know, it’s certainly possible. You know, we’re beginning to see—we have begun to see [increased] goods prices showing through into higher inflation. And, actually, the increase in goods prices accounts for most of the increase in inflation or, perhaps, all of the increase in inflation over the c"
+   },
+   {
+    "date": "20250917",
+    "stance": -0.5,
+    "summary": "Risks balanced, suggesting a move toward neutral policy rates.",
+    "text": "So I don’t think we can say that. What we can say is this: that over the course of this year, we’ve kept our policy at a restrictive level—and people have different views, but a clearly restrictive level, I would say. And we were able to do that over the course of this year because the labor market "
+   },
+   {
+    "date": "20250917",
+    "stance": -0.5,
+    "summary": "No support for 50 bps cut; reacting to labor market softening.",
+    "text": "There wasn’t widespread support at all for a 50 basis point cut today. You know, I think we’ve done—we’ve done very large rate hikes and very large rate cuts in the last five years, and you tend to do those at a time when you feel that policy is out of place and needs to move quickly to a new place."
+   },
+   {
+    "date": "20250917",
+    "stance": -0.5,
+    "summary": "Risk-management rate cut responding to cooling labor market.",
+    "text": "Yeah, I think you could think of this, in a way, as a risk-management cut, because if you look at the SEP, actually the projections for growth this year and next actually ticked up just a little bit and inflation and unemployment didn’t really move. So what’s different now? What’s different now is t"
+   },
+   {
+    "date": "20250917",
+    "stance": -0.5,
+    "summary": "Inflation risks easing as labor market and GDP slow.",
+    "text": "Yeah, so I would look at it this way. We fully understand and appreciate that we need to remain fully committed to restoring 2 percent inflation on a sustained basis, and we will do that. At the same time, we’ve got to weigh the risks to the two goals. And I would say since—really, since April, to m"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Clarifying factors behind labor market slowing and unemployment.",
+    "text": "Well, I was—I was saying that what’s happening in the labor market has more to do with immigration than it has to do with tariffs. That was the question I was answering. So I wouldn’t say that all of what’s happening in the labor market is due to tariffs. I mean, you clearly have a slowing due to im"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Explains SEP projections and achieving the 2 percent inflation goal over time.",
+    "text": "Well, I mean, you’re right. It does say we’re going to get to 2 percent inflation in 2028—at the end of’28. But that’s—you know, that’s literally how you put the projections together. You’re writing down a rate path which is designed to create, over the course of the SEP, you know, time frame, 2 per"
+   },
+   {
+    "date": "20250917",
+    "stance": -0.5,
+    "summary": "Signals moving toward neutral policy due to softening labor market risks.",
+    "text": "So our expectation, and you can see this consistently through the year, has been that inflation will move up this year, but that the—basically, because of the effects on goods prices from tariffs—but that those will turn out to be a one-time price increase, as opposed to creating an inflationary pro"
+   },
+   {
+    "date": "20250917",
+    "stance": -0.5,
+    "summary": "Notes rate reductions to support the labor market and shift to balance.",
+    "text": "So it’s an interesting labor market. And obviously we think it’s appropriate that we reduce our rates so that we become more neutral, which will be—which, presumably, will be better for the labor market. You see people who are sort of more at the margins—so kids coming out of college and younger peo"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Emphasizes meeting-by-meeting approach and data-dependence without a preset path.",
+    "text": "So I think we are—we’re in a meeting-by-meeting situation, and we’re going to be looking at the data. You know, let me say a word about the SEP, really, here. So we often point this out. What the SEP is, it’s an accumulation—a cumulation of the individual projections of 19 people showing what they b"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Discusses two-sided risks and diverse views among policymakers regarding goals.",
+    "text": "You know, it is such an unusual situation. Ordinarily, when the labor market is weak, inflation is low; and when the labor market is really strong, that’s when you’ve got to be careful about inflation. So we have a situation where we have two-sided risk, and that means there’s no risk-free path. And"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Reaffirms Fed independence, data-dependence, and focus on long-term perspective.",
+    "text": "Look, it’s deeply in our culture to do—to do our work based on the incoming data and never consider anything else. That’s just—everybody here who’s at the Fed really feels strongly about that way. So, you know, you’ll know it by the way we talk about what we’re doing, by the speeches that people giv"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Evaluates labor data revisions, survey response rates, and economic modeling issues.",
+    "text": "So, on the QCEW, the revision that we saw was almost exactly what we expected. It was amazing how close the expectation was. And the reason for that is for the last bunch of quarters, there’s been a—almost a predictable overcount. And I think the, you know, the Bureau of Labor Statistics really does"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Stresses forward-looking perspective and taking appropriate policy action.",
+    "text": "You know, we have to live life looking through the windshield rather than the rearview mirror, as you know. And all I can tell you is we see where we are now, and we take appropriate action. And we took that appropriate action today."
+   },
+   {
+    "date": "20250917",
+    "stance": -0.8,
+    "summary": "Signals labor market softening and justifies starting a rate cut path.",
+    "text": "Well, I hadn’t say that I thought a ¼ point would make a huge difference to the economy. But you’ve got to look at the whole path of rates, right? And the market has already—has already been baking in expectations. I mean, our market works through expectations, right? So I think our policy path real"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Discusses economic growth, consumer spending, and low unemployment neutrally.",
+    "text": "I wouldn’t say that. I mean, you’re right. Those are two—we’re getting unusually large amounts of economic activity through the AI build-out and corporate investment. I don’t know how long that will go on. No one does. In terms of spending, you saw the consumer spending numbers were well above expec"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Discusses internal Fed operations, framework reviews, and staffing reductions.",
+    "text": "I—of course, I’m not going to comment on anything the secretary says or, really, any other officer says. So in terms of reform at the Fed, you know, we just—we just went through a lengthy and I think very successful process of updating our monetary policy framework. I would say there’s a lot of work"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Discusses uncertainty in job creation and AI impact without policy signals.",
+    "text": "So there’s great uncertainty around that. I think my view—which is also a bit of a guess, but widely shared I think—is that you are seeing some effects, but it’s not the main thing driving it. And so a particular focus on young people coming out of college and, yeah, there may be something there. It"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Analyzes goods inflation and tariff pass-through without policy stance.",
+    "text": "Well, if you—you can take goods—just sort of the broad goods category, and last year goods inflation was negative. If you go back 25 years, that was the typical thing was that goods inflation was—goods prices generally went down, even adjusting for quality. So that was not the case during the pandem"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Describes FOMC voting dynamics and institutional decision-making process.",
+    "text": "So there’s 12 voters—19 participants, of whom 12 vote, as you know, on a rotating basis. So no one voter, you know, can really—the only way for any voter to really move things around is to be incredibly persuasive. And the only way to do that, in the context in which we work, is to make really stron"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Reiterates commitment to dual mandate goals without specific policy signals.",
+    "text": "Our response is we’re going to do everything we can to use our tools to achieve the goals that Congress has given us. And we’re not going to get distracted by anything. So I think that’s what we’re going to do. We’re just going to keep doing our jobs."
+   },
+   {
+    "date": "20250917",
+    "stance": -0.5,
+    "summary": "Acknowledges labor market downside risks and justifies recent rate cuts.",
+    "text": "So I think there’s quite a wide assessment that the situation has changed with respect to the labor market, whereas we could still say—and did say—in July, at the time of the July meeting, that the labor market was in solid condition, and we could point to 150,000 jobs per month, and many other thin"
+   },
+   {
+    "date": "20250917",
+    "stance": -0.5,
+    "summary": "Noting slowing labor market and rising unemployment, leaning dovish.",
+    "text": "You know, so there are many different ways to calculate it and none of them is perfect, but, you know, it’s clearly come way down. There are—you could say it’s somewhere between zero and 50,000, and you’d be right or wrong. I mean, there’s just many different ways to do it. So wherever it was—150,00"
+   },
+   {
+    "date": "20250917",
+    "stance": -0.5,
+    "summary": "Focus shifted to labor market risks following recent rate decision.",
+    "text": "Well, that would be great. We’d love that to happen. So I don’t know that you see a big tension there, but it’s gratifying to see that economic activity is holding and—you know, so it’s a good, a good bit from consumption. It looks like consumption was stronger than expected—what we got earlier this"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Discussing housing sector sensitivity to interest rates and structural shortage.",
+    "text": "You know, housing is an interest-sensitive activity, so it’s at the very center of monetary policy. When the pandemic hit and we cut rates to zero, the housing companies were incredibly grateful and it was really—they said that was the only thing that kept them going was that we cut so aggressively "
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "General remarks on the difficulty and uncertainty of economic forecasting.",
+    "text": "You know, forecasting is very difficult, even in placid times. And, as I’ve mentioned before, forecasters are a humble lot, with much to be humble about. So I think right now is a particularly challenging time, even more uncertain than usual. And so I don’t know any forecaster anywhere really—ask an"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Discussing balance sheet runoff and abundant reserves without macro impact.",
+    "text": "Well, I think we’re—you know, we’re cutting the size of our balance sheet quite marginally now. As you know, with the balance sheet, we’re still in an abundant- reserves condition. And we’ve said that we would stop somewhat above a—somewhat above an ample-reserves level. That’s where we are. And we’"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Institutional discussion reaffirming the dual mandate and price stability.",
+    "text": "So we always think of it as the dual mandate, maximum employment and price stability, for a long time, because we think moderate, long-term interest rates are something that will result from stable inflation—low and stable inflation and maximum employment. So we don’t—we haven’t thought about that f"
+   },
+   {
+    "date": "20250917",
+    "stance": -0.5,
+    "summary": "Lower rates should support economic activity and the labor market.",
+    "text": "So, you know, we’re aware of that. I think default rates have been kind of ticking up. And we do watch that. They’re not at a level—I don’t believe they’re at a level where, overall, they’re, you know, terribly concerning. But it is something that we watch. You know, lower rates should support econo"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Reviewing dual mandate goals and monitoring financial stability vulnerabilities.",
+    "text": "You know, we’re tightly focused on our goals, right? And our goals are maximum employment and price stability. And so we take the actions that we take with an eye on those goals. Separately—and that’s why we did what we did today. Separately, we monitor financial stability very, very carefully. And,"
+   },
+   {
+    "date": "20250917",
+    "stance": 0.0,
+    "summary": "Balanced remarks on dual mandate, anchored inflation expectations, and institutional independence.",
+    "text": "So, as you said, shorter-term inflation expectations have tended to respond to near-term inflation, so if inflation goes up, inflation expectations will predict that it takes just a little while to get back down. Fortunately, throughout this period, longer-term inflation expectations, both breakeven"
+   },
+   {
+    "date": "20251029",
+    "stance": -0.5,
+    "summary": "Cut rates by 25 bps and concluded balance sheet reduction.",
+    "text": "Good afternoon. My colleagues and I remain squarely focused on achieving our dual-mandate goals of maximum employment and stable prices for the benefit of the American people. Although some important federal government data have been delayed due to the shutdown, the public- and private-sector data t"
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "No decision made for December; differing views on committee.",
+    "text": "Well, as I just mentioned, a further reduction to the policy rate at the December meeting is not a foregone conclusion, as I’ve just said. So I would say that that needs to be taken on board. We had—you know, I would just say this—19 participants on the Committee, everyone works very hard at this an"
+   },
+   {
+    "date": "20251029",
+    "stance": -0.5,
+    "summary": "Policy needs to move toward neutral due to labor risks.",
+    "text": "So the way we have been thinking—the way I’ve been thinking about it is the risks to the two goals—for a very long time, the risk was clearly of higher inflation, and then that has changed now. And as we saw the—particularly after we saw—after the July meeting, we saw downward revisions in job creat"
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Conflicting risks for inflation and employment create disparate views.",
+    "text": "I wouldn’t say that’s a—that’s a factor in everyone’s assessment of the economy. I wouldn’t say it’s a driving factor, I don’t think, for anybody. I guess I would say it this way: Once again, I would just point out that we have the situation where the risks are to the upside for inflation and to the"
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Announced freezing the size of the balance sheet.",
+    "text": "That could be one of the factors, but the reality is that we’ve seen— the things that we’ve seen, higher repo rates and the federal funds rate moving up, these are the very things that we—that we look for. We actually have a framework for looking at the place we’re trying to reach. What we said for "
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Labor market is gradually cooling, giving some comfort.",
+    "text": "Yeah, I mean in principle if you were to see data that suggested that the labor market is strengthening or even that it’s stabilizing, that would certainly play into our decisions going forward. So, and we do have—we get some data. The labor market is a place where we get—for example, we get the sta"
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Uncertainty ahead of December meeting warrants caution.",
+    "text": "Yeah. So we’ll—we get—I mentioned what we get in the labor area. We get some data in inflation, some data in economic activity. And we’ll get—we’ll have a picture of what’s going on. We also will have the Beige Book again. I would say we’re not going to be able to have the detailed feel of things, b"
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Acknowledged differing committee views on future rate path.",
+    "text": "So I was referring to the discussion about—to the extent it related to December. You saw we had two dissents, one for 50 and one for no cut. So that was a strong, solid vote in favor of this cut. The strongly differing views were really about the future, what does that look like? And I think people "
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Discusses balance sheet technical adjustments and shortening duration without policy shift.",
+    "text": "So you’re right. The place we’ll be on December 1 is that the size of the balance sheet is frozen, and as mortgage-backed securities mature, we’ll reinvest those in Treasury bills, which will foster both a more Treasury balance sheet and also a shorter duration. So that’s—in the meantime, if you fre"
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Analyzed inflation components, noting tariff impacts are largely one-off risks.",
+    "text": "So, okay, so the September CPI report, we didn’t get PPI after that, which is—which is important for translation into what we look at, which is PCE inflation. But we can still make a pretty good assessment of what that will be. When we get PPI, there might be some adjustments. But so directionally, "
+   },
+   {
+    "date": "20251029",
+    "stance": 0.5,
+    "summary": "Policy remains modestly restrictive; firm commitment to returning inflation to 2%.",
+    "text": "Oh, stubborn services inflation. Well, again, the part of services inflation that is—that isn’t coming down as we would like it to is the nonmarket part of nonhousing services. And, overall, that’s just something that we expect will come down. The nonhousing—the nonmarket part of it should come down"
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Notes that AI data center investments are not particularly interest sensitive.",
+    "text": "So I don’t—I don’t think that the—you’re right, there’s a—there’s a lot of data centers being built and other investments being made around the country and around the world. And big U.S. companies are just investing a lot of resources in thinking about how AI, which will be based on those data cente"
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Discusses alternative data sources to monitor the economy amid missing government data.",
+    "text": "So it’s a lot of things. And it doesn’t replace government data, but you know all of these, it’s—I’ll just mention some of the many, many names: PriceStats, Adobe, and others. And for wage inflation, there’s ADP data. On spending—you’re going to ask about spending at some point—there are lots of oth"
+   },
+   {
+    "date": "20251029",
+    "stance": -0.5,
+    "summary": "Suggests slowing down or being cautious on rate moves amid missing data.",
+    "text": "This is a temporary state of affairs. And we’re going to do our jobs, we’re going to collect every scrap of data we can find, evaluate it, and think carefully about it. And that’s our jobs—that’s what we’re going to do. If you ask me, “Could it affect the December meeting?”, I’m not saying it’s goin"
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Observes anecdotal reports of layoffs and bifurcated consumer spending without policy signals.",
+    "text": "So those are—those are both things that we’re watching very, very, very carefully. To start with the layoffs, you’re right—you see a significant number of companies either announcing that they are not going to be doing much hiring or actually doing layoffs, and much of the time they’re talking about"
+   },
+   {
+    "date": "20251029",
+    "stance": -0.5,
+    "summary": "Notes committee divisions and arguments for pausing after recent rate cuts.",
+    "text": "Well, perspectives of people on the Committee that we’ve now moved 150 basis points and that we’re down into—you’re into that range between 3 and 4, where most estimates of—many estimates of the neutral rate live in that 3 to 4 percent area. You’re there now. You’re above the median number for the C"
+   },
+   {
+    "date": "20251029",
+    "stance": -0.5,
+    "summary": "Signals recent rate cuts and a potential pause to assess stance.",
+    "text": "I—look, everybody on the Committee is deeply committed to doing the right thing to achieve our goals: maximum employment and stable prices. You have differences on how to do that. And as I mentioned, some of that is different forecasts, but a lot of it is also different risk aversions to the two dif"
+   },
+   {
+    "date": "20251029",
+    "stance": -0.75,
+    "summary": "Justifies recent rate reductions to support a softening labor market.",
+    "text": "So the—I think there are two things affecting the job market, and one of them is just a dramatic reduction in the supply of new workers. So and that’s two things— that’s declining labor force participation, which is a cyclical thing, and then there’s declining immigration—which is just a big policy "
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Discusses tariff-driven inflation as temporary and consumer sentiment.",
+    "text": "So the basic expectation is that there will be some additional increased inflation because it takes a while for tariffs to work their way through the production chain and finally get to consumers. And we see this now from the tariffs that were put in place now many months ago—we see those effects. B"
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Evaluates overall financial stability and notes a mixed household picture.",
+    "text": "You know, we don’t look at any one asset price and say, “Hey, that’s wrong.” It’s not our job to do that. We look at the overall financial system, and we ask whether it’s stable and whether it could withstand shocks, right? So banks are well capitalized, while some households are clearly under stres"
+   },
+   {
+    "date": "20251029",
+    "stance": -0.5,
+    "summary": "Supports lowering rates cautiously to bolster labor demand despite inflation uncertainty.",
+    "text": "Yeah, I don’t—I don’t think interest rates are an important part of the AI—the data center story. I think—people think there are great economics in building these data centers, and they’re making a lot of money building them, and I think they have very high present value and all that sort of thing. "
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Compares current tech valuations to the 90s and notes consumer spending.",
+    "text": "This is—this is different in the sense that these companies—the companies that are so highly valued—actually have earnings and stuff like that. So you go back to the’90s and the dot-com [period], they were—these were ideas rather than companies. And we’re—so there’s a clear bubble there, whereas the"
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Reviews labor supply contraction and moderate economic growth.",
+    "text": "Why has it slowed so much? Well, what’s happened is that the supply of workers has dropped very, very sharply due to mainly immigration, but also lower labor force participation. And that means there’s less need for new jobs, because there’s—there isn’t this flow into the pool of labor where people "
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Discusses policy uncertainty and data dependency for future meetings.",
+    "text": "Yeah, well, we’ll know when we face that question—if we face that question. I—it’ll probably be argued both ways, right? But I’ve said a couple times here that if you—if you really aren’t getting information, you really don’t know, and the economy looks like it’s solid and stable and hasn’t really c"
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Procedural remarks on agency capital discussions without policy signal.",
+    "text": "So there’s discussions going on, I think, among the agencies, and I don’t want to get ahead of those discussions. I continue to think that the level of capital, when I said that in 2020, was about right. And, of course, there’s been much capital added since then, through various mechanisms, but I lo"
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Assessment of stable job market and aggregate employment data.",
+    "text": "So we do not see the weakness, as you put it, the weakness in the job market accelerating. I would say, then again, we don’t have—we didn’t get the September employment report, payroll report, but we do get—we look at the unemployment insurance claims, initial claims are reported at the state level,"
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "General discussion of dual mandate and labor market benefits.",
+    "text": "So, we can’t—our tools don’t allow us to target any demographic or any income level and that kind of thing. I do think that people—we saw this during the Global Financial Crisis and the long recovery. If you have a long period of very strong labor market conditions, it benefits people at the lower e"
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Institutional remarks on Reserve reappointment process under the law.",
+    "text": "So it’s a process that we go through, under the law. The way the law works is, we have a reappointment process every five years for all of the—all of the Reserve— each of them and all of them. We’re in the middle of that process, and we’re going to complete it in a timely way. And I really—that’s re"
+   },
+   {
+    "date": "20251029",
+    "stance": -0.5,
+    "summary": "Acknowledges dual mandate trade-offs and anticipates eventual rate cuts.",
+    "text": "I wouldn’t say that, no. I think you—you have to take what comes, and what comes right now is a pretty challenging situation where we have—first of all, we have 4.3 percent unemployment, we have an economy that’s growing close to 2 percent. So, overall, it’s a good picture. It’s a good picture. But "
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Monitoring subprime credit losses without indicating broader systemic policy action.",
+    "text": "So, we’re—obviously we watch these things very carefully, credit conditions very carefully. You’re right—you’ve seen rising defaults in subprime credit for some time now, and now you’ve seen a number of subprime credit—automobile credit institutions having significant losses, and some of those losse"
+   },
+   {
+    "date": "20251029",
+    "stance": 0.0,
+    "summary": "Economic analysis of wealth effects and marginal propensity to consume.",
+    "text": "So there is some—there is some relationship there, but, remember, the more wealth someone has, the lower an additional dollar of wealth matters. So your marginal propensity to consume declines quite dramatically as you reach—as you reach levels of stock market wealth. So the stock market—it would af"
+   },
+   {
+    "date": "20251210",
+    "stance": -0.5,
+    "summary": "Fed cuts rates by 25bps, citing cooling labor market and risks.",
+    "text": "Good afternoon. My colleagues and I remain squarely focused on achieving our dual-mandate goals of maximum employment and stable prices for the benefit of the American people. Although important federal government data for the past couple of months have yet to be released, available public- and priv"
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Policy is now near neutral; Fed is well-positioned to wait.",
+    "text": "So, yes, the adjustments since September bring our policy within a broad range of estimates of neutral. And as we noted in our statement today, we are well positioned to determine the extent and timing of additional adjustments based on the incoming data, the evolving outlook, and the balance of ris"
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Discusses growth outlook, AI investment, and resilient consumer spending trends.",
+    "text": "So a number of things are driving what’s happening in the forecast. And I would say, if you look broadly at outside forecasts, you do see a pickup in growth in many of those now, too. So it is—it’s partly that consumer spending has held up. It’s been resilient. To another degree, it is that AI—spend"
+   },
+   {
+    "date": "20251210",
+    "stance": -0.5,
+    "summary": "Shifted from inflation focus to balanced mandate; now waiting for data.",
+    "text": "So we’re going to get a great deal of data between now and the January meeting. And I’m sure we’ll talk more about that. And that will—the data that we get are going to factor into our thinking. But, yes, we have—if you go back, we held our policy rate at, you know, 5.4 percent for more than a year "
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Discusses structural productivity gains and their impact on economic growth.",
+    "text": "So it is—the implication is obviously higher productivity. And some of that may be AI. It just—also, I think productivity has just been almost structurally higher for several years now. So if you start thinking of it as 2 percent per year, you can sustain higher growth without more job creation. Of "
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Acknowledges tension between inflation and labor risks; emphasizes data-dependent approach.",
+    "text": "Sure. So let me just say, as I mentioned—and as I’ve mentioned here before—the situation is that our two goals are a bit in tension, right? So, interestingly, everyone around the table at the FOMC agrees that inflation is too high and that we want it to come down and agrees that the labor market has"
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Describes policy as a close call; emphasizes waiting for incoming data.",
+    "text": "I wouldn’t—I don’t feel that we’re at that point at all. I don’t. I would say, again, these are good, thoughtful, respectful discussions. And you hear people say— and you’ll hear many outside analysts say the same thing. I could make a case for either side. I mean, I could make that case. It’s a clo"
+   },
+   {
+    "date": "20251210",
+    "stance": -0.5,
+    "summary": "Rate hikes are not the base case; focus is on cutting.",
+    "text": "So I don’t think that a rate hike is anybody’s base as the next thing— is anybody’s base case at this point. And I’m not hearing that. What you see is some people feel we should stop here and that we’re at the right place and just wait. Some people feel like we should cut once or more this year and "
+   },
+   {
+    "date": "20251210",
+    "stance": -0.5,
+    "summary": "Policy is in neutral range; wait-and-see approach regarding future data.",
+    "text": "So, yeah, the idea is that with now having cut 75 basis points more now and having policy, you know, I’d call it in a broad range of plausible estimates of neutral, that that will be a place which will enable the labor market to stabilize or to only kick up one or two more tenths. But we won’t see, "
+   },
+   {
+    "date": "20251210",
+    "stance": -0.5,
+    "summary": "Labor market cooling and lower inflation justify recent rate cuts.",
+    "text": "Right. So in October, I said that there was no certainty of moving. And that was indeed correct. I said it’s possible you could think about it that way, but I was careful to say other people could look at it differently. So why did we move today? You know, I would say—point to a couple of things. Fi"
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Technical reserve management; explicitly stated as separate from monetary policy.",
+    "text": "Well, I wouldn’t say “concerned.” So what really happened is this: Balance sheet shrinkage, sometimes called QT, went on. We had a framework in place for monitoring it, and nothing happened. The overnight reverse repo facility went down pretty much close to zero. And then, beginning in mid-September"
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Refusal to comment on legal matters; neutral procedural stance.",
+    "text": "It’s not something I want to address here, Andrew. You know, we’re not legal commentators. It’s before the courts, and we think our—we don’t think that we help matters by trying to engage as a public discussant of that. I’ll give you a mulligan, though."
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Balanced approach to dual mandate; policy is currently in neutral range.",
+    "text": "I don’t think it rises to that level. So I did think that in 2019, when we cut three times. But, you know, this is such a unique situation. This is—it’s not the 1970s, let’s put it that way. But we do have tension between our two goals. And so that’s just unique in my time at the Fed and I think goi"
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Technical analysis of tariff impacts on inflation; no policy signal provided.",
+    "text": "So with tariff inflation, you know, it takes—there’s the announcement of a tariff and then there’s—you know, they start to take effect. And then it takes some months. Goods may have to be shipped from other parts of the—you know, it may take, you know, quite a while for an individual tariff to take "
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Long-term inflation expectations remain anchored; market rate moves reflect growth.",
+    "text": "So we’re looking at the real economy and focusing on that. And you have—you’ve got—when the long bonds move around, you’ve got to look at why they’re moving around. If you look at inflation compensation, it’s very—that’s one part of it is inflation compensation breakevens, and, you know, they’re at "
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Balanced focus on restoring 2% inflation while supporting labor market.",
+    "text": "So we—as you know, we have a network of contacts in the U.S. economy which is really unmatched if you go through the 12 Reserve Banks. So we hear loud and clear how people are experiencing, really, costs. It’s really high costs. And a lot of that is not the current rate of inflation. A lot of that i"
+   },
+   {
+    "date": "20251210",
+    "stance": -0.5,
+    "summary": "Acknowledges inflation risks but emphasizes significant downside risks to the labor market.",
+    "text": "Everyone should understand, and the surveys show that they do, that we’re committed to 2 percent inflation and we will deliver 2 percent inflation. But it’s a complicated, unusual, difficult situation where the labor market is also under pressure, where job creation may actually be negative. Now, su"
+   },
+   {
+    "date": "20251210",
+    "stance": -0.5,
+    "summary": "Concerns about overcounted job growth and avoiding restrictive policy on labor demand.",
+    "text": "Oh, well, we just—we know, I think. It’s, it’s—this is—I don’t think this is particularly controversial. There’s a—it’s very difficult to estimate job growth in real time. They don’t count everybody. They have a survey. And there’s been something of a systematic overcount. And so we expect it and th"
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Neutral observation on AI, labor market dynamics, and long-term productivity trends.",
+    "text": "So it’s probably part of the story. It’s not a big part of the story yet. We don’t know whether it will be. But, you know, for example, if you look at—you can’t miss the big announcements of layoffs and also companies saying that they’re not going to hire anybody for a long time, and they cite AI—th"
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Procedural comment regarding internal committee views and lack of consensus.",
+    "text": "You know, it’s not so stark as that. The views are more varied on each—in each group as well. There’s some of that, but I would say there are also Governors and there are people in both—on both sides in both groups. So I wouldn’t put too much in that."
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Declines to provide a specific policy outlook due to uncertainty.",
+    "text": "I really don’t know. It would depend on—it would depend on a whole bunch of things we don’t know. So I can’t really help you there."
+   },
+   {
+    "date": "20251210",
+    "stance": -0.5,
+    "summary": "Highlights consumer belt-tightening and the social importance of a strong labor market.",
+    "text": "So we do, through our vast network of contacts and just through our observation of what’s going on in the economy, we hear about this a lot. If you listen to the earnings reports for consumer-facing companies that tend to deal with low- and moderate- income people, they’ll all say that we’re seeing "
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Notes structural housing issues are beyond the scope of interest rate policy.",
+    "text": "Yeah, so the housing market faces some really significant challenges. And I don’t know that, you know, a 25 basis point decline in the federal funds rate is going to make much of a difference for people. You know, housing supply is low. Many people have very, very low-rate mortgages from the pandemi"
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Balanced discussion of inflation persistence risks versus one-time price shocks.",
+    "text": "Well, I think the risk of inflation is pretty clear to see. And that is, you know, we see higher inflation, as I mentioned. Most of the inflation over target is from goods. And we think, we estimate, we expect—most of us—that inflation will be a one-time price increase and then come down. We just ca"
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Discusses productivity trends and AI impact without signaling specific policy changes.",
+    "text": "So, yeah, I mean, I never thought I would see a time when we had, you know, five, six years of 2 percent productivity growth. This is higher. You know, this is definitely higher. And it was—before, it could be attributed to AI. I think you—I also think if you look at what AI can do and if you use it"
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Acknowledges uncertainty regarding the neutral rate without taking a policy stance.",
+    "text": "All—you know, all things equal, yes. But all things aren’t equal. There are many, many things pushing in different directions on where the neutral rate would be. But, yes, that argument does come up."
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "States general goals of price stability and strong labor market.",
+    "text": "My legacy. I—my thought is that I really want to turn this job over to whoever replaces me in—with the economy in really good shape. That’s what I want to do. I want inflation to be under control, coming back down to 2 percent, and I want the labor market to be strong. That’s what I want. And all of"
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Procedural comment regarding tenure as Chair; no policy signal provided.",
+    "text": "Again, I’m focused on—I’m focused on my remaining time as Chair. I haven’t got anything new on that to tell you."
+   },
+   {
+    "date": "20251210",
+    "stance": 0.0,
+    "summary": "Describes current policy as neutral and defends past economic performance.",
+    "text": "I don’t know. I would—I wouldn’t agree that that’s collateral damage of our—I mean, over time, we do what we do in order to create price stability and maximum employment. And those things are hugely valuable to all of the people we serve. When we raise rates to bring inflation down, you know, that d"
+   }
+  ]
  }
 }

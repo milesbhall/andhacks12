@@ -132,26 +132,29 @@
         <label><input type="radio" name="src" value="upload"> 📁 Upload a recording</label>
         <label><input type="radio" name="src" value="url"> 🔗 Stream URL</label>
       </div>
-      <div class="row" id="src-replay" hidden><select id="replay-date" style="max-width:320px"></select><span class="muted">Played back at 10× speed.</span></div>
-      <div class="row" id="src-upload" hidden><input id="audio-upload" type="file" accept=".mp3,.m4a,.wav,.webm,.ogg,.mp4,audio/*"><span class="muted">50 MB max, played at normal speed.</span></div>
-      <div class="row" id="src-url" hidden><input id="stream-url" type="url" placeholder="https://www.federalreserve.gov/…" style="max-width:520px"></div>
+      <div class="row" id="src-replay" hidden><select id="replay-date" style="max-width:640px"></select><span class="muted">Press conferences and speeches by Warsh and Powell. The speaker baseline switches automatically.</span></div>
+      <div class="row" id="src-upload" hidden><input id="audio-upload" type="file" accept=".mp3,.m4a,.wav,.webm,.ogg,.mp4,audio/*"><span class="muted">50 MB max. Pick a playback speed below.</span></div>
+      <div class="row" id="src-url" hidden><input id="stream-url" type="url" placeholder="https://www.youtube.com/watch?v=…  or  https://www.federalreserve.gov/…" style="max-width:560px"><span class="muted">YouTube (live or recorded) and federalreserve.gov.</span></div>
       <div class="row" id="src-mic"><span class="muted">Try: “Inflation is still far too high. We are prepared to raise rates again in October.”</span></div>
       <div class="opgrid">
         <div><label for="opt-speaker">Speaker</label><select id="opt-speaker"><option value="kevin_warsh">kevin warsh</option></select></div>
-        <div><label for="opt-mode">Trading mode</label><select id="opt-mode"><option value="dry">Dry run</option><option value="demo">Kalshi demo (fake money)</option></select></div>
+        <div><label for="opt-mode">Trading mode</label><select id="opt-mode"><option value="dry">Dry run</option><option value="demo">Kalshi demo (fake money)</option><option value="live">LIVE (real money)</option></select></div>
         <div><label for="opt-qty">Contracts per order</label><input id="opt-qty" type="number" min="1" max="5" value="2"></div>
         <div><label>Venues</label><div class="row" style="margin-top:4px"><label class="chk"><input type="checkbox" id="v-kalshi" checked> Kalshi</label><label class="chk"><input type="checkbox" id="v-poly" checked> Polymarket</label></div></div>
       </div>
-      <div class="row">
-        <label class="chk"><input type="checkbox" id="opt-recs"> Also run the live Kalshi + Polymarket recommenders</label>
+      <div class="row" id="speed-row" hidden>
+        <label for="opt-speed" class="muted">Playback speed</label>
+        <select id="opt-speed" style="max-width:160px"><option value="0">Default</option><option value="1">1× (real time)</option><option value="2">2×</option><option value="3">3×</option><option value="4">4×</option><option value="5">5×</option><option value="10">10×</option><option value="20">20×</option></select>
+        <span class="muted" id="speed-note">Replays default to 10×, recordings to 1×.</span>
       </div>
+      <div class="muted" style="margin-top:10px">The Kalshi + Polymarket market recommenders start automatically with every session.</div>
       <div class="row">
         <button class="btn" id="control-start" type="button">▶ Start</button>
         <button class="btn stop" id="control-stop" type="button">■ Stop</button>
         <span style="flex:1"></span>
         <button class="btn ghost" id="operator-logout" type="button">Sign out</button>
       </div>
-      <div class="muted" style="margin-top:8px">Limits: $10/order, $50/day. Real-money trading can only be started from the laptop, never from this page.</div>
+      <div class="muted" style="margin-top:8px">Limits: $10/order, $50/day, kill switch on the laptop. LIVE asks you to type LIVE before any real order can be sent.</div>
     </div>
   </div>
 
@@ -176,7 +179,7 @@
     <div>
       <div class="card"><h2>Surprise vs. the speaker's usual stance (z-score)</h2><svg id="chart" viewBox="0 0 640 220" preserveAspectRatio="none"></svg>
         <div class="muted">Above +2 = hawkish surprise, below −2 = dovish surprise. Each dot is a passage of speech.</div></div>
-      <div class="card"><h2>Transcript</h2><div id="transcript" class="muted">Waiting for speech…</div></div>
+      <div class="card"><h2>Transcript</h2><div id="hearing" class="muted" style="margin-bottom:8px" hidden></div><div id="transcript" class="muted">Waiting for speech…</div></div>
     </div>
     <div>
       <div class="card"><h2>Orders</h2><div id="orders" class="muted">No orders yet.</div></div>
@@ -215,7 +218,7 @@
 
   <section id="tab-replay" hidden>
     <div class="card"><h2>Press conference replay</h2>
-      <div class="row" style="margin-top:0"><select id="rp-run" style="max-width:360px"></select><span class="muted">Scored answer by answer. |z| ≥ 2 is a surprise.</span></div>
+      <div class="row" style="margin-top:0"><select id="rp-run" style="max-width:640px"></select><span class="muted">Scored answer by answer. |z| ≥ 2 is a surprise.</span></div>
       <div id="rp-body" class="muted" style="margin-top:10px">Loading…</div>
     </div>
   </section>
@@ -244,6 +247,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const cents = (p) => p == null ? "—" : Math.round(p * 100) + "¢";
 const sgn = (x, d = 2) => x == null ? "—" : (x >= 0 ? "+" : "") + Number(x).toFixed(d);
+let liveConfirmed = false;
 let lastUpdate = 0, controlCsrf = "", controlBusy = false, authed = false, archive = null;
 
 // ---------------------------------------------------------------- tabs
@@ -274,7 +278,8 @@ function sessionForm() {
   f.set("qty", $("opt-qty").value);
   if ($("v-kalshi").checked) f.append("venues[]", "kalshi");
   if ($("v-poly").checked) f.append("venues[]", "polymarket");
-  if ($("opt-recs").checked) f.set("recommenders", "1");
+  f.set("speed", $("opt-speed").value);
+  if ($("opt-mode").value === "live") f.set("confirm_live", liveConfirmed ? "LIVE" : "");
   return f;
 }
 
@@ -307,7 +312,18 @@ async function refreshControls() {
 document.querySelectorAll("input[name=src]").forEach(r => r.onchange = () => {
   const v = document.querySelector("input[name=src]:checked").value;
   ["mic", "replay", "upload", "url"].forEach(k => $("src-" + k).hidden = k !== v);
+  $("speed-row").hidden = v === "mic";
 });
+$("opt-mode").onchange = () => {
+  liveConfirmed = false;
+  if ($("opt-mode").value !== "live") return;
+  const typed = prompt("LIVE sends REAL-MONEY orders to Kalshi and Polymarket (limits: $10/order, $50/day).\nType LIVE to confirm:");
+  if (typed === "LIVE") liveConfirmed = true; else $("opt-mode").value = "dry";
+};
+$("replay-date").onchange = () => {
+  const item = ((archive && archive.replay_dates) || []).find(i => i.id === $("replay-date").value);
+  if (item && [...$("opt-speaker").options].some(o => o.value === item.speaker)) $("opt-speaker").value = item.speaker;
+};
 $("operator-login").onclick = async () => {
   const form = new FormData(); form.set("password", $("operator-password").value);
   try { await controlApi("login", form); $("operator-password").value = ""; await refreshControls(); }
@@ -458,17 +474,21 @@ async function loadArchive() {
     archive = await r.json();
   } catch (e) { if (!archive) { $("rp-body").textContent = "Archive not published yet (start the laptop worker)."; $("hist-signals").textContent = $("hist-trades").textContent = "Archive not published yet."; } return; }
   const cur = $("rp-run").value;
-  $("rp-run").innerHTML = (archive.replays || []).map(r => `<option value="${esc(r.name)}">${esc(r.name.replace("replay_", "Press conference "))}</option>`).join("");
+  $("rp-run").innerHTML = (archive.replays || []).map(r => `<option value="${esc(r.name)}">${esc(r.label || r.name)}</option>`).join("");
   if (cur) $("rp-run").value = cur;
-  const dates = archive.replay_dates || [];
-  if (dates.length && !$("replay-date").options.length)
-    $("replay-date").innerHTML = dates.slice().reverse().map(d => `<option value="${d}">FOMC press conference ${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}</option>`).join("");
+  const dates = (archive.replay_dates || []).filter(d => d && d.id);
+  if (dates.length && $("replay-date").dataset.n !== String(dates.length)) {
+    const cur2 = $("replay-date").value;
+    $("replay-date").innerHTML = dates.map(d => `<option value="${esc(d.id)}">${esc(d.label)}</option>`).join("");
+    $("replay-date").dataset.n = String(dates.length);
+    if (cur2 && dates.some(d => d.id === cur2)) $("replay-date").value = cur2;
+  }
   const sp = archive.speakers || [];
   if (sp.length && $("opt-speaker").options.length !== sp.length)
     $("opt-speaker").innerHTML = sp.map(s => `<option value="${s}">${s.replace("_", " ")}</option>`).join("");
   drawReplay(); drawHistory();
 }
-$("replay-date").innerHTML = ["20260916", "20260729", "20260617"].map(d => `<option value="${d}">FOMC press conference ${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}</option>`).join("");
+$("replay-date").innerHTML = '<option value="20260916">FOMC press conference · Chair Kevin Warsh · 2026-09-16</option>';
 
 // ---------------------------------------------------------------- live view
 function cleanTitle(title, market) {
@@ -510,6 +530,8 @@ function badge(status) {
 
 function render(d) {
   const s = d.live || {};
+  $("hearing").hidden = !d.hearing;
+  $("hearing").innerHTML = d.hearing ? `🎙 <b>Hearing:</b> ${esc(d.hearing)}…` : "";
   const mode = s.mode || (s.live_orders ? "live" : "dry");
   $("mode").className = "pill " + (mode === "live" ? "real" : mode === "demo" ? "demo" : "");
   $("mode").textContent = mode === "live" ? "REAL MONEY" : mode === "demo" ? "KALSHI DEMO" : "DRY RUN";

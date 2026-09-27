@@ -101,7 +101,7 @@ if ($action === 'start') {
         if (!move_uploaded_file($file['tmp_name'], $config['storage_dir'] . '/' . $uploadId)) control_json(500, ['ok' => false, 'error' => 'Could not save upload']);
     } elseif ($type === 'replay') {
         $replayDate = (string)($_POST['replay_date'] ?? '');
-        if (!preg_match('/^20\d{6}$/', $replayDate)) control_json(400, ['ok' => false, 'error' => 'Choose a press conference']);
+        if (!preg_match('/^[a-z0-9_]{6,40}$/', $replayDate)) control_json(400, ['ok' => false, 'error' => 'Choose a press conference or speech']);
     } elseif ($type !== 'mic') {
         control_json(400, ['ok' => false, 'error' => 'Choose an audio source']);
     }

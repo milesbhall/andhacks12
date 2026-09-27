@@ -465,9 +465,11 @@ def simulate(date: str, speed: float):
                 yield sentence
 
 
-def chunks(sentences):
+def chunks(sentences, per_utterance: bool = False):
     """Group sentences into passages long enough to score. A pause of PAUSE_SECONDS
-    flushes a shorter passage (someone talking into the mic says one or two sentences)."""
+    flushes a shorter passage (someone talking into the mic says one or two sentences).
+    per_utterance=True (microphone): every committed utterance of MIN_PAUSE_WORDS+ words
+    is scored right away instead of waiting for 25 words or a 2-second pause."""
     buf, last = [], None
     for sentence in sentences:
         if not sentence.strip():
@@ -480,7 +482,8 @@ def chunks(sentences):
         last = time.time()
         words = sum(len(s.split()) for s in buf)
         ends = buf[-1].endswith((".", "?", "!"))
-        if (words >= MIN_WORDS and ends) or words >= MAX_WORDS or buf[-1].endswith("?"):
+        if (per_utterance and words >= MIN_PAUSE_WORDS) or \
+                (words >= MIN_WORDS and ends) or words >= MAX_WORDS or buf[-1].endswith("?"):
             yield " ".join(buf), last
             buf = []
     if buf:
@@ -530,7 +533,7 @@ def main():
                     source="simulate" if args.simulate else args.source, surprises_only=args.surprises_only)
     sentences = simulate(args.simulate, args.speed) if args.simulate else watch_file(args.watch)
     try:
-        for text, heard_at in chunks(sentences):
+        for text, heard_at in chunks(sentences, per_utterance=(args.source == "mic" and not args.simulate)):
             desk.handle(text, heard_at)
     except KeyboardInterrupt:
         pass

@@ -126,18 +126,23 @@ function control_source_url(string $value, array $config): ?string {
     $url = parse_url($value);
     if (!$url || strtolower($url['scheme'] ?? '') !== 'https' || empty($url['host']) || isset($url['user']) || isset($url['pass']) || isset($url['port'])) return null;
     $host = strtolower(rtrim($url['host'], '.'));
-    $allowed = array_map('strtolower', $config['source_hosts'] ?? []);
+    $allowed = array_map('strtolower', array_merge($config['source_hosts'] ?? [],
+        ['www.federalreserve.gov', 'www.youtube.com', 'youtube.com', 'm.youtube.com', 'youtu.be']));
     if (!in_array($host, $allowed, true)) return null;
     return $value;
 }
 
 function control_session_options(array $p): array {
-    $mode = in_array($p['mode'] ?? 'dry', ['dry', 'demo'], true) ? (string)$p['mode'] : 'dry';
+    $mode = in_array($p['mode'] ?? 'dry', ['dry', 'demo', 'live'], true) ? (string)$p['mode'] : 'dry';
+    // Real money only with the typed confirmation from the page.
+    if ($mode === 'live' && (string)($p['confirm_live'] ?? '') !== 'LIVE') $mode = 'dry';
+    $speed = (float)($p['speed'] ?? 0);
+    if (!in_array($speed, [1.0, 2.0, 3.0, 4.0, 5.0, 10.0, 20.0], true)) $speed = 0.0;
     $speaker = (string)($p['speaker'] ?? 'kevin_warsh');
     if (!preg_match('/^[a-z_]{3,40}$/', $speaker)) $speaker = 'kevin_warsh';
     $qty = max(1, min(5, (int)($p['qty'] ?? 2)));
     $venues = array_values(array_intersect(['kalshi', 'polymarket'], (array)($p['venues'] ?? ['kalshi', 'polymarket'])));
     if (!$venues) $venues = ['kalshi', 'polymarket'];
     return ['mode' => $mode, 'speaker' => $speaker, 'qty' => $qty, 'venues' => $venues,
-            'recommenders' => !empty($p['recommenders'])];
+            'speed' => $speed, 'confirm_live' => $mode === 'live' ? 'LIVE' : '', 'recommenders' => true];
 }
