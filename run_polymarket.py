@@ -9,16 +9,16 @@ Polymarket twin of run_kalshi_ticker2.py: same input, same output shape.
 
 Reads the transcript JSON exactly the way run_kalshi_ticker2.py does (the
 "text" field if present, otherwise the Chair's segments, otherwise every
-segment), asks polymarket_client.find_markets for the best matches, and
-prints the top 3 with the same keys as the Kalshi runner:
-    ticker, event_title, market_title, relevance_score, reasoning
-plus Polymarket extras: direction (YES_UP / YES_DOWN), side, best_bid, best_ask.
+segment), and emits the shared venue output schema with a speaker-baseline
+snapshot, market candidates, direction where available, and best bid/ask.
+Only baseline surprises (|z| >= 2) are promoted from candidates to recommendations.
 
 --watch mirrors `run_kalshi_ticker2.py --watch`: download the Polymarket
 catalog once, index it with Dylan's MarketCatalogIndex (same TF-IDF ranking
-code), and re-rank on every new sentence of live_transcript.json, with no
-Gemini call per sentence. Results go to live_polymarket_recommendations.json in the same
-format as live_recommendations.json, plus current Polymarket prices.
+code), and re-rank on every new sentence of live_transcript.json. Each
+20+-word statement is scored against the selected speaker's stance baseline.
+Results go to live_polymarket_recommendations.json using the same schema as
+live_recommendations.json.
 """
 
 import argparse
@@ -26,12 +26,12 @@ import json
 import os
 import re
 import time
-from datetime import datetime, timezone
 from pathlib import Path
 
 os.environ.setdefault("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
 from polymarket_client import PUBLIC_BASE_URL, PolymarketPublic, find_markets
+from recommendation_schema import baseline_snapshot, output_payload, recommendation
 
 
 INPUT_PATH = Path(__file__).with_name("20260916.json")
@@ -90,17 +90,16 @@ def find_relevant_markets(speech_text: str, top_n: int = TOP_N) -> list:
         score = float(m.get("relevance", 0))
         if score < MIN_RELEVANCE_SCORE:
             continue
-        results.append({
-            "ticker": m["slug"],
-            "event_title": m.get("event") or "",
-            "market_title": m.get("question") or m.get("title") or m["slug"],
-            "relevance_score": score,
-            "reasoning": m.get("reason", ""),
-            "direction": m.get("direction"),
-            "side": "yes" if m.get("direction") == "YES_UP" else "no",
-            "best_bid": m["quote"].get("best_bid"),
-            "best_ask": m["quote"].get("best_ask"),
-        })
+        results.append(recommendation(
+            venue="polymarket",
+            market_id=m["slug"],
+            event_title=m.get("event") or "",
+            market_title=m.get("question") or m.get("title") or m["slug"],
+            relevance_score=score,
+            reasoning=m.get("reason", ""),
+            quote=m.get("quote"),
+            market_direction=m.get("direction"),
+        ))
     results.sort(key=lambda x: x["relevance_score"], reverse=True)
     return results[:top_n]
 
@@ -153,31 +152,27 @@ def _recommendations_with_prices(ranked: list) -> list:
             q = public.bbo(market["market_ticker"])
         except Exception:
             q = {"best_bid": None, "best_ask": None}
-        out.append({
-            "ticker": market["market_ticker"],
-            "event_title": market.get("event_title", ""),
-            "market_title": market.get("market_title", ""),
-            "relevance_score": float(market["_hybrid_score"]),
-            "reasoning": "; ".join(market.get("_local_reasons", [])) or "Selected by cached local relevance ranking.",
-            "best_bid": q.get("best_bid"),
-            "best_ask": q.get("best_ask"),
-        })
+        out.append(recommendation(
+            venue="polymarket",
+            market_id=market["market_ticker"],
+            event_title=market.get("event_title", ""),
+            market_title=market.get("market_title", ""),
+            relevance_score=market["_hybrid_score"],
+            reasoning="; ".join(market.get("_local_reasons", []))
+            or "Selected by cached local relevance ranking.",
+            quote=q,
+        ))
     return out
 
 
-def _save_live_recommendations(path: Path, recommendations: list, context: str, update_number: int) -> None:
-    payload = {
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-        "transcript_update": update_number,
-        "context": context,
-        "recommendations": recommendations,
-    }
+def _save_live_recommendations(path: Path, payload: dict) -> None:
     temporary_path = path.with_name(path.name + ".tmp")
     temporary_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     temporary_path.replace(path)
 
 
-def watch_live_transcript(transcript_path: Path, poll_interval: float = 0.5, context_characters: int = 3000) -> None:
+def watch_live_transcript(transcript_path: Path, poll_interval: float = 0.5,
+                          context_characters: int = 3000, speaker: str = "kevin_warsh") -> None:
     """Same loop as run_kalshi_ticker2.watch_live_transcript, over the Polymarket catalog."""
     from kalshi_ticker2 import MarketCatalogIndex
     from run_kalshi_ticker2 import _read_transcript_payload, _split_complete_sentences
@@ -196,15 +191,20 @@ def watch_live_transcript(transcript_path: Path, poll_interval: float = 0.5, con
     seen_segments = len(segments) if isinstance(segments, list) else 0
     context, pending_sentence, pending_since, update_number = "", "", None, 0
 
-    def rank_context(text: str) -> None:
+    def rank_context(text: str, statement: str) -> None:
         nonlocal update_number
         window = text[-context_characters:]
+        baseline = baseline_snapshot(speaker, statement)
         ranked = market_index.rank_live(window, max_candidates=TOP_N)
         recommendations = _recommendations_with_prices(ranked)
         update_number += 1
-        _save_live_recommendations(LIVE_RESULTS_PATH, recommendations, window, update_number)
+        payload = output_payload("polymarket", speaker, window, baseline,
+                                 recommendations, update_number)
+        _save_live_recommendations(LIVE_RESULTS_PATH, payload)
         print(f"\n--- Live Polymarket recommendations {update_number} ---")
-        print(json.dumps(recommendations, indent=2, ensure_ascii=False) if recommendations
+        if baseline["status"] == "ERROR":
+            print(f"Baseline score unavailable: {baseline['summary']}")
+        print(json.dumps(payload, indent=2, ensure_ascii=False) if recommendations
               else "No markets currently meet the relevance threshold.")
 
     while True:
@@ -226,22 +226,25 @@ def watch_live_transcript(transcript_path: Path, poll_interval: float = 0.5, con
             completed, pending_sentence = _split_complete_sentences(pending_sentence)
             for sentence in completed:
                 context = f"{context} {sentence}".strip()[-context_characters:]
-                rank_context(context)
+                rank_context(context, sentence)
             if completed:
                 pending_since = time.monotonic() if pending_sentence else None
         if pending_sentence and pending_since is not None and time.monotonic() - pending_since >= 3.0:
-            context = f"{context} {pending_sentence}".strip()[-context_characters:]
+            statement = pending_sentence
+            context = f"{context} {statement}".strip()[-context_characters:]
             pending_sentence, pending_since = "", None
-            rank_context(context)
+            rank_context(context, statement)
         time.sleep(poll_interval)
 
 
-def run_once(transcript_path: Path) -> list:
+def run_once(transcript_path: Path, speaker: str = "kevin_warsh") -> dict:
     speech_text = load_transcript_text(transcript_path)
     matches = find_relevant_markets(speech_text, top_n=TOP_N)
+    baseline = baseline_snapshot(speaker, speech_text)
+    payload = output_payload("polymarket", speaker, speech_text, baseline, matches)
     print("\nRELEVANT POLYMARKET MARKETS")
-    print(json.dumps(matches, indent=2, ensure_ascii=False))
-    return matches
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+    return payload
 
 
 def main() -> None:
@@ -252,15 +255,18 @@ def main() -> None:
                         help="Cache the Polymarket catalog once and rerank as new transcript sentences arrive.")
     parser.add_argument("--poll-interval", type=float, default=0.5)
     parser.add_argument("--context-characters", type=int, default=3000)
+    parser.add_argument("--speaker", default="kevin_warsh",
+                        help="Speaker key in stance_baselines.json.")
     args = parser.parse_args()
 
     default_path = LIVE_INPUT_PATH if args.watch else INPUT_PATH
     transcript_path = (args.transcript or default_path).expanduser().resolve()
     if args.watch:
         watch_live_transcript(transcript_path, poll_interval=max(args.poll_interval, 0.1),
-                              context_characters=max(args.context_characters, 500))
+                              context_characters=max(args.context_characters, 500),
+                              speaker=args.speaker)
         return
-    run_once(transcript_path)
+    run_once(transcript_path, speaker=args.speaker)
 
 
 if __name__ == "__main__":
