@@ -87,8 +87,16 @@ def _read_secret_file(filename: str) -> str:
         return ""
 
 
-POLYMARKET_KEY_ID = os.environ.get("POLYMARKET_KEY_ID") or _read_secret_file("polymarketkey.txt")
-POLYMARKET_SECRET_KEY = os.environ.get("POLYMARKET_SECRET_KEY") or _read_secret_file("polymarketsecret.txt")
+POLYMARKET_KEY_ID = (
+    os.environ.get("POLYMARKET_KEY_ID")
+    or os.environ.get("POLY_MARKET_KEY_ID")
+    or _read_secret_file("polymarketkey.txt")
+)
+POLYMARKET_SECRET_KEY = (
+    os.environ.get("POLYMARKET_SECRET_KEY")
+    or os.environ.get("POLY_MARKET_SECRET_KEY")
+    or _read_secret_file("polymarketsecret.txt")
+)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or _read_secret_file("gemapi.txt")
 
 

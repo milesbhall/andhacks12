@@ -117,11 +117,18 @@ class KalshiTrader:
         key_file, pem_file = KEY_FILES[self.env]
         env_ok = self.env == KALSHI_ENV   # env-var keys belong to the default environment
         self.key_id = (env_ok and os.environ.get("KALSHI_API_KEY_ID")) or _read_secret_file(key_file)
-        key_path = (env_ok and os.environ.get("KALSHI_PRIVATE_KEY_PATH")) or os.path.join(SCRIPT_DIR, pem_file)
-        if not self.key_id or not os.path.isfile(key_path) or os.path.getsize(key_path) == 0:
+        key_value = (env_ok and os.environ.get("KALSHI_PRIVATE_KEY_PATH")) or ""
+        key_path = key_value if key_value and os.path.isfile(key_value) else os.path.join(SCRIPT_DIR, pem_file)
+        if not self.key_id or (not key_value and not os.path.isfile(key_path)):
             raise RuntimeError(f"Missing Kalshi {self.env} keys: need {key_file} and {pem_file}.")
-        with open(key_path, "rb") as f:
-            self.private_key = serialization.load_pem_private_key(f.read(), password=None)
+        if "BEGIN" in key_value and "PRIVATE KEY" in key_value:
+            key_bytes = key_value.encode()
+        else:
+            with open(key_path, "rb") as f:
+                key_bytes = f.read()
+        if not key_bytes:
+            raise RuntimeError(f"Missing Kalshi {self.env} private key.")
+        self.private_key = serialization.load_pem_private_key(key_bytes, password=None)
         self.session = requests.Session()
 
     def _headers(self, method: str, path: str) -> dict:

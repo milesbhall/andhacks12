@@ -13,3 +13,5 @@ sounddevice
 websockets
 imageio-ffmpeg
 yt-dlp
+scikit-learn
+static-ffmpeg

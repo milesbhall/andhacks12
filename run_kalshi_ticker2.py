@@ -2,6 +2,7 @@ import json
 import argparse
 import re
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 from kalshi_ticker2 import (

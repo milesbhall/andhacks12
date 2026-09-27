@@ -167,6 +167,14 @@ async def ffmpeg_audio_chunks(source: str):
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         try:
+            from static_ffmpeg import add_paths
+        except ImportError:
+            add_paths = None
+        if add_paths is not None:
+            add_paths()
+            ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        try:
             import imageio_ffmpeg
             ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
         except ImportError as exc:
@@ -265,6 +273,8 @@ async def stream_realtime_audio(
                     ):
                         text = str(message.get("text", "")).strip()
                         if text:
+                            if transcript_segments and transcript_segments[-1]["text"] == text:
+                                continue
                             words = message.get("words") or []
                             speaker_ids = {
                                 word.get("speaker_id")
