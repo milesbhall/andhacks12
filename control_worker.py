@@ -251,7 +251,7 @@ class Worker:
         self.pending_ack = ''
         self.kind = None
         self.opts = clean_options({})
-        self.last_archive = 0.0
+        self.last_archive = -1e9
         self.archive_lock = threading.Lock()
 
     def request(self, method: str, path: str, **kwargs):
@@ -479,8 +479,6 @@ class Worker:
             self.stop()
             self.phase, self.message = 'error', f'{exc}'[:150]
         self.status()
-        if time.monotonic() - self.last_archive > ARCHIVE_SECONDS:
-            threading.Thread(target=self.publish_archive, daemon=True).start()
 
 
 def main():
@@ -496,6 +494,9 @@ def main():
         print(f'MarketPulse worker polling {args.url} (Ctrl+C to stop)')
         try:
             while True:
+                if time.monotonic() - worker.last_archive > ARCHIVE_SECONDS:
+                    worker.last_archive = time.monotonic()   # archive uploads even if controls are not configured yet
+                    threading.Thread(target=worker.publish_archive, daemon=True).start()
                 try:
                     worker.run_once()
                 except requests.RequestException as exc:
