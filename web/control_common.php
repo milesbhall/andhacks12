@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
 
-// Deploy the config one directory ABOVE the public web directory, or set this
-// server-side environment variable to an absolute path outside the web root.
+// Keep the config in the private folder beside public_html, or set a server-side
+// environment variable to an absolute path outside the web root.
 const CONTROL_TOKEN_SHA256 = '8c18635fa05439208b04a01531183e978bc6307e837b582c916eb207b1b9a38c';
 
 function control_json(int $code, array $body): never {
@@ -15,7 +15,7 @@ function control_json(int $code, array $body): never {
 }
 
 function control_config(): ?array {
-    $path = getenv('CONTROL_CONFIG_PATH') ?: dirname(__DIR__) . '/control_config.php';
+    $path = getenv('CONTROL_CONFIG_PATH') ?: dirname(__DIR__) . '/incredible_trades_private/control_config.php';
     $real = realpath($path);
     $web = realpath(__DIR__);
     if (!$real || !$web || str_starts_with($real, $web . DIRECTORY_SEPARATOR)) return null;
