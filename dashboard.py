@@ -111,6 +111,42 @@ def load_trades() -> pd.DataFrame:
     return pd.DataFrame(rows).iloc[::-1]
 
 
+def _clean_title(title: str, market: str) -> str:
+    title = (title or "").replace("?", "").strip()
+    if " -- " in title:
+        event, outcome = title.split(" -- ", 1)
+        title = f"{outcome.strip()} ({event.strip()})"
+    return title or market
+
+
+def render_trade_cards(trades: list, titles: dict = None, limit: int = 8):
+    """Orders as readable cards; priced-in / skipped ones folded into one line."""
+    titles = titles or {}
+    placed = [t for t in trades if not (t.get("skipped") or t.get("error") or t.get("blocked"))]
+    skipped = [t for t in trades if t not in placed]
+    if not placed:
+        st.caption("No orders placed yet.")
+    for t in list(reversed(placed))[:limit]:
+        side = str(t.get("side", "")).upper()
+        yes_limit = t.get("yes_limit") or 0
+        per = yes_limit if side == "YES" else 1 - yes_limit
+        qty = t.get("qty") or 0
+        status = t.get("status") or tc.trade_status(t)
+        badge = {"SENT": ":green-badge[SENT: real money]", "SENT (demo)": ":blue-badge[SENT: Kalshi demo]",
+                 "DRY RUN": ":gray-badge[DRY RUN]"}.get(status, f":red-badge[{status[:40]}]")
+        title = _clean_title(t.get("title") or titles.get((t.get("venue"), t.get("market")), ""), t.get("market", ""))
+        with st.container(border=True):
+            st.markdown(f"**BUY {side}** · {title}  \n"
+                        f"{str(t.get('venue', '')).capitalize()} · {qty:g} contracts at up to {per * 100:.0f}¢ "
+                        f"· costs at most ${t.get('max_cost', 0):.2f} · pays ${qty:g} if right  \n"
+                        f"{badge}" + (f" · triggered by {t['trigger']}" if t.get("trigger") else ""))
+    if skipped:
+        names = ", ".join(_clean_title(t.get("title") or titles.get((t.get("venue"), t.get("market")), ""),
+                                       t.get("market", ""))[:40] for t in skipped[-4:])
+        st.caption(f"Skipped {len(skipped)} (already priced in or blocked): {names}"
+                   + ("…" if len(skipped) > 4 else ""))
+
+
 def show_record(rec: dict):
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Stance", f"{rec['stance']:+.2f}", help="-1 dovish ... +1 hawkish")
@@ -129,11 +165,8 @@ def show_record(rec: dict):
             "why": m["reason"]} for m in rec["matches"]]), width="stretch", hide_index=True)
     if rec.get("trades"):
         st.subheader("Orders")
-        st.dataframe(pd.DataFrame([{
-            "venue": t.get("venue"), "market": t.get("market"), "side": t.get("side"),
-            "qty": t.get("qty"), "limit": t.get("yes_limit"), "max $": t.get("max_cost"),
-            "status": t.get("error") and f"skipped: {t['error']}" or tc.trade_status(t)}
-            for t in rec["trades"]]), width="stretch", hide_index=True)
+        render_trade_cards(rec["trades"], {(m["venue"], m["market"]): m.get("title", "")
+                                           for m in rec.get("matches", [])})
 
 
 # ------------------------------------------------------------------ #
@@ -222,17 +255,132 @@ def live_panel():
             st.markdown(f"`{c['stance']:+.2f} · z {c['z']:+.1f} · {tag}`  {c['text'][:300]}")
     with right:
         st.markdown("**Orders**")
-        if s["trades"]:
-            st.dataframe(pd.DataFrame(s["trades"])[["venue", "market", "side", "qty", "yes_limit", "max_cost", "status"]],
-                         width="stretch", hide_index=True, height=240)
-        else:
-            st.caption("None yet.")
-        st.markdown("**Ready to trade** (picked before the speech)")
-        for d, ms in s["watchlist"].items():
-            st.caption(f"{d}: " + (", ".join(f"{m['side'].upper()} {m['market']}" for m in ms) or "—"))
+        watch_titles = {(m["venue"], m["market"]): m.get("title", "")
+                        for ms in s["watchlist"].values() for m in ms}
+        render_trade_cards(s["trades"], watch_titles, limit=6)
+        with st.expander("Ready to trade (picked before the speech)"):
+            for d, ms in s["watchlist"].items():
+                st.markdown(f"**If {d.lower()}:**")
+                for m in ms[:6]:
+                    st.caption(f"BUY {m['side'].upper()} · {_clean_title(m.get('title', ''), m['market'])} "
+                               f"({m['venue'].capitalize()})")
+
+
+TRANSCRIPT_LIVE_PATH = os.path.join(SCRIPT_DIR, "live_transcript.json")
+PARTIAL_LIVE_PATH = os.path.join(SCRIPT_DIR, "live_partial.json")
+DEMO_PIDS_PATH = os.path.join(SCRIPT_DIR, "mic_demo_pids.json")
+
+
+def _demo_running() -> dict:
+    """PIDs of the mic demo processes that are still alive."""
+    import subprocess
+    try:
+        with open(DEMO_PIDS_PATH, encoding="utf-8") as f:
+            pids = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    alive = {}
+    for name, pid in pids.items():
+        try:
+            if os.name == "nt":
+                out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}"], capture_output=True, text=True).stdout
+                if str(pid) in out:
+                    alive[name] = pid
+            else:
+                os.kill(pid, 0)
+                alive[name] = pid
+        except Exception:
+            pass
+    return alive
+
+
+def _start_demo(mode: str, venues: list, speaker: str, use_mic: bool):
+    import subprocess
+    import sys
+    with open(TRANSCRIPT_LIVE_PATH, "w", encoding="utf-8") as f:
+        json.dump({"source": "microphone", "segments": []}, f)
+    flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+    pids = {"desk": subprocess.Popen(
+        [sys.executable, "live.py", "--speaker", speaker, "--fast", "--mode", mode, "--venues", *venues],
+        cwd=SCRIPT_DIR, creationflags=flags,
+        stdout=open(os.path.join(SCRIPT_DIR, "live.log"), "w"), stderr=subprocess.STDOUT).pid}
+    if use_mic:
+        pids["mic"] = subprocess.Popen([sys.executable, "mic.py"], cwd=SCRIPT_DIR, creationflags=flags,
+                                       stdout=open(os.path.join(SCRIPT_DIR, "mic.log"), "w"),
+                                       stderr=subprocess.STDOUT).pid
+    with open(DEMO_PIDS_PATH, "w", encoding="utf-8") as f:
+        json.dump(pids, f)
+
+
+def _stop_demo():
+    import signal
+    for pid in _demo_running().values():
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except Exception:
+            pass
+    try:
+        os.remove(DEMO_PIDS_PATH)
+    except OSError:
+        pass
+
+
+def _append_spoken(text: str):
+    try:
+        with open(TRANSCRIPT_LIVE_PATH, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        data = {"source": "browser microphone", "segments": []}
+    data.setdefault("segments", []).append({"speaker": "microphone", "role": "speaker", "text": text})
+    with open(TRANSCRIPT_LIVE_PATH + ".tmp", "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False)
+    os.replace(TRANSCRIPT_LIVE_PATH + ".tmp", TRANSCRIPT_LIVE_PATH)
+
+
+@st.fragment(run_every=0.5)
+def hearing_now():
+    try:
+        with open(PARTIAL_LIVE_PATH, encoding="utf-8") as f:
+            text = json.load(f).get("text", "")
+    except (OSError, json.JSONDecodeError):
+        text = ""
+    if text and _demo_running().get("mic"):
+        st.markdown(f"**Hearing:** _{text}_")
 
 
 with tab_live:
+    with st.expander("Microphone demo: talk like the Fed Chair and watch it trade", expanded=True):
+        running = _demo_running()
+        c1, c2, c3 = st.columns([1, 1, 2])
+        if not running:
+            if c1.button("Start mic demo", type="primary", disabled=not logged_in,
+                         help="Starts the desk on the next Fed decision markets and the laptop microphone."):
+                _start_demo(live, venues, speaker, use_mic=True)
+                st.rerun()
+            if c2.button("Start (browser recorder)", disabled=not logged_in,
+                         help="Desk only; record clips below instead of the laptop mic stream."):
+                _start_demo(live, venues, speaker, use_mic=False)
+                st.rerun()
+            c3.caption(f"Scores against {speaker}'s usual stance. Mode: **{live}**. "
+                       "Takes a few seconds to load markets.")
+        else:
+            if c1.button("Stop", type="primary"):
+                _stop_demo()
+                st.rerun()
+            c3.caption("Running: " + ", ".join(running) + ". Speak, pause for a second, and watch below.")
+            if "mic" in running:
+                hearing_now()
+            else:
+                clip = st.audio_input("Record a statement (desk is listening for it)")
+                if clip is not None and st.session_state.get("last_clip") != clip.file_id:
+                    st.session_state["last_clip"] = clip.file_id
+                    with st.spinner("ElevenLabs Scribe..."):
+                        heard = transcribe(clip.getvalue(), clip.name or "clip.wav")
+                    if heard.strip():
+                        _append_spoken(heard.strip())
+                        st.success(f"Heard: {heard.strip()}")
+        st.caption('Try: "Inflation is still far too high. We are prepared to raise rates again in October." '
+                   'or "The labor market is weakening fast and we are ready to cut rates at the next meeting."')
     live_panel()
 
 with tab_desk:

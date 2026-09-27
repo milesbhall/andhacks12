@@ -24,6 +24,10 @@ USAGE
   # ... and this in another
   python live.py --speaker kevin_warsh
 
+  # Talk into the laptop mic yourself (or use the dashboard's "Start mic demo" button)
+  python mic.py          (terminal 1)
+  python live.py         (terminal 2)
+
   # Demo without audio: feed the Sept 16 transcript at 10x speaking speed
   python live.py --simulate 20260916 --speed 10
 
@@ -53,6 +57,8 @@ RESULTS_DIR = os.path.join(SCRIPT_DIR, "results")
 MIN_WORDS = 25          # don't score fragments shorter than this
 MAX_WORDS = 90          # score even without a sentence end once the buffer is this long
 POLL_SECONDS = 0.3
+PAUSE_SECONDS = 2.0     # live speech: score what we have after this much silence ...
+MIN_PAUSE_WORDS = 6     # ... as long as it's at least this many words
 WORDS_PER_SECOND = 2.5  # normal speaking pace, used by --simulate
 
 # What a clearly hawkish / dovish remark from this speaker would say. Used
@@ -315,11 +321,15 @@ class LiveDesk:
                  "statement": record["statement"][:300], "latency_ms": record["latency_ms"],
                  "orders": sum(1 for t in trades if not t.get("error") and not t.get("blocked"))}
         self.state.append("alerts", alert)
+        titles = {(m["venue"], m["market"]): m.get("title", "") for m in fresh}
         for t in trades:
-            self.state.append("trades", {"time": now_iso(), "venue": t.get("venue"), "market": t.get("market"),
-                                         "side": t.get("side"), "qty": t.get("qty"), "yes_limit": t.get("yes_limit"),
-                                         "max_cost": t.get("max_cost"),
-                                         "status": t.get("error") and f"skipped: {t['error']}" or tc.trade_status(t)})
+            self.state.append("trades", {
+                "time": now_iso(), "venue": t.get("venue"), "market": t.get("market"),
+                "title": titles.get((t.get("venue"), t.get("market")), ""),
+                "side": t.get("side"), "qty": t.get("qty"), "yes_limit": t.get("yes_limit"),
+                "max_cost": t.get("max_cost"), "trigger": f"{record['direction']} z {record['z']:+.1f}",
+                "skipped": bool(t.get("error") or t.get("blocked")),
+                "status": t.get("error") and f"skipped: {t['error']}" or tc.trade_status(t)})
         print(f"   >>> {record['direction']} surprise: {alert['orders']} order(s) in "
               f"{record['decision_ms']} ms after scoring started ({record['latency_ms']} ms after the words arrived)")
         market_router.print_trades(trades)
@@ -345,7 +355,8 @@ class LiveDesk:
 # ------------------------------------------------------------------ #
 
 def watch_file(path: str):
-    """Yield new committed sentences as speechtxt.py appends them."""
+    """Yield new committed sentences as speechtxt.py / mic.py append them.
+    Yields "" on quiet polls so the chunker can notice a pause."""
     seen = 0
     print(f"Watching {os.path.basename(path)} for new speech (Ctrl+C to stop)...")
     while True:
@@ -356,9 +367,12 @@ def watch_file(path: str):
             segments = []
         if len(segments) < seen:          # transcriber restarted
             seen = 0
-        for seg in segments[seen:]:
+        new = segments[seen:]
+        for seg in new:
             yield seg.get("text", "")
         seen = len(segments)
+        if not new:
+            yield ""
         time.sleep(POLL_SECONDS)
 
 
@@ -379,18 +393,22 @@ def simulate(date: str, speed: float):
 
 
 def chunks(sentences):
-    """Group sentences into passages long enough to score."""
-    buf, started = [], None
+    """Group sentences into passages long enough to score. A pause of PAUSE_SECONDS
+    flushes a shorter passage (someone talking into the mic says one or two sentences)."""
+    buf, last = [], None
     for sentence in sentences:
         if not sentence.strip():
+            if buf and time.time() - last >= PAUSE_SECONDS and \
+                    sum(len(s.split()) for s in buf) >= MIN_PAUSE_WORDS:
+                yield " ".join(buf), last
+                buf = []
             continue
-        if not buf:
-            started = time.time()
         buf.append(sentence.strip())
+        last = time.time()
         words = sum(len(s.split()) for s in buf)
         ends = buf[-1].endswith((".", "?", "!"))
         if (words >= MIN_WORDS and ends) or words >= MAX_WORDS or buf[-1].endswith("?"):
-            yield " ".join(buf), time.time()
+            yield " ".join(buf), last
             buf = []
     if buf:
         yield " ".join(buf), time.time()
@@ -408,6 +426,8 @@ def main():
     parser.add_argument("--mode", choices=tc.MODES, default="dry",
                         help="dry (default), demo (Kalshi demo exchange), live (real money)")
     parser.add_argument("--no-prewarm", action="store_true", help="Skip the market watchlist (score only)")
+    parser.add_argument("--fast", action="store_true",
+                        help="Only watch the next Fed decision's markets (starts in seconds; good for the mic demo)")
     args = parser.parse_args()
     args.live = "live" if args.live else args.mode
 
@@ -418,7 +438,10 @@ def main():
     state = State(args.speaker, source, store[args.speaker], args.live)
 
     watchlist = {"HAWKISH": [], "DOVISH": []}
-    if not args.no_prewarm:
+    if args.fast:
+        state.update(status="loading the next Fed decision markets")
+        watchlist = fed_decision_watchlist(args.venues)
+    elif not args.no_prewarm:
         state.update(status="finding markets before the speech")
         watchlist = build_watchlist(args.speaker, args.venues)
     state.update(watchlist=watchlist, status="listening")
