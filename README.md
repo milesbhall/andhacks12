@@ -46,12 +46,12 @@ site over HTTPS and runs the Python pipeline locally.
 - **Ask the desk:** questions answered from Backboard memory of every signal and order.
 - **Analyze:** score any statement and see which markets it would move. This tool always runs dry and never sends orders.
 - **Crowd & macro:** Bluesky + Reddit sentiment and the FRED backdrop.
-- **Replay:** 17 press conferences and speeches (Warsh, Powell, presidential remarks) scored answer by answer.
+- **Replay:** 17 press conferences and speeches (Warsh, Powell, presidential remarks). Browse the answer-by-answer scores, or press "Play through the live desk" to run the same transcript through the full pipeline at your chosen speed.
 - **History:** every signal (Tiger Data) and order.
 
 The Live page labels the desk update, last speech update, and market update separately. It shows whether audio is waiting, listening, stalled, or ended. Markets in view use the latest available speaker topic and disappear when their source is stale or a session ends. The hosted page and worker share **one team trading account**; independent user keys require separate deployments and workers.
 
-There are two replay paths. **Control room replay** times a saved transcript through the live pipeline, refreshing market recommendations and producing dry/demo/LIVE order attempts according to the chosen mode. **Replay tab** shows previously computed, answer-by-answer stance scores for inspection and sends no orders.
+Replay is one system: the Replay tab shows saved answer-by-answer stance scores, and its "Play through the live desk" button starts that transcript in the control room, where it refreshes market recommendations and makes dry/demo/LIVE order attempts per the chosen mode. All times on the site are Eastern. Recent order attempts show on the Live tab for 30 minutes; the Orders tab lists markets in view, open orders and held quantities for Kalshi (demo and prod) and Polymarket.
 
 ## Run it
 

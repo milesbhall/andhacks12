@@ -196,7 +196,7 @@ class PolymarketTrader:
 
     def _headers(self, method: str, path: str) -> dict:
         timestamp = str(int(time.time() * 1000))
-        message = f"{timestamp}{method.upper()}{path}"
+        message = f"{timestamp}{method.upper()}{path.split('?')[0]}"
         signature = base64.b64encode(self.private_key.sign(message.encode())).decode()
         return {
             "X-PM-Access-Key": self.key_id,

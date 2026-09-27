@@ -301,7 +301,7 @@ def snapshot():
                     if page.get("eof", True) or not cursor: break
             result["connected"] = True
         except Exception as exc:
-            result["errors"].append(f"{venue}{' demo' if env == 'demo' else ''}: account data unavailable ({type(exc).__name__})")
+            result["errors"].append(f"{venue}{' demo' if env == 'demo' else ''}: account data unavailable ({type(exc).__name__}: {str(exc)[:120]})")
     try:
         with open(tc.TRADE_LOG_PATH, encoding="utf-8") as handle:
             rows = [json.loads(line) for line in handle if line.strip()]
