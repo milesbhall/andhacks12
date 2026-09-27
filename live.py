@@ -120,13 +120,97 @@ class State:
 # BEFORE THE SPEECH: WATCHLIST
 # ------------------------------------------------------------------ #
 
+FED_SPEAKERS = {"kevin_warsh", "jerome_powell"}
+
+# Which side of each next-meeting outcome a surprise favors.
+# Kalshi suffixes: H0 = hold, H25/H26 = hike, C25/C26 = cut.  Polymarket: nochng, hike25/50, cut25/50.
+FED_OUTCOME_SIDES = {
+    "hold":       {"HAWKISH": "no",  "DOVISH": "yes", "relevance": 0.97},
+    "hike_small": {"HAWKISH": "yes", "DOVISH": "no",  "relevance": 0.98},
+    "hike_big":   {"HAWKISH": "yes", "DOVISH": "no",  "relevance": 0.80},
+    "cut_small":  {"HAWKISH": "no",  "DOVISH": "yes", "relevance": 0.90},
+    "cut_big":    {"HAWKISH": "no",  "DOVISH": "yes", "relevance": 0.75},
+}
+
+
+def _kalshi_next_fed_decision() -> list:
+    """Outcomes of the next FOMC decision on Kalshi: [(ticker, title, outcome_kind)]."""
+    import requests
+    resp = requests.get("https://api.elections.kalshi.com/trade-api/v2/markets",
+                        params={"series_ticker": "KXFEDDECISION", "status": "open", "limit": 200}, timeout=20)
+    resp.raise_for_status()
+    markets = resp.json().get("markets", [])
+    if not markets:
+        return []
+    next_event = min(markets, key=lambda m: m.get("close_time") or "9999")["event_ticker"]
+    kinds = {"H0": "hold", "H25": "hike_small", "H26": "hike_big", "C25": "cut_small", "C26": "cut_big"}
+    out = []
+    for m in markets:
+        suffix = m["ticker"].rsplit("-", 1)[-1]
+        if m["event_ticker"] == next_event and suffix in kinds:
+            out.append((m["ticker"], f"{m.get('title', '')} -- {m.get('yes_sub_title', '')}", kinds[suffix]))
+    return out
+
+
+def _polymarket_next_fed_decision() -> list:
+    """Outcomes of the next FOMC decision on Polymarket US: [(slug, title, outcome_kind)]."""
+    import polymarket_client
+    kinds = {"nochng": "hold", "hike25": "hike_small", "hike50": "hike_big", "cut25": "cut_small", "cut50": "cut_big"}
+    found = {}
+    for event in polymarket_client.PolymarketPublic().search("Fed Decision", limit=20):
+        for m in event.get("markets") or []:
+            slug = m.get("slug") or ""
+            if slug.startswith("rdc-usfed-fomc-") and m.get("active") and not m.get("closed"):
+                found[slug] = (slug, f"{event.get('title', '')} -- {m.get('title', '')}")
+    if not found:
+        return []
+    next_date = min(slug[len("rdc-usfed-fomc-"):len("rdc-usfed-fomc-") + 10] for slug in found)
+    return [(slug, title, kinds[slug.rsplit("-", 1)[-1]]) for slug, title in found.values()
+            if next_date in slug and slug.rsplit("-", 1)[-1] in kinds]
+
+
+def fed_decision_watchlist(venues) -> dict:
+    """The markets a Fed surprise should move first: the next meeting's decision."""
+    watch = {"HAWKISH": [], "DOVISH": []}
+    sources = []
+    if "kalshi" in venues:
+        sources.append(("kalshi", _kalshi_next_fed_decision))
+    if "polymarket" in venues:
+        sources.append(("polymarket", _polymarket_next_fed_decision))
+    for venue, fetch in sources:
+        try:
+            outcomes = fetch()
+        except Exception as e:
+            print(f"   (couldn't load next Fed decision on {venue}: {e})")
+            continue
+        for market, title, kind in outcomes:
+            rule = FED_OUTCOME_SIDES[kind]
+            for direction in ("HAWKISH", "DOVISH"):
+                side = rule[direction]
+                base = fresh_quote({"venue": venue, "market": market,
+                                    "quote": {"best_bid": None, "best_ask": None}})
+                watch[direction].append({
+                    "venue": venue, "market": market, "title": title,
+                    "direction": "YES_UP" if side == "yes" else "YES_DOWN", "side": side,
+                    "relevance": rule["relevance"],
+                    "reason": f"next FOMC decision: a {direction.lower()} surprise favors {side.upper()}",
+                    "quote": base["quote"],
+                })
+    for direction in watch:
+        watch[direction].sort(key=lambda m: m["relevance"], reverse=True)
+    return watch
+
+
 def build_watchlist(speaker: str, venues, top_n: int = 6) -> dict:
     import market_router
+    core = fed_decision_watchlist(venues) if speaker in FED_SPEAKERS else {"HAWKISH": [], "DOVISH": []}
     watch = {}
     for direction, text in PROTOTYPES.items():
         print(f"Finding markets a {direction} surprise should move...")
         matches = market_router.find_all(text, speaker, f"{speaker} sounds {direction} vs. usual", venues, top_n)
-        watch[direction] = [m for m in matches if m["relevance"] >= market_router.MIN_TRADE_RELEVANCE]
+        found = [m for m in matches if m["relevance"] >= market_router.MIN_TRADE_RELEVANCE]
+        seen = {(m["venue"], m["market"]) for m in core[direction]}
+        watch[direction] = core[direction] + [m for m in found if (m["venue"], m["market"]) not in seen]
         for m in watch[direction]:
             print(f"   {direction:<8} {m['venue']:<10} {m['side'].upper():<3} {m['market']}  ({m['title'][:60]})")
     return watch
