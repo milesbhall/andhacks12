@@ -27,7 +27,7 @@ USAGE
   # Demo without audio: feed the Sept 16 transcript at 10x speaking speed
   python live.py --simulate 20260916 --speed 10
 
-  Options: --venues kalshi polymarket, --qty 2, --live (real orders), --no-prewarm
+  Options: --venues kalshi polymarket, --qty 2, --mode dry|demo|live, --no-prewarm
 ------------------------------------------------------------------------
 """
 
@@ -92,7 +92,7 @@ class State:
         self.lock = threading.Lock()
         self.data = {
             "speaker": speaker, "source": source, "started": now_iso(), "status": "starting",
-            "live_orders": live, "baseline": {"mean": base["mean"], "stdev": base["stdev"], "n": base["n"]},
+            "live_orders": tc.mode_of(live) != "dry", "mode": tc.mode_of(live), "baseline": {"mean": base["mean"], "stdev": base["stdev"], "n": base["n"]},
             "watchlist": {"HAWKISH": [], "DOVISH": []}, "chunks": [], "alerts": [], "trades": [],
         }
         self.save()
@@ -320,9 +320,12 @@ def main():
     parser.add_argument("--speed", type=float, default=10.0, help="Simulation speed-up (1 = real time)")
     parser.add_argument("--venues", nargs="+", default=["kalshi", "polymarket"])
     parser.add_argument("--qty", type=int, default=2)
-    parser.add_argument("--live", action="store_true", help="Send real orders (default: dry run)")
+    parser.add_argument("--live", action="store_true", help="Send real orders (same as --mode live)")
+    parser.add_argument("--mode", choices=tc.MODES, default="dry",
+                        help="dry (default), demo (Kalshi demo exchange), live (real money)")
     parser.add_argument("--no-prewarm", action="store_true", help="Skip the market watchlist (score only)")
     args = parser.parse_args()
+    args.live = "live" if args.live else args.mode
 
     store = stance_scorer.load_store()
     if args.speaker not in store:

@@ -23,6 +23,7 @@ USAGE
 ------------------------------------------------------------------------
   python kalshi_trader.py --quote KXFEDHIKE-2-27DEC31
   python kalshi_trader.py --balance
+  python kalshi_trader.py --balance --env demo      # demo account (kalshikey_demo.txt + privkey_demo.txt)
   python kalshi_trader.py --trade KXFEDHIKE-2-27DEC31 --side yes --qty 2          # dry run
   python kalshi_trader.py --trade KXFEDHIKE-2-27DEC31 --side yes --qty 2 --live   # sends it
 ------------------------------------------------------------------------
@@ -101,14 +102,24 @@ def quote(ticker: str, env: str = "prod") -> dict:
 # AUTHENTICATED CLIENT
 # ------------------------------------------------------------------ #
 
+# Demo and real Kalshi accounts have different keys.
+KEY_FILES = {
+    "prod": ("kalshikey.txt", "privkey.txt"),
+    "demo": ("kalshikey_demo.txt", "privkey_demo.txt"),
+}
+
+
 class KalshiTrader:
-    def __init__(self):
+    def __init__(self, env: str = None):
         from cryptography.hazmat.primitives import serialization
 
-        self.key_id = os.environ.get("KALSHI_API_KEY_ID") or _read_secret_file("kalshikey.txt")
-        key_path = os.environ.get("KALSHI_PRIVATE_KEY_PATH") or os.path.join(SCRIPT_DIR, "privkey.txt")
-        if not self.key_id or not os.path.isfile(key_path):
-            raise RuntimeError("Missing Kalshi keys: need kalshikey.txt and privkey.txt (or env vars).")
+        self.env = env or KALSHI_ENV
+        key_file, pem_file = KEY_FILES[self.env]
+        env_ok = self.env == KALSHI_ENV   # env-var keys belong to the default environment
+        self.key_id = (env_ok and os.environ.get("KALSHI_API_KEY_ID")) or _read_secret_file(key_file)
+        key_path = (env_ok and os.environ.get("KALSHI_PRIVATE_KEY_PATH")) or os.path.join(SCRIPT_DIR, pem_file)
+        if not self.key_id or not os.path.isfile(key_path) or os.path.getsize(key_path) == 0:
+            raise RuntimeError(f"Missing Kalshi {self.env} keys: need {key_file} and {pem_file}.")
         with open(key_path, "rb") as f:
             self.private_key = serialization.load_pem_private_key(f.read(), password=None)
         self.session = requests.Session()
@@ -134,7 +145,7 @@ class KalshiTrader:
     def _request(self, method: str, endpoint: str, body: dict = None) -> dict:
         path = API_PREFIX + endpoint
         resp = self.session.request(
-            method, _base_url() + path, headers=self._headers(method, path),
+            method, _base_url(self.env) + path, headers=self._headers(method, path),
             data=json.dumps(body) if body is not None else None, timeout=30,
         )
         if resp.status_code >= 400:
@@ -155,13 +166,16 @@ class KalshiTrader:
 # RISK-CHECKED TRADE (same behavior as polymarket_client.place_trade)
 # ------------------------------------------------------------------ #
 
-def place_trade(ticker: str, side: str, qty: float, live: bool = False, reason: str = "") -> dict:
+def place_trade(ticker: str, side: str, qty: float, live: bool = False, reason: str = "",
+                env: str = None) -> dict:
+    """env overrides KALSHI_ENV for this order ("demo" = Kalshi's fake-money exchange)."""
+    env = env or KALSHI_ENV
     side = side.lower()
     if side not in ("yes", "no"):
         raise ValueError("side must be 'yes' or 'no'")
 
     # Dry runs price against real (prod) books; live orders use the book they'll hit.
-    q = quote(ticker, env=KALSHI_ENV if live else "prod")
+    q = quote(ticker, env=env if live else "prod")
     if q["status"] not in ("active", "open"):
         raise RuntimeError(f"{ticker} is not open for trading (status={q['status']}).")
 
@@ -181,7 +195,7 @@ def place_trade(ticker: str, side: str, qty: float, live: bool = False, reason: 
     }
 
     result = {
-        "venue": "kalshi", "env": KALSHI_ENV, "market": ticker, "side": side, "qty": qty,
+        "venue": "kalshi", "env": env, "market": ticker, "side": side, "qty": qty,
         "yes_limit": yes_limit, "quote": q, "est_fee": round(fee, 4), "max_cost": max_cost,
         "live": live, "sent": False, "reason": reason, "order": order,
     }
@@ -192,7 +206,7 @@ def place_trade(ticker: str, side: str, qty: float, live: bool = False, reason: 
     elif not live:
         result["note"] = "DRY RUN: order not sent. Re-run with --live to send."
     else:
-        result["response"] = KalshiTrader().create_order(order)
+        result["response"] = KalshiTrader(env).create_order(order)
         result["sent"] = True
 
     tc.log_trade(result)
@@ -208,18 +222,20 @@ def main():
     parser.add_argument("--side", choices=["yes", "no"])
     parser.add_argument("--qty", type=int, default=1)
     parser.add_argument("--live", action="store_true", help="Actually send the order")
+    parser.add_argument("--env", choices=["prod", "demo"], help="Override KALSHI_ENV for this command")
     args = parser.parse_args()
+    env = args.env or KALSHI_ENV
 
     if args.quote:
         print(json.dumps(quote(args.quote), indent=2))
     elif args.balance:
-        print(json.dumps(KalshiTrader().balance(), indent=2))
+        print(json.dumps(KalshiTrader(env).balance(), indent=2))
     elif args.positions:
-        print(json.dumps(KalshiTrader().positions(), indent=2))
+        print(json.dumps(KalshiTrader(env).positions(), indent=2))
     elif args.trade:
         if not args.side:
             parser.error("--trade needs --side yes|no")
-        print(json.dumps(place_trade(args.trade, args.side, args.qty, live=args.live), indent=2, default=str))
+        print(json.dumps(place_trade(args.trade, args.side, args.qty, live=args.live, env=env), indent=2, default=str))
     else:
         parser.print_help()
 

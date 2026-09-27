@@ -156,9 +156,14 @@ with st.sidebar:
     speaker = st.selectbox("Speaker", ["kevin_warsh", "jerome_powell"])
     venues = st.multiselect("Venues", ["kalshi", "polymarket"], default=["kalshi", "polymarket"])
     qty = st.number_input("Contracts per order", 1, tc.MAX_CONTRACTS_PER_ORDER, 2)
-    live = False
-    if can_trade_live(email):
-        live = st.toggle("LIVE orders (real money)", value=False)
+    mode_labels = {"dry": "Dry run", "demo": "Kalshi demo (fake money)", "live": "LIVE (real money)"}
+    modes = ["dry", "demo", "live"] if can_trade_live(email) else ["dry", "demo"]
+    live = st.radio("Trading mode", modes, format_func=mode_labels.get, key="trading_mode",
+                    help="Demo sends Kalshi orders to demo.kalshi.co (needs kalshikey_demo.txt + "
+                         "privkey_demo.txt); Polymarket has no demo, so it stays dry. "
+                         "LIVE is only offered to signed-in allowlisted accounts.")
+    if live == "live":
+        st.warning("Real orders. Limits still apply; create a STOP_TRADING file to halt.")
     st.caption(f"Limits: ${tc.MAX_DOLLARS_PER_ORDER:.0f}/order, ${tc.MAX_DOLLARS_PER_DAY:.0f}/day "
                f"across venues. Kill switch: STOP_TRADING file.")
 
@@ -190,7 +195,7 @@ def live_panel():
     c3.metric("Surprises", len(alerts))
     c4.metric("Signal → order", f"{alerts[-1]['latency_ms'] / 1000:.1f}s" if alerts else "—")
     st.caption(f"{s['speaker']} · source: {s['source']} · usual stance {base['mean']:+.2f} "
-               f"(spread {base['stdev']:.2f}) · {'LIVE ORDERS' if s.get('live_orders') else 'dry run'}")
+               f"(spread {base['stdev']:.2f}) · { {'live': 'LIVE ORDERS', 'demo': 'Kalshi demo orders'}.get(s.get('mode') or ('live' if s.get('live_orders') else 'dry'), 'dry run') }")
 
     if alerts:
         a = alerts[-1]

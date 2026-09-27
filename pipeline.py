@@ -142,9 +142,12 @@ def main():
     parser.add_argument("--replay", help="Press conference date to replay, e.g. 20260916")
     parser.add_argument("--venues", nargs="+", default=["kalshi", "polymarket"])
     parser.add_argument("--qty", type=int, default=market_router.DEFAULT_QTY)
-    parser.add_argument("--live", action="store_true", help="Send real orders (default: dry run)")
+    parser.add_argument("--live", action="store_true", help="Send real orders (same as --mode live)")
+    parser.add_argument("--mode", choices=tc.MODES, default="dry",
+                        help="dry (default), demo (Kalshi demo exchange), live (real money)")
     parser.add_argument("--stance-only", action="store_true", help="Skip market search and trades")
     args = parser.parse_args()
+    args.live = "live" if args.live else args.mode
 
     records = []
     if args.statement:

@@ -219,7 +219,12 @@ def priced_in(match: dict, edge: float = 0.03) -> bool:
 
 def trade_all(matches: list, live: bool = False, qty: int = DEFAULT_QTY,
               min_relevance: float = MIN_TRADE_RELEVANCE, reason: str = "") -> list:
-    """Trade the most relevant matches on each venue with the shared risk limits."""
+    """Trade the most relevant matches on each venue with the shared risk limits.
+
+    live may be True/False or a mode: "dry", "demo" (Kalshi demo exchange,
+    Polymarket dry) or "live".
+    """
+    mode = tc.mode_of(live)
     results = []
     per_venue = {}
     for m in matches:
@@ -231,9 +236,12 @@ def trade_all(matches: list, live: bool = False, qty: int = DEFAULT_QTY,
             results.append({"venue": m["venue"], "market": m["market"], "side": m["side"],
                             "error": "already priced in (nothing left to buy on that side)"})
             continue  # doesn't use up a trade slot; try the next match
-        place = kalshi_trader.place_trade if m["venue"] == "kalshi" else polymarket_client.place_trade
         try:
-            r = place(m["market"], m["side"], qty, live=live, reason=reason)
+            if m["venue"] == "kalshi":
+                r = kalshi_trader.place_trade(m["market"], m["side"], qty, live=mode in ("demo", "live"),
+                                              reason=reason, env="demo" if mode == "demo" else None)
+            else:
+                r = polymarket_client.place_trade(m["market"], m["side"], qty, live=mode == "live", reason=reason)
         except Exception as e:
             r = {"venue": m["venue"], "market": m["market"], "side": m["side"], "error": str(e)}
         results.append(r)

@@ -35,6 +35,25 @@ TAKER_FEE_THETA = {
 }
 
 
+# Trading modes, shared by every entry point:
+#   "dry"  : nothing sent (priced against real order books)
+#   "demo" : Kalshi orders go to Kalshi's demo exchange (fake money); Polymarket stays dry
+#   "live" : real orders on both venues
+MODES = ("dry", "demo", "live")
+
+
+def mode_of(value) -> str:
+    """Accepts the old live=True/False or a mode string."""
+    if value is True:
+        return "live"
+    if value in (False, None, ""):
+        return "dry"
+    value = str(value).lower()
+    if value not in MODES:
+        raise ValueError(f"mode must be one of {MODES}, not {value!r}")
+    return value
+
+
 def taker_fee(venue: str, contracts: float, price: float) -> float:
     return TAKER_FEE_THETA[venue] * contracts * price * (1.0 - price)
 
@@ -68,6 +87,8 @@ def spent_today() -> float:
                 entry = json.loads(line)
             except json.JSONDecodeError:
                 continue
+            if entry.get("env") == "demo":
+                continue  # fake money doesn't count toward the real daily cap
             if entry.get("live") and entry.get("sent") and entry.get("time", "").startswith(today):
                 total += entry.get("max_cost", 0.0)
     return total
@@ -99,5 +120,5 @@ def trade_status(result: dict) -> str:
     if result.get("blocked"):
         return "BLOCKED: " + "; ".join(result["blocked"])
     if result.get("sent"):
-        return "SENT"
+        return "SENT (demo)" if result.get("env") == "demo" else "SENT"
     return "DRY RUN"
