@@ -128,13 +128,18 @@ class KalshiTrader:
         from cryptography.hazmat.primitives import hashes
         from cryptography.hazmat.primitives.asymmetric import padding
 
+        from cryptography.hazmat.primitives.asymmetric import ed25519
+
         timestamp = str(int(time.time() * 1000))
         message = f"{timestamp}{method.upper()}{path.split('?')[0]}".encode()
-        signature = self.private_key.sign(
-            message,
-            padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.DIGEST_LENGTH),
-            hashes.SHA256(),
-        )
+        if isinstance(self.private_key, ed25519.Ed25519PrivateKey):
+            signature = self.private_key.sign(message)      # Ed25519 keys sign the message directly
+        else:
+            signature = self.private_key.sign(               # RSA keys: RSA-PSS with SHA-256
+                message,
+                padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.DIGEST_LENGTH),
+                hashes.SHA256(),
+            )
         return {
             "KALSHI-ACCESS-KEY": self.key_id,
             "KALSHI-ACCESS-TIMESTAMP": timestamp,
