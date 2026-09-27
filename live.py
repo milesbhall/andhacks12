@@ -51,6 +51,11 @@ import trading_common as tc
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TRANSCRIPT_PATH = os.path.join(SCRIPT_DIR, "live_transcript.json")
+# Output of the live recommenders (run_kalshi_ticker2.py / run_polymarket.py --watch)
+RECOMMENDER_FILES = {"kalshi": os.path.join(SCRIPT_DIR, "live_recommendations.json"),
+                     "polymarket": os.path.join(SCRIPT_DIR, "live_polymarket_recommendations.json")}
+RECOMMENDER_MAX_AGE = 90        # seconds; ignore stale recommender output
+RECOMMENDER_MAX_EXTRA = 3       # extra markets per surprise taken from the recommenders
 STATE_PATH = os.path.join(SCRIPT_DIR, "live_state.json")
 RESULTS_DIR = os.path.join(SCRIPT_DIR, "results")
 
@@ -119,7 +124,13 @@ class State:
         tmp = STATE_PATH + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             f.write(text)
-        os.replace(tmp, STATE_PATH)
+        for attempt in range(20):          # Windows: a reader (dashboard, uploader) may hold the file briefly
+            try:
+                os.replace(tmp, STATE_PATH)
+                return
+            except PermissionError:
+                time.sleep(0.05)
+        print("   (couldn't update live_state.json; will retry on the next change)")
 
 
 # ------------------------------------------------------------------ #
@@ -239,6 +250,59 @@ def fresh_quote(m: dict) -> dict:
 # DURING THE SPEECH
 # ------------------------------------------------------------------ #
 
+def recommender_markets(record: dict, venues, already: set) -> list:
+    """Markets the live recommenders found that aren't on the watchlist yet, with a buy side.
+    Uses their side when they set one; otherwise one Gemini call decides YES/NO for all."""
+    from datetime import datetime, timezone
+    found = []
+    for venue, path in RECOMMENDER_FILES.items():
+        if venue not in venues or not os.path.isfile(path):
+            continue
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            age = (datetime.now(timezone.utc) - datetime.fromisoformat(data["updated_at"])).total_seconds()
+        except Exception:
+            continue
+        if age > RECOMMENDER_MAX_AGE:
+            continue
+        for r in (data.get("recommendations") or data.get("candidates") or []):
+            key = (venue, r.get("market_id") or r.get("ticker"))
+            if key[1] and key not in already and float(r.get("relevance_score", 0)) >= 0.6:
+                found.append((venue, r))
+                already.add(key)
+    found = found[:RECOMMENDER_MAX_EXTRA]
+    if not found:
+        return []
+
+    unsided = [r for _, r in found if not r.get("side")]
+    sides = {}
+    if unsided:
+        listing = [{"id": r.get("market_id") or r.get("ticker"),
+                    "market": f"{r.get('event_title', '')} {r.get('market_title', '')}".strip()} for r in unsided]
+        try:
+            data = stance_scorer._gemini_json(
+                f"A {record['direction'].lower()} surprise from {record['speaker']}: \"{record['statement'][:600]}\"\n"
+                "For each prediction market, does this make YES more likely (YES_UP), less likely (YES_DOWN), "
+                "or is it unrelated (NONE)? Return JSON {\"markets\": [{\"id\": str, \"direction\": str}]}.\n"
+                + json.dumps(listing))
+            sides = {m["id"]: m["direction"] for m in data.get("markets", [])}
+        except Exception:
+            sides = {}
+    out = []
+    for venue, r in found:
+        market = r.get("market_id") or r.get("ticker")
+        side = r.get("side") or {"YES_UP": "yes", "YES_DOWN": "no"}.get(sides.get(market))
+        if not side:
+            continue          # unrelated or undecided: don't trade it
+        out.append({"venue": venue, "market": market,
+                    "title": f"{r.get('event_title', '')} -- {r.get('market_title', '')}".strip(" -"),
+                    "direction": "YES_UP" if side == "yes" else "YES_DOWN", "side": side,
+                    "relevance": float(r.get("relevance_score", 0.7)) if r.get("side") else 0.7,
+                    "reason": "from the live recommender", "quote": r.get("quote") or {}})
+    return out
+
+
 class LiveDesk:
     def __init__(self, speaker, venues, qty, live, watchlist, state, source="live", surprises_only=False):
         self.speaker, self.venues, self.qty, self.live = speaker, venues, qty, live
@@ -308,9 +372,16 @@ class LiveDesk:
         import market_router
         candidates = [m for m in self.watch.get(record["direction"], [])
                       if (m["venue"], m["market"]) not in self.traded and m["venue"] in self.venues]
+        # Add what the live recommenders are pointing at right now (new topics mid-speech).
+        known = {(m["venue"], m["market"]) for m in self.watch.get(record["direction"], [])} | self.traded
+        extra = recommender_markets(record, self.venues, known)
+        if extra:
+            print(f"   + {len(extra)} market(s) from the live recommenders: "
+                  + ", ".join(f"{m['side'].upper()} {m['market']}" for m in extra))
+        candidates += extra
         with ThreadPoolExecutor(max_workers=8) as pool:            # refresh prices in parallel
             fresh = list(pool.map(fresh_quote, candidates))
-        trades = market_router.trade_all(fresh, live=self.live, qty=self.qty,
+        trades = market_router.trade_all(fresh, live=self.live, qty=self.qty, max_per_venue=3,
                                          reason=f"LIVE {self.speaker} {record['direction']} z={record['z']:+.1f}")
         done = time.time()
         for t in trades:

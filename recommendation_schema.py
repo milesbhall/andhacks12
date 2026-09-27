@@ -88,6 +88,35 @@ def recommendation(
     }
 
 
+_FED_CACHE = {"time": 0.0, "watch": None}
+FED_CACHE_SECONDS = 60
+
+
+def fed_decision_recommendations(venue: str, speaker: str, direction: str) -> list[dict]:
+    """The next FOMC decision outcomes a surprise in `direction` favors (from live.py),
+    already carrying a buy side. Cached for a minute so every sentence doesn't refetch."""
+    import time
+    import live
+    if speaker not in live.FED_SPEAKERS or direction not in ("HAWKISH", "DOVISH"):
+        return []
+    if _FED_CACHE["watch"] is None or time.time() - _FED_CACHE["time"] > FED_CACHE_SECONDS:
+        try:
+            _FED_CACHE["watch"] = live.fed_decision_watchlist(["kalshi", "polymarket"])
+            _FED_CACHE["time"] = time.time()
+        except Exception:
+            return []
+    out = []
+    for m in _FED_CACHE["watch"].get(direction, []):
+        if m["venue"] != venue:
+            continue
+        event, _, outcome = (m.get("title") or "").partition(" -- ")
+        out.append(recommendation(venue=venue, market_id=m["market"], event_title=event,
+                                  market_title=outcome or m["market"], relevance_score=m["relevance"],
+                                  reasoning=m.get("reason", ""), quote=m.get("quote"),
+                                  market_direction=m.get("direction")))
+    return out
+
+
 def output_payload(
     venue: str,
     speaker: str,
@@ -96,6 +125,12 @@ def output_payload(
     candidates: list[dict],
     transcript_update: int | None = None,
 ) -> dict:
+    recommendations = []
+    if baseline.get("is_surprising") is True:
+        # On a Fed surprise, the next meeting's decision markets come first, then the ranked ones.
+        fed = fed_decision_recommendations(venue, speaker, baseline.get("surprise_direction"))
+        seen = {r["market_id"] for r in fed}
+        recommendations = fed + [c for c in candidates if c["market_id"] not in seen]
     return {
         "schema_version": 1,
         "venue": venue,
@@ -105,5 +140,5 @@ def output_payload(
         "context": context,
         "baseline": baseline,
         "candidates": candidates,
-        "recommendations": candidates if baseline.get("is_surprising") is True else [],
+        "recommendations": recommendations,
     }

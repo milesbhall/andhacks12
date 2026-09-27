@@ -218,7 +218,8 @@ def priced_in(match: dict, edge: float = 0.03) -> bool:
 
 
 def trade_all(matches: list, live: bool = False, qty: int = DEFAULT_QTY,
-              min_relevance: float = MIN_TRADE_RELEVANCE, reason: str = "") -> list:
+              min_relevance: float = MIN_TRADE_RELEVANCE, reason: str = "",
+              max_per_venue: int = MAX_TRADES_PER_VENUE) -> list:
     """Trade the most relevant matches on each venue with the shared risk limits.
 
     live may be True/False or a mode: "dry", "demo" (Kalshi demo exchange,
@@ -230,7 +231,7 @@ def trade_all(matches: list, live: bool = False, qty: int = DEFAULT_QTY,
     for m in matches:
         if m["relevance"] < min_relevance:
             continue
-        if per_venue.get(m["venue"], 0) >= MAX_TRADES_PER_VENUE:
+        if per_venue.get(m["venue"], 0) >= max_per_venue:
             continue
         if priced_in(m):
             results.append({"venue": m["venue"], "market": m["market"], "side": m["side"],
