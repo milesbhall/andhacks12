@@ -223,7 +223,7 @@
         <div class="muted" style="margin-bottom:8px">Recent posts about the Fed, scored on the same −1 dovish / +1 hawkish scale as the speakers. A speaker surprise that runs against the crowd is a bigger repricing.</div>
         <div id="crowd" class="muted">Loading…</div></div>
       <div class="card"><h2>Macro backdrop (FRED)</h2>
-        <div class="muted" style="margin-bottom:8px">Latest data from the St. Louis Fed. Gemini sees these numbers when it scores each passage.</div>
+        <div class="muted" style="margin-bottom:8px">Latest data from the St. Louis Fed. Gemini sees these numbers when it scores each passage, and each speaker's usual stance is shifted by how much core inflation and unemployment have moved since their baseline was recorded.</div>
         <div id="macro" class="muted">Loading…</div></div>
     </div>
   </section>
@@ -571,7 +571,8 @@ function render(d) {
   $("k-z").textContent = last ? `z ${last.z >= 0 ? "+" : ""}${last.z.toFixed(1)} · ${last.direction}` : "";
   $("k-surprises").textContent = alerts.length;
   const b = s.baseline || {};
-  $("k-base").textContent = b.mean != null ? `usual stance ${b.mean >= 0 ? "+" : ""}${b.mean.toFixed(2)} (spread ${b.stdev.toFixed(2)})` : "";
+  $("k-base").textContent = b.mean != null ? `usual stance ${b.mean >= 0 ? "+" : ""}${b.mean.toFixed(2)} (spread ${b.stdev.toFixed(2)})` +
+    (b.macro_shift ? ` · FRED-adjusted ${b.macro_shift >= 0 ? "+" : ""}${b.macro_shift.toFixed(2)}` : "") : "";
   $("k-latency").textContent = alerts.length ? (alerts[alerts.length - 1].latency_ms / 1000).toFixed(1) + "s" : "—";
 
   const a = alerts[alerts.length - 1];

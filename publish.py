@@ -69,7 +69,8 @@ def _items(value, names, limit):
 def build_payload() -> dict:
     raw = _load(STATE_PATH) or {}
     live = _fields(raw, ("speaker", "source", "started", "status", "live_orders", "mode"))
-    live["baseline"] = _fields(raw.get("baseline"), ("mean", "stdev", "n"))
+    live["baseline"] = _fields(raw.get("baseline"), ("mean", "stdev", "n", "raw_mean"))
+    live["baseline"]["macro_shift"] = ((raw.get("baseline") or {}).get("macro") or {}).get("shift")
     watch = raw.get("watchlist") or {}
     market_fields = ("venue", "market", "title", "side", "direction", "relevance", "quote")
     live["watchlist"] = {direction: _items(watch.get(direction), market_fields, 20)

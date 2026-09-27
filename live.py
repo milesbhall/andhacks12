@@ -310,7 +310,7 @@ class LiveDesk:
         self.surprises_only = surprises_only  # mic demo: don't store neutral chatter
         self.watch = watchlist
         self.state = state
-        self.base = stance_scorer.load_store()[speaker]
+        self.base = stance_scorer.macro_adjusted(stance_scorer.load_store()[speaker])   # FRED-adjusted
         self.traded = set()
         self.recent = []            # last few passages, given to the scorer as context
         self.held_direction = None  # direction of positions already taken this session
@@ -530,7 +530,7 @@ def main():
         raise SystemExit(f"No stance baseline for {args.speaker}. Run: python stance_scorer.py --seed")
     source = (args.source_label or
               (f"simulate {args.simulate} x{args.speed:g}" if args.simulate else os.path.basename(args.watch)))
-    state = State(args.speaker, source, store[args.speaker], args.live)
+    state = State(args.speaker, source, stance_scorer.macro_adjusted(store[args.speaker]), args.live)
 
     watchlist = {"HAWKISH": [], "DOVISH": []}
     if args.fast:

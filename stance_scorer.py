@@ -212,11 +212,25 @@ def _result(speaker, statement, scored, base) -> StanceResult:
                         base["stdev"], z, surprising, direction, scored["summary"])
 
 
+def macro_adjusted(base: dict, today: str = None) -> dict:
+    """Baseline mean shifted for today's macro data (FRED): see fred_client.macro_shift."""
+    try:
+        import fred_client
+        adj = fred_client.macro_shift([d.split("_")[-2] if "_" in d else d for d in base.get("dates", [])], today)
+    except Exception:
+        adj = {"shift": 0.0}
+    out = dict(base)
+    out["raw_mean"] = base["mean"]
+    out["mean"] = base["mean"] + adj.get("shift", 0.0)
+    out["macro"] = adj
+    return out
+
+
 def score_statement(speaker: str, statement: str) -> StanceResult:
     store = load_store()
     if speaker not in store:
         raise RuntimeError(f"No stance baseline for {speaker}. Run: python stance_scorer.py --seed")
-    return _result(speaker, statement, score_stances([statement])[0], store[speaker])
+    return _result(speaker, statement, score_stances([statement])[0], macro_adjusted(store[speaker]))
 
 
 def replay(speaker: str, date: str) -> list:

@@ -28,9 +28,9 @@ sentiment model can't tell the difference. A personal baseline can.
 | Step | What happens |
 |---|---|
 | Listen | ElevenLabs realtime speech-to-text from the laptop mic, an uploaded recording (1×–20×), a YouTube or federalreserve.gov stream, or a saved transcript replay. |
-| Context | **FRED** (fed funds, CPI, core PCE, unemployment, payrolls, 2y/10y, breakevens) goes into the scoring prompt. **Bluesky + Reddit** posts are scored on the same scale so each surprise is compared with what the crowd expects. |
+| Context | **FRED** (fed funds, CPI, core PCE, unemployment, payrolls, 2y/10y, breakevens) goes into the scoring prompt. **Bluesky + Reddit** (via SocialCrawl) posts are scored on the same scale so each surprise is compared with what the crowd expects. |
 | Score | Gemini rates each passage and labels who is talking (reporter questions are ignored). |
-| Decide | z-score vs. the speaker's baseline: Warsh (46 answers, 2 press conferences), Powell (123 answers, 4 press conferences), President Trump (5 economy speeches). |
+| Decide | z-score vs. the speaker's baseline, **adjusted with FRED** (+0.25 per point of extra core PCE inflation, −0.15 per point of extra unemployment since the baseline was recorded): Warsh (46 answers, 2 press conferences), Powell (123 answers, 4 press conferences), President Trump (5 economy speeches). |
 | Trade | Markets are chosen before the speech, so no search delay. Dry run, Kalshi demo, or LIVE (typed confirmation). |
 | Prove | Every surprise is hashed onto Solana devnet, stored in Tiger Data, and remembered by Backboard ("Ask the desk"). |
 
@@ -54,7 +54,7 @@ site over HTTPS and runs the Python pipeline locally.
 pip install -r requirements.txt
 # keys go in gitignored files: gemapi.txt, elevenapi.txt, kalshikey.txt + privkey.txt,
 # polymarketkey.txt + polymarketsecret.txt, backboardapi.txt, tigerdb.txt, fredapi.txt,
-# redditapi.txt (client_id:client_secret, optional), hostinger_url.txt + hostinger_token.txt
+# socialcrawlapi.txt (Reddit), hostinger_url.txt + hostinger_token.txt
 
 python control_worker.py                         # then use the website's control room
 
@@ -93,7 +93,7 @@ requires the operator password and typing LIVE. Real money is never the default.
 
 ## Sponsors used
 
-Gemini · ElevenLabs · Solana · Tiger Data · Backboard · Auth0 (local dashboard) · Hostinger · Kalshi · Polymarket · FRED · Bluesky · Reddit
+Gemini · ElevenLabs · Solana · Tiger Data · Backboard · Auth0 (local dashboard) · Hostinger · Kalshi · Polymarket · FRED · Bluesky · Reddit via SocialCrawl
 
 ## Team
 

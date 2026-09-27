@@ -10,8 +10,7 @@ crowd is dovish is a bigger repricing than one the crowd already expected.
   python social_sentiment.py                 # fetch, score, print
   python social_sentiment.py --query "Warsh rate hike"
 
-Bluesky: public AppView search, no key. Reddit: official API with redditapi.txt
-('client_id:client_secret' of a script app), falling back to the public JSON.
+Bluesky: public AppView search, no key. Reddit: SocialCrawl API (socialcrawlapi.txt).
 Gemini (gemapi.txt) scores the posts in one batched call.
 """
 
@@ -55,52 +54,32 @@ def bluesky(query: str, limit: int = 40) -> list:
     return out
 
 
-_reddit_token = {"value": "", "expires": 0.0}
-
-
-def _reddit_credentials():
-    """redditapi.txt = 'client_id:client_secret' from a 'script' app at reddit.com/prefs/apps."""
-    raw = os.environ.get("REDDIT_API", "")
-    path = os.path.join(SCRIPT_DIR, "redditapi.txt")
-    if not raw and os.path.isfile(path):
+def _socialcrawl_key() -> str:
+    key = os.environ.get("SOCIALCRAWL_API_KEY", "")
+    path = os.path.join(SCRIPT_DIR, "socialcrawlapi.txt")
+    if not key and os.path.isfile(path):
         with open(path, encoding="utf-8") as f:
-            raw = f.read().strip()
-    return tuple(raw.split(":", 1)) if ":" in raw else None
-
-
-def _reddit_headers() -> dict:
-    creds = _reddit_credentials()
-    if not creds:
-        return {}
-    if time.time() > _reddit_token["expires"]:
-        for host in ("https://www.reddit.com", "https://ssl.reddit.com"):
-            try:
-                r = requests.post(f"{host}/api/v1/access_token", auth=creds, headers=UA, timeout=20,
-                                  data={"grant_type": "client_credentials"})
-                r.raise_for_status()
-                tok = r.json()
-                _reddit_token.update(value=tok["access_token"], expires=time.time() + tok.get("expires_in", 3600) - 60)
-                break
-            except (requests.RequestException, KeyError, ValueError):
-                continue
-    return {"Authorization": f"bearer {_reddit_token['value']}"} if _reddit_token["value"] else {}
+            key = f.read().strip()
+    return key
 
 
 def reddit(query: str, limit: int = 40) -> list:
-    """Reddit's official API (OAuth app-only) when redditapi.txt exists, else the public JSON."""
-    auth = _reddit_headers()
-    base = "https://oauth.reddit.com" if auth else "https://www.reddit.com"
-    r = requests.get(f"{base}/r/{REDDIT_SUBS}/search" + ("" if auth else ".json"),
-                     params={"q": query, "restrict_sr": "1", "sort": "new", "t": "week", "limit": limit, "raw_json": 1},
-                     headers={**UA, **auth}, timeout=20)
+    """Reddit via SocialCrawl (socialcrawl.dev): Reddit doesn't grant API access to new apps.
+    Cached pages cost 0 credits; a fresh page costs about 1 credit."""
+    key = _socialcrawl_key()
+    if not key:
+        return []
+    r = requests.get("https://www.socialcrawl.dev/v1/reddit/search",
+                     params={"query": query, "limit": limit}, headers={"x-api-key": key, **UA}, timeout=40)
     r.raise_for_status()
     out = []
-    for child in r.json().get("data", {}).get("children", []):
-        d = child.get("data", {})
-        text = (d.get("title", "") + ". " + (d.get("selftext") or "")[:400]).strip()
-        out.append({"source": "Reddit", "text": text, "author": "r/" + d.get("subreddit", ""),
-                    "time": datetime.fromtimestamp(d.get("created_utc", 0), timezone.utc).isoformat(),
-                    "likes": d.get("score", 0), "url": "https://www.reddit.com" + d.get("permalink", "")})
+    for item in (r.json().get("data") or {}).get("items", []):
+        post = item.get("post") or item
+        ext = post.get("ext") or {}
+        text = ((ext.get("title") or "") + ". " + ((post.get("content") or {}).get("text") or "")[:400]).strip(". ")
+        out.append({"source": "Reddit", "text": text, "author": "r/" + (ext.get("subreddit") or ""),
+                    "time": post.get("published_at"), "likes": (post.get("engagement") or {}).get("likes") or 0,
+                    "url": post.get("url", "")})
     return out
 
 

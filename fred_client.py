@@ -103,3 +103,52 @@ def context_line() -> str:
 if __name__ == "__main__":
     for s in latest(max_age=0).get("series", []):
         print(f"{s['label']:32} {s['value']:>8g}{s['unit']}   as of {s['date']}")
+
+
+def value_on(series_id: str, date: str):
+    """Latest observation on or before date (YYYY-MM-DD); cached in macro_cache.json."""
+    cache = {}
+    try:
+        with open(CACHE_PATH, encoding="utf-8") as f:
+            cache = json.load(f)
+    except (OSError, ValueError):
+        pass
+    hist = cache.setdefault("history", {})
+    k = f"{series_id}@{date}"
+    if k not in hist:
+        key = api_key()
+        if not key:
+            return None
+        r = requests.get(API, params={"series_id": series_id, "api_key": key, "file_type": "json",
+                                      "sort_order": "desc", "limit": 14, "observation_end": date}, timeout=20)
+        r.raise_for_status()
+        obs = [o for o in r.json().get("observations", []) if o.get("value") not in (".", "")]
+        if not obs:
+            return None
+        v = float(obs[0]["value"])
+        if series_id in ("PCEPILFE", "CPIAUCSL") and len(obs) >= 13:
+            v = (v / float(obs[12]["value"]) - 1) * 100
+        hist[k] = v
+        with open(CACHE_PATH, "w", encoding="utf-8") as f:
+            json.dump(cache, f, indent=1)
+    return hist[k]
+
+
+def macro_shift(baseline_dates: list, today: str = None) -> dict:
+    """How much more hawkish than usual a speaker *should* sound today, given how inflation
+    and unemployment have moved since their baseline was recorded (FRED core PCE + UNRATE).
+    +0.25 stance per point of extra core inflation, -0.15 per point of extra unemployment,
+    capped at +/-0.3. A dove turning hawkish while inflation surges is less of a surprise."""
+    today = today or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    dates = [f"{d[:4]}-{d[4:6]}-{d[6:8]}" for d in baseline_dates if len(d) >= 8 and d[:8].isdigit()]
+    if not dates:
+        return {"shift": 0.0}
+    try:
+        pce_then = sum(value_on("PCEPILFE", d) for d in dates) / len(dates)
+        un_then = sum(value_on("UNRATE", d) for d in dates) / len(dates)
+        pce_now, un_now = value_on("PCEPILFE", today), value_on("UNRATE", today)
+    except (TypeError, requests.RequestException):
+        return {"shift": 0.0}
+    shift = max(-0.3, min(0.3, 0.25 * (pce_now - pce_then) - 0.15 * (un_now - un_then)))
+    return {"shift": round(shift, 3), "core_pce_then": round(pce_then, 2), "core_pce_now": round(pce_now, 2),
+            "unrate_then": round(un_then, 2), "unrate_now": round(un_now, 2)}
