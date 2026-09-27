@@ -244,6 +244,10 @@
   </section>
 
   <section id="tab-orders" hidden>
+    <div class="card"><h2>Markets in view</h2>
+      <div class="muted" style="margin-bottom:10px">Markets follow the latest speaker topic. Every real order requires a fresh exchange quote, a short-lived preview, and a separate confirmation. This desk uses one team laptop and trading account.</div>
+      <div id="order-markets" class="muted">Waiting for markets…</div>
+    </div>
     <div class="card"><h2>Active orders</h2>
       <div class="row"><button class="btn ghost" id="orders-refresh" type="button">Refresh account</button><span class="muted" id="orders-asof">Sign in with an approved Auth0 account to view private exchange data.</span></div>
       <div id="exchange-orders" class="muted" style="margin-top:14px">No exchange snapshot yet.</div>
@@ -251,10 +255,6 @@
     <div class="card"><h2>Holdings</h2><div id="exchange-positions" class="muted">No exchange snapshot yet.</div></div>
     <div class="card"><h2>Recent order attempts</h2>
       <div id="active-orders" class="muted" style="margin-top:14px">No order attempts yet.</div>
-    </div>
-    <div class="card"><h2>Markets in view</h2>
-      <div class="muted" style="margin-bottom:10px">Markets follow the latest speaker topic. Every real order requires a fresh exchange quote, a short-lived preview, and a separate confirmation. This desk uses one team laptop and trading account.</div>
-      <div id="order-markets" class="muted">Waiting for markets…</div>
     </div>
   </section>
 
@@ -316,7 +316,8 @@
   </section>
 
   <section id="tab-replay" hidden>
-    <div class="card"><h2>Press conference replay</h2>
+    <div class="card"><h2>Replay</h2>
+      <div class="muted" style="margin-bottom:8px">Pick a speech: browse its pre-scored answers here, or press <b>Play through the live desk</b> to stream it through the real pipeline (transcript, surprises, markets and orders in the chosen mode) on the Live tab.</div>
       <div class="notice" style="margin-bottom:12px"><b>Replay tab:</b> precomputed stance-only results, scored answer by answer. <b>Control room replay:</b> feeds a saved transcript through the timed live desk, updating the Live tab and showing order attempts in the selected trading mode. Start with Dry run.</div>
       <div class="row" style="margin-top:0"><select id="rp-run" style="max-width:640px"></select><span class="muted">Scored answer by answer. |z| ≥ 2 is a surprise.</span></div>
       <div id="rp-body" class="muted" style="margin-top:10px">Loading…</div>
@@ -332,11 +333,11 @@
   <section id="tab-how" hidden>
   <div class="card"><h2>How it works</h2>
     <div class="how">
+      <div class="step"><b>0 · Context</b>FRED macro data and Bluesky/Reddit crowd sentiment frame each surprise.</div>
       <div class="step"><b>1 · Listen</b>ElevenLabs Scribe v2 Realtime turns live audio into text, sentence by sentence.</div>
       <div class="step"><b>2 · Score</b>Gemini rates each passage −1 (dovish) to +1 (hawkish), compared with this speaker's own past answers.</div>
       <div class="step"><b>3 · Decide</b>A z-score of ±2 or more is a surprise. Markets were picked before the speech, so there's no search delay.</div>
       <div class="step"><b>4 · Trade</b>Kalshi + Polymarket orders within $10/order, $50/day limits and a kill switch.</div>
-      <div class="step"><b>0 · Context</b>FRED macro data and Bluesky/Reddit crowd sentiment frame each surprise.</div>
       <div class="step"><b>5 · Prove</b>Each call is hashed onto Solana, stored in Tiger Data, and remembered by Backboard.</div>
     </div>
   </div>
@@ -611,6 +612,16 @@ function drawReplay() {
   if (!runs.length) { $("rp-body").textContent = "No replays yet. Run: python pipeline.py --replay 20260916"; return; }
   const run = runs.find(r => r.name === $("rp-run").value) || runs[0];
   const recs = run.records || [];
+  const rid = run.name.replace(/^replay_/, "");
+  if (!$("rp-play")) $("rp-run").insertAdjacentHTML("afterend", ' <button class="btn" id="rp-play" type="button">▶ Play through the live desk</button> <select id="rp-speed" style="max-width:110px"><option value="10">10×</option><option value="20">20×</option><option value="5">5×</option><option value="1">1×</option></select>');
+  $("rp-play").onclick = () => {
+    if (!authed) { alert("Sign in to play a replay through the live desk."); return; }
+    const radio = document.querySelector('input[name=src][value=replay]');
+    radio.checked = true; radio.dispatchEvent(new Event("change"));
+    $("replay-date").value = rid; $("replay-date").dispatchEvent(new Event("change"));
+    $("opt-speed").value = $("rp-speed").value;
+    $("control-start").click();
+  };
   const zmax = Math.max(3, ...recs.map(r => Math.abs(r.z || 0)));
   let h = `<div class="bars">` + recs.map((r, i) => {
     const z = r.z || 0, hgt = Math.max(2, Math.abs(z) / zmax * 78);
@@ -633,7 +644,7 @@ function drawContext() {
     const src = Object.entries(c.by_source || {}).filter(([, v]) => v.n).map(([k, v]) => `${k}: ${sgn(v.mean)} (${v.n})`).join(" · ");
     $("crowd").innerHTML = `<div class="metric"><div class="muted">Crowd lean</div><div class="v"><span class="tag ${cls}" style="font-size:16px">${esc(c.lean)}</span></div></div>
       <div class="metric"><div class="muted">Average</div><div class="v">${sgn(c.mean)}</div></div><div class="metric"><div class="muted">Posts</div><div class="v">${c.n}</div></div>
-      <div class="muted" style="margin:6px 0 10px">${esc(src)} · updated ${new Date(c.updated_at).toLocaleTimeString()}</div>` +
+      <div class="muted" style="margin:6px 0 10px">${esc(src)} · updated ${etTime(c.updated_at)}</div>` +
       (c.posts || []).slice(0, 12).map(p => `<div class="line"><span class="tag ${p.stance > 0.2 ? "hawk" : p.stance < -0.2 ? "dove" : ""}">${sgn(p.stance)}</span><span class="muted">${esc(p.source)} · ${esc(p.author)}</span><div><a href="${esc(p.url)}" target="_blank" rel="noopener" style="color:var(--text);text-decoration:none">${esc(p.text)}</a></div></div>`).join("");
   } else $("crowd").textContent = "No posts yet (the laptop refreshes this every 10 minutes).";
   const ser = m.series || [];
@@ -643,12 +654,12 @@ function drawContext() {
 
 function drawHistory() {
   const sig = (archive && archive.signals) || [], tr = (archive && archive.trades) || [];
-  $("hist-signals").innerHTML = sig.length ? `<table><tr><th>Time (UTC)</th><th>Speaker</th><th>Read</th><th>z</th><th>Source</th><th>Summary</th></tr>` +
+  $("hist-signals").innerHTML = sig.length ? `<table><tr><th>Time (ET)</th><th>Speaker</th><th>Read</th><th>z</th><th>Source</th><th>Summary</th></tr>` +
     sig.slice(0, 80).map(s => { const cls = s.direction === "HAWKISH" ? "hawk" : s.direction === "DOVISH" ? "dove" : "";
-      return `<tr><td>${esc(String(s.time).slice(0, 19))}</td><td>${esc((s.speaker || "").replace("_", " "))}</td><td><span class="tag ${cls}">${esc(s.direction)}</span></td><td>${sgn(s.z, 1)}</td><td>${esc(s.source)}${s.solana_sig ? ` · <a href="https://explorer.solana.com/tx/${esc(s.solana_sig)}?cluster=devnet" target="_blank" rel="noopener">receipt</a>` : ""}</td><td class="muted">${esc(s.summary)}</td></tr>`; }).join("") + "</table>" : "No signals stored yet.";
+      return `<tr><td>${etTime(s.time, true)}</td><td>${esc((s.speaker || "").replace("_", " "))}</td><td><span class="tag ${cls}">${esc(s.direction)}</span></td><td>${sgn(s.z, 1)}</td><td>${esc(s.source)}${s.solana_sig ? ` · <a href="https://explorer.solana.com/tx/${esc(s.solana_sig)}?cluster=devnet" target="_blank" rel="noopener">receipt</a>` : ""}</td><td class="muted">${esc(s.summary)}</td></tr>`; }).join("") + "</table>" : "No signals stored yet.";
   $("hist-trades").innerHTML = tr.length ? `<table><tr><th>Time</th><th>Venue</th><th>Market</th><th>Side</th><th>Qty</th><th>Limit</th><th>Max cost</th><th>Status</th><th>Reason</th></tr>` +
-    tr.slice(0, 100).map(t => `<tr><td>${esc(String(t.time || "").slice(0, 19))}</td><td>${esc(t.venue)}</td><td>${esc(t.market)}</td><td>${esc((t.side || "").toUpperCase())}</td><td>${esc(t.qty)}</td><td>${cents(t.yes_limit)}</td><td>$${(t.max_cost || 0).toFixed(2)}</td><td>${badge(t.status)}</td><td class="muted">${esc(t.reason)}</td></tr>`).join("") + "</table>" : "No orders yet.";
-  $("hist-updated").textContent = archive && archive.updated_at ? "Archive updated " + new Date(archive.updated_at).toLocaleString() : "";
+    tr.slice(0, 100).map(t => `<tr><td>${etTime(t.time, true)}</td><td>${esc(t.venue)}</td><td>${esc(t.market)}</td><td>${esc((t.side || "").toUpperCase())}</td><td>${esc(t.qty)}</td><td>${cents(t.yes_limit)}</td><td>$${(t.max_cost || 0).toFixed(2)}</td><td>${badge(t.status)}</td><td class="muted">${esc(t.reason)}</td></tr>`).join("") + "</table>" : "No orders yet.";
+  $("hist-updated").textContent = archive && archive.updated_at ? "Archive updated " + etTime(archive.updated_at, true) : "";
 }
 
 async function loadArchive() {
@@ -684,7 +695,12 @@ function cleanTitle(title, market) {
 function chart(chunks, t0) {
   const pts = chunks.filter(c => c.z != null);
   const W = 640, H = 220, pad = 28, zmax = 4;
-  const times = pts.map(c => (new Date(c.time) - t0) / 60000);
+  // x = minutes into the speech at normal speaking pace (150 words/min), from the words heard so far,
+  // so the axis is right for live audio, recordings and 20x replays alike.
+  let words = 0;
+  const minuteAt = new Map();
+  for (const c of chunks) { words += String(c.text || c.summary || "").split(/\s+/).filter(Boolean).length || 40; minuteAt.set(c, words / 150); }
+  const times = pts.map(c => minuteAt.get(c) || 0);
   const tmax = Math.max(1, ...times);
   const x = t => pad + (t / tmax) * (W - pad * 2);
   const y = z => H / 2 - (Math.max(-zmax, Math.min(zmax, z)) / zmax) * (H / 2 - 12);
@@ -712,9 +728,16 @@ function badge(status) {
   return `<span class="badge b-bad">${esc(status).slice(0, 40)}</span>`;
 }
 
+const ET = { timeZone: "America/New_York" };
+function etTime(v, withDate) {
+  const t = typeof v === "number" ? v : Date.parse(v || "");
+  if (!Number.isFinite(t)) return "—";
+  return new Date(t).toLocaleString("en-US", withDate ? { ...ET, month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }
+    : { ...ET, hour: "numeric", minute: "2-digit", second: "2-digit" }) + " ET";
+}
 function timeLabel(value) {
   const t = Date.parse(value || "");
-  return Number.isFinite(t) ? new Date(t).toLocaleTimeString([], {hour: "numeric", minute: "2-digit", second: "2-digit"}) : "—";
+  return Number.isFinite(t) ? etTime(t) : "—";
 }
 
 function marketCard(m, actions = false, index = 0) {
@@ -844,7 +867,9 @@ function render(d) {
   }).join("") : "Waiting for speech…";
 
   const trades = s.trades || [];
-  const placed = trades.filter(t => !t.skipped), skipped = trades.filter(t => t.skipped);
+  const recentCut = Date.now() - 30 * 60 * 1000;   // order attempts clear after 30 minutes
+  const fresh = trades.filter(t => !t.time || Date.parse(t.time) >= recentCut);
+  const placed = fresh.filter(t => !t.skipped), skipped = fresh.filter(t => t.skipped);
   let oh = placed.slice(-6).reverse().map(t => {
     const side = (t.side || "").toUpperCase(), yl = t.yes_limit || 0, per = side === "YES" ? yl : 1 - yl;
     return `<div class="order"><div class="t">BUY <span class="side-${side.toLowerCase()}">${side}</span> · ${esc(cleanTitle(t.title, t.market))}</div>

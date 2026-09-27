@@ -250,16 +250,21 @@ def submit(preview_id, owner):
 def snapshot():
     result = {"as_of": datetime.now(timezone.utc).isoformat(), "connected": False,
               "orders": [], "positions": [], "recent_attempts": [], "errors": []}
-    for venue in ("kalshi", "polymarket"):
+    import os
+    here = os.path.dirname(os.path.abspath(__file__))
+    accounts = [("kalshi", "prod"), ("polymarket", "prod")]
+    if os.path.isfile(os.path.join(here, "kalshikey_demo.txt")):
+        accounts.insert(1, ("kalshi", "demo"))     # the Kalshi demo account (fake money) too
+    for venue, env in accounts:
         try:
-            trader = _trader(venue, "prod")
+            trader = _trader(venue, env)
             if venue == "kalshi":
                 cursor = ""
                 for _ in range(5):
                     endpoint = "/portfolio/orders?status=resting&limit=100" + ("&cursor=" + cursor if cursor else "")
                     page = trader._request("GET", endpoint)
                     for row in page.get("orders", []):
-                        result["orders"].append({"venue": venue, "env": "prod", "id": row.get("order_id"),
+                        result["orders"].append({"venue": venue, "env": env, "id": row.get("order_id"),
                             "market": row.get("ticker"), "side": row.get("action"), "outcome": row.get("side"),
                             "qty": row.get("remaining_count_fp"), "limit_price": row.get("yes_price_dollars"),
                             "status": row.get("status")})
@@ -272,7 +277,7 @@ def snapshot():
                     for row in page.get("market_positions", []):
                         net = float(row.get("position_fp", 0))
                         if net:
-                            result["positions"].append({"venue": venue, "env": "prod", "market": row.get("ticker"),
+                            result["positions"].append({"venue": venue, "env": env, "market": row.get("ticker"),
                                 "outcome": "yes" if net > 0 else "no", "qty": abs(net)})
                     cursor = page.get("cursor") or ""
                     if not cursor: break
@@ -296,16 +301,23 @@ def snapshot():
                     if page.get("eof", True) or not cursor: break
             result["connected"] = True
         except Exception as exc:
-            result["errors"].append(f"{venue}: account data unavailable ({type(exc).__name__})")
+            result["errors"].append(f"{venue}{' demo' if env == 'demo' else ''}: account data unavailable ({type(exc).__name__})")
     try:
         with open(tc.TRADE_LOG_PATH, encoding="utf-8") as handle:
             rows = [json.loads(line) for line in handle if line.strip()]
         latest = {}
-        for row in rows:
-            if row.get("request_id"):
-                latest[row["request_id"]] = row
-        result["recent_attempts"] = [{k: row.get(k) for k in
-            ("time", "venue", "env", "market", "side", "outcome", "qty", "limit_price", "status", "request_id")}
+        cutoff = datetime.now(timezone.utc).timestamp() - 30 * 60   # attempts clear after 30 minutes
+        for n, row in enumerate(rows):
+            try:
+                when = datetime.fromisoformat(str(row.get("time")).replace("Z", "+00:00")).timestamp()
+            except ValueError:
+                continue
+            if when >= cutoff:   # manual tickets (request_id) and desk-triggered orders alike
+                latest[row.get("request_id") or f"desk{n}"] = row
+        result["recent_attempts"] = [{**{k: row.get(k) for k in
+            ("time", "venue", "env", "market", "side", "outcome", "qty", "limit_price", "request_id", "reason")},
+            "outcome": row.get("outcome") or row.get("side"), "side": row.get("action") or "buy",
+            "status": row.get("status") or tc.trade_status(row)}
             for row in list(latest.values())[-20:][::-1]]
     except (OSError, ValueError):
         pass
