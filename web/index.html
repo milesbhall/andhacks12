@@ -14,6 +14,7 @@
     --accent: #5b9dff; --warn: #f0b429;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body { margin: 0; background: var(--bg); color: var(--text);
          font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
   .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
@@ -59,10 +60,19 @@
   .how { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
   .step { background: var(--panel2); border-radius: 10px; padding: 10px; font-size: 13px; }
   .step b { display: block; color: var(--accent); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .controls input, .controls button { font: inherit; border-radius: 7px; padding: 8px 10px; }
+  .controls input { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--line); }
+  .controls button { background: var(--accent); color: #07111f; border: 0; cursor: pointer; font-weight: 700; }
+  .controls button:disabled { opacity: .45; cursor: default; }
+  .controls label { display: block; margin-bottom: 6px; color: var(--muted); }
+  .controls .actions { display: flex; gap: 8px; margin-top: 12px; }
+  .controls .actions button { min-width: 90px; }
+  .controls .actions .stop { background: var(--hawk); color: #fff; }
   footer { color: var(--faint); font-size: 12px; margin-top: 24px; text-align: center; }
   @media (max-width: 860px) {
     .kpis { grid-template-columns: repeat(2, 1fr); } .grid, .recs { grid-template-columns: 1fr; }
-    .how { grid-template-columns: 1fr 1fr; }
+    .how, .controls { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -75,6 +85,22 @@
     </div>
     <div><span class="pill" id="mode">—</span> <span class="pill off" id="conn">connecting…</span></div>
   </header>
+
+  <div class="card" style="margin-top:18px"><h2>Operator controls · dry run only</h2>
+    <div class="muted" id="control-status">Checking operator controls…</div>
+    <div id="control-login" class="controls" hidden style="margin-top:12px">
+      <div><label for="operator-password">Operator password</label><input id="operator-password" type="password" autocomplete="current-password"></div>
+      <div style="align-self:end"><button id="operator-login" type="button">Sign in</button></div>
+    </div>
+    <div id="control-panel" hidden>
+      <p class="muted">Start a saved recording or an approved HTTPS speech stream. The local worker must be online. Website sessions are always dry runs and never place real or demo orders.</p>
+      <div class="controls">
+        <div><label for="audio-upload">Upload a recording (50 MB max)</label><input id="audio-upload" type="file" accept=".mp3,.m4a,.wav,.webm,.ogg,.mp4,audio/*"></div>
+        <div><label for="stream-url">Or enter an approved HTTPS source URL</label><input id="stream-url" type="url" placeholder="https://www.federalreserve.gov/…"></div>
+      </div>
+      <div class="controls actions"><div class="actions"><button id="control-start" type="button">Start</button><button id="control-stop" class="stop" type="button">Stop</button></div><div style="text-align:right"><button id="operator-logout" type="button">Sign out</button></div></div>
+    </div>
+  </div>
 
   <div class="kpis">
     <div class="kpi"><div class="l">Status</div><div class="v" id="k-status">—</div><div class="s" id="k-source"></div></div>
@@ -116,6 +142,68 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const cents = (p) => p == null ? "—" : Math.round(p * 100) + "¢";
 let lastUpdate = 0;
+let controlCsrf = "", controlBusy = false;
+
+async function controlApi(action, form) {
+  const headers = controlCsrf ? {"X-CSRF-Token": controlCsrf} : {};
+  const r = await fetch("control.php" + (action ? "?action=" + action : ""), {
+    method: form ? "POST" : "GET", headers, body: form || undefined,
+    cache: "no-store", credentials: "same-origin"
+  });
+  const d = await r.json();
+  if (!r.ok || !d.ok) throw Error(d.error || "Operator request failed");
+  return d;
+}
+
+async function refreshControls() {
+  try {
+    const d = await controlApi();
+    $("control-login").hidden = !!d.authenticated;
+    $("control-panel").hidden = !d.authenticated;
+    if (!d.authenticated) { controlCsrf = ""; $("control-status").textContent = "Operator sign-in required."; return; }
+    controlCsrf = d.csrf;
+    const s = d.status;
+    $("control-status").textContent = (s.online ? "Worker online · " : "Worker offline · ") + s.phase +
+      (s.source ? " · " + s.source : "") + (s.message ? " · " + s.message : "") +
+      (s.pending ? " · command pending" : "");
+    $("control-start").disabled = controlBusy || !s.online || s.pending || !["idle", "stopped", "error"].includes(s.phase);
+    $("control-stop").disabled = controlBusy || (s.online && ["idle", "stopped"].includes(s.phase) && !s.pending);
+  } catch (e) {
+    $("control-login").hidden = true;
+    $("control-panel").hidden = true;
+    $("control-status").textContent = e.message;
+  }
+}
+
+$("operator-login").onclick = async () => {
+  const form = new FormData(); form.set("password", $("operator-password").value);
+  try { await controlApi("login", form); $("operator-password").value = ""; await refreshControls(); }
+  catch (e) { $("control-status").textContent = e.message; }
+};
+$("operator-password").onkeydown = e => { if (e.key === "Enter") $("operator-login").click(); };
+$("operator-logout").onclick = async () => {
+  try { await controlApi("logout", new FormData()); await refreshControls(); }
+  catch (e) { $("control-status").textContent = e.message; }
+};
+$("control-start").onclick = async () => {
+  const form = new FormData(), file = $("audio-upload").files[0], url = $("stream-url").value.trim();
+  if (file && url) { $("control-status").textContent = "Choose a recording or a URL."; return; }
+  if (file && file.size > 50 * 1024 * 1024) { $("control-status").textContent = "Recording exceeds 50 MB."; return; }
+  if (file) { form.set("source_type", "upload"); form.set("audio", file); }
+  else if (url) { form.set("source_type", "url"); form.set("source_url", url); }
+  else { $("control-status").textContent = "Choose an audio source."; return; }
+  controlBusy = true; $("control-start").disabled = true;
+  try { await controlApi("start", form); await refreshControls(); }
+  catch (e) { $("control-status").textContent = e.message; }
+  finally { controlBusy = false; }
+};
+$("control-stop").onclick = async () => {
+  controlBusy = true; $("control-stop").disabled = true;
+  try { await controlApi("stop", new FormData()); await refreshControls(); }
+  catch (e) { $("control-status").textContent = e.message; }
+  finally { controlBusy = false; }
+};
+refreshControls(); setInterval(refreshControls, 3000);
 
 function cleanTitle(title, market) {
   title = (title || "").replace(/\?/g, "").trim();

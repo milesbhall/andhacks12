@@ -1,4 +1,5 @@
 requests
+psutil
 google-genai
 cryptography
 pypdf

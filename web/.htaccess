@@ -3,3 +3,6 @@
   Header set Cache-Control "no-store, max-age=0"
 </FilesMatch>
 Options -Indexes
+<FilesMatch "^(\.user\.ini|control_common\.php)$">
+  Require all denied
+</FilesMatch>

@@ -47,13 +47,44 @@ def _load(path: str):
         return None
 
 
+def _fields(value, names):
+    """Explicit public schema; never mirror arbitrary local state or API payloads."""
+    return {key: value[key] for key in names if isinstance(value, dict) and key in value}
+
+
+def _items(value, names, limit):
+    if not isinstance(value, list):
+        return []
+    out = []
+    for item in value[:limit]:
+        if not isinstance(item, dict):
+            continue
+        public = _fields(item, names)
+        if 'quote' in public:
+            public['quote'] = _fields(public['quote'], ('best_bid', 'best_ask'))
+        out.append(public)
+    return out
+
+
 def build_payload() -> dict:
-    live = _load(STATE_PATH) or {}
+    raw = _load(STATE_PATH) or {}
+    live = _fields(raw, ("speaker", "source", "started", "status", "live_orders", "mode"))
+    live["baseline"] = _fields(raw.get("baseline"), ("mean", "stdev", "n"))
+    watch = raw.get("watchlist") or {}
+    market_fields = ("venue", "market", "title", "side", "direction", "relevance", "quote")
+    live["watchlist"] = {direction: _items(watch.get(direction), market_fields, 20)
+                         for direction in ("HAWKISH", "DOVISH")}
+    live["chunks"] = _items(raw.get("chunks"),
+        ("time", "role", "text", "stance", "z", "direction", "summary", "score_ms", "latency_ms"), 500)
+    live["alerts"] = _items(raw.get("alerts"),
+        ("time", "direction", "z", "summary", "statement", "latency_ms", "orders"), 100)
+    live["trades"] = _items(raw.get("trades"),
+        ("time", "venue", "market", "title", "side", "qty", "yes_limit", "max_cost", "trigger", "skipped", "status"), 200)
     try:
         live_updated_at = datetime.fromtimestamp(os.path.getmtime(STATE_PATH), timezone.utc).isoformat()
     except OSError:
         live_updated_at = None
-    for chunk in live.get("chunks", []):
+    for chunk in live["chunks"]:
         if chunk.get("role") != "speaker":
             chunk["text"] = ""          # never publish what someone else in the room said
             chunk["summary"] = ""
@@ -61,8 +92,13 @@ def build_payload() -> dict:
     for venue, path in RECOMMENDERS.items():
         data = _load(path)
         if data:
-            data.pop("context", None)   # raw transcript window: may include non-speaker text
-            recs[venue] = data
+            rec_fields = ("venue", "ticker", "market_id", "event_title", "market_title",
+                          "relevance_score", "side", "quote")
+            recs[venue] = {
+                "baseline": _fields(data.get("baseline"), ("surprise_direction", "z")),
+                "candidates": _items(data.get("candidates"), rec_fields, 20),
+                "recommendations": _items(data.get("recommendations"), rec_fields, 20),
+            }
     return {"published_at": datetime.now(timezone.utc).isoformat(),
             "live_updated_at": live_updated_at, "live": live, "recommenders": recs}
 
