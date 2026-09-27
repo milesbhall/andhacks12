@@ -69,6 +69,14 @@ python speechtxt.py --url https://www.federalreserve.gov/live-broadcast.htm
 python live.py --speaker kevin_warsh
 streamlit run dashboard.py
 
+# Or use the dashboard's Live audio panel to start/stop a laptop mic,
+# browser recording, uploaded audio file, or live stream URL session.
+# Uploaded recordings run through realtime transcription at natural speed.
+# The older one-shot CLI file transcription remains available:
+python speechtxt.py --file recording.mp3
+# Realtime CLI file playback:
+python speechtxt.py --realtime-file recording.mp3
+
 # demo without audio: feed the Sept 16 transcript at 10x speed
 python live.py --simulate 20260916 --speed 10
 
@@ -77,6 +85,8 @@ python pipeline.py --statement "..."                          # score one statem
 ```
 
 Keys go in gitignored files next to the code (`gemapi.txt`, `polymarketkey.txt`, `polymarketsecret.txt`, `kalshikey.txt` + `privkey.txt`, `elevenapi.txt`, `backboardapi.txt`, `tigerdb.txt`) or in environment variables. Orders are dry runs unless you pass `--live`.
+
+The Live audio panel uses `imageio-ffmpeg` to decode uploaded recordings and direct audio/HLS URLs. Hosted video pages also use `yt-dlp` to find an audio stream; both are in `requirements.txt`. An ElevenLabs key is required for microphone, file, and URL transcription. Uploads are kept in a temporary folder only for the session and deleted when you press Stop. If a transcriber exits, its error appears in the panel. If `hostinger_url.txt` and `hostinger_token.txt` are configured, starting a session also starts the website updater; Stop ends it with the desk and audio source.
 
 ## Supported venues
 

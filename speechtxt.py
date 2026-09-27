@@ -138,8 +138,7 @@ def resolve_hosted_audio(source: str) -> tuple[str, dict[str, str]]:
         import yt_dlp
     except ImportError as exc:
         raise RuntimeError(
-            "The Fed page uses Brightcove. Install its resolver with "
-            "`/usr/local/bin/python3 -m pip install yt-dlp`."
+            "Hosted streams need yt-dlp to resolve audio. Run `pip install yt-dlp`."
         ) from exc
 
     if urllib.parse.urlparse(source).hostname == "www.federalreserve.gov":
@@ -172,15 +171,15 @@ async def ffmpeg_audio_chunks(source: str):
             ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
         except ImportError as exc:
             raise RuntimeError(
-                "Audio decoding needs FFmpeg. Install it with `brew install ffmpeg` "
-                "or `/usr/local/bin/python3 -m pip install imageio-ffmpeg`."
+                "Audio decoding needs FFmpeg. Install it on your system or run "
+                "`pip install imageio-ffmpeg`."
             ) from exc
 
     parsed_source = urllib.parse.urlparse(source)
     direct_media_suffixes = (
-        ".aac", ".m3u8", ".m4a", ".mp3", ".mp4", ".ogg", ".ts", ".wav", ".webm",
+        ".aac", ".flac", ".m3u8", ".m4a", ".mp3", ".mp4", ".ogg", ".ts", ".wav", ".webm",
     )
-    looks_like_direct_media = parsed_source.path.lower().endswith(direct_media_suffixes)
+    looks_like_direct_media = Path(source).is_file() or parsed_source.path.lower().endswith(direct_media_suffixes)
     headers = {}
     if not looks_like_direct_media:
         source, headers = await asyncio.to_thread(resolve_hosted_audio, source)
@@ -244,6 +243,7 @@ async def stream_realtime_audio(
     transcript_segments = []
     save_transcript(output_path, source, transcript_segments)
     session_started = asyncio.get_running_loop().create_future()
+    last_transcript_at = None
 
     async with websockets.connect(
         uri,
@@ -251,6 +251,7 @@ async def stream_realtime_audio(
         ping_interval=20,
     ) as websocket:
         async def receive_transcripts() -> None:
+            nonlocal last_transcript_at
             try:
                 async for raw_message in websocket:
                     message = json.loads(raw_message)
@@ -276,6 +277,7 @@ async def stream_realtime_audio(
                                 "text": text,
                             })
                             save_transcript(output_path, source, transcript_segments)
+                            last_transcript_at = asyncio.get_running_loop().time()
                             print(text, flush=True)
                     elif message_type in (
                         "error", "auth_error", "quota_exceeded", "rate_limited",
@@ -299,7 +301,7 @@ async def stream_realtime_audio(
                     "sample_rate": SAMPLE_RATE,
                     "commit": False,
                 }))
-                next_send_time += len(audio_chunk) / (SAMPLE_RATE * 2)
+                next_send_time = max(next_send_time, loop.time()) + len(audio_chunk) / (SAMPLE_RATE * 2)
                 await asyncio.sleep(max(0.0, next_send_time - loop.time()))
         finally:
             if not receiver.done():
@@ -310,7 +312,15 @@ async def stream_realtime_audio(
                         "sample_rate": SAMPLE_RATE,
                         "commit": True,
                     }))
-                    await asyncio.sleep(1.0)
+                    # Allow Scribe to finish the final passage after the last
+                    # audio bytes. A fixed one-second delay can drop the end.
+                    final_audio_at = loop.time()
+                    deadline = loop.time() + 10.0
+                    while not receiver.done() and loop.time() < deadline:
+                        quiet_since = max(final_audio_at, last_transcript_at or 0)
+                        if last_transcript_at is not None and loop.time() - quiet_since >= 3.0:
+                            break
+                        await asyncio.sleep(0.2)
                 except (websockets.ConnectionClosed, asyncio.CancelledError):
                     pass
                 receiver.cancel()
@@ -332,6 +342,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--file", type=Path, help="Local audio recording to transcribe.")
+    source.add_argument("--realtime-file", type=Path,
+                        help="Play a local audio recording through realtime transcription at its natural speed.")
     source.add_argument(
         "--url",
         default=FED_LIVE_PAGE,
@@ -351,7 +363,12 @@ def main() -> None:
         transcribe_file(args.file.expanduser().resolve(), output_path, args.language)
         return
 
-    source = args.url
+    if args.realtime_file:
+        source = str(args.realtime_file.expanduser().resolve())
+        if not Path(source).is_file():
+            raise FileNotFoundError(f"Audio file not found: {source}")
+    else:
+        source = args.url
     asyncio.run(stream_realtime_audio(source, output_path, args.language))
 
 

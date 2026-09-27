@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Incredible Trades</title>
+<meta name="description" content="Live Fed-speech surprise detection and prediction-market trading.">
+<style>
+  :root {
+    --bg: #0b0e13; --panel: #131821; --panel2: #1a2130; --line: #263042;
+    --text: #e8edf5; --muted: #8a96a8; --faint: #5d6878;
+    --hawk: #ef5b5b; --hawk-bg: rgba(239,91,91,.12);
+    --dove: #3fbf7f; --dove-bg: rgba(63,191,127,.12);
+    --accent: #5b9dff; --warn: #f0b429;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; }
+  h1 span { color: var(--accent); }
+  .sub { color: var(--muted); font-size: 14px; margin-top: 2px; }
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+          border: 1px solid var(--line); color: var(--muted); }
+  .pill.live { color: #fff; background: #1f6f43; border-color: #1f6f43; }
+  .pill.off { color: var(--warn); border-color: #5a4a1a; }
+  .pill.real { color: #fff; background: #a13131; border-color: #a13131; }
+  .pill.demo { color: #fff; background: #2d5fae; border-color: #2d5fae; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 18px 0; }
+  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .kpi .l { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .kpi .v { font-size: 26px; font-weight: 700; margin-top: 2px; }
+  .kpi .s { color: var(--muted); font-size: 13px; }
+  .alert { border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; border: 1px solid; }
+  .alert.hawk { background: var(--hawk-bg); border-color: var(--hawk); }
+  .alert.dove { background: var(--dove-bg); border-color: var(--dove); }
+  .alert b { font-size: 16px; }
+  .grid { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 10px; font-size: 15px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  svg { width: 100%; height: 220px; display: block; }
+  .line { padding: 9px 0; border-top: 1px solid var(--line); }
+  .line:first-child { border-top: 0; }
+  .tag { display: inline-block; font: 600 12px ui-monospace, Menlo, Consolas, monospace; padding: 1px 7px;
+         border-radius: 6px; margin-right: 6px; background: var(--panel2); color: var(--muted); }
+  .tag.hawk { background: var(--hawk-bg); color: var(--hawk); }
+  .tag.dove { background: var(--dove-bg); color: var(--dove); }
+  .q { color: var(--faint); font-style: italic; }
+  .order { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+  .order .t { font-weight: 700; }
+  .order .t .side-yes { color: var(--dove); } .order .t .side-no { color: var(--hawk); }
+  .order .m { color: var(--muted); font-size: 13px; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 6px; margin-right: 6px; }
+  .b-dry { background: #2a3140; color: #b6c0cf; } .b-sent { background: #1f6f43; color: #fff; }
+  .b-demo { background: #2d5fae; color: #fff; } .b-bad { background: #6b2a2a; color: #fff; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .recs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .how { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .step { background: var(--panel2); border-radius: 10px; padding: 10px; font-size: 13px; }
+  .step b { display: block; color: var(--accent); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  footer { color: var(--faint); font-size: 12px; margin-top: 24px; text-align: center; }
+  @media (max-width: 860px) {
+    .kpis { grid-template-columns: repeat(2, 1fr); } .grid, .recs { grid-template-columns: 1fr; }
+    .how { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Incredible <span>Trades</span></h1>
+      <div class="sub" id="sub">Live Fed-speech surprise detection → prediction-market orders</div>
+    </div>
+    <div><span class="pill" id="mode">—</span> <span class="pill off" id="conn">connecting…</span></div>
+  </header>
+
+  <div class="kpis">
+    <div class="kpi"><div class="l">Status</div><div class="v" id="k-status">—</div><div class="s" id="k-source"></div></div>
+    <div class="kpi"><div class="l">Latest stance</div><div class="v" id="k-stance">—</div><div class="s" id="k-z"></div></div>
+    <div class="kpi"><div class="l">Surprises</div><div class="v" id="k-surprises">0</div><div class="s" id="k-base"></div></div>
+    <div class="kpi"><div class="l">Signal → order</div><div class="v" id="k-latency">—</div><div class="s">words heard to orders sent</div></div>
+  </div>
+
+  <div id="alert"></div>
+
+  <div class="grid">
+    <div>
+      <div class="card"><h2>Surprise vs. the speaker's usual stance (z-score)</h2><svg id="chart" viewBox="0 0 640 220" preserveAspectRatio="none"></svg>
+        <div class="muted">Above +2 = hawkish surprise, below −2 = dovish surprise. Each dot is a passage of speech.</div></div>
+      <div class="card"><h2>Transcript</h2><div id="transcript" class="muted">Waiting for speech…</div></div>
+    </div>
+    <div>
+      <div class="card"><h2>Orders</h2><div id="orders" class="muted">No orders yet.</div></div>
+      <div class="card"><h2>Ready to trade</h2><div id="watch" class="muted">—</div></div>
+    </div>
+  </div>
+
+  <div class="card"><h2>Live market recommenders</h2><div class="recs" id="recs"><div class="muted">Not running.</div></div></div>
+
+  <div class="card"><h2>How it works</h2>
+    <div class="how">
+      <div class="step"><b>1 · Listen</b>ElevenLabs Scribe v2 Realtime turns live audio into text, sentence by sentence.</div>
+      <div class="step"><b>2 · Score</b>Gemini rates each passage −1 (dovish) to +1 (hawkish), compared with this speaker's own past answers.</div>
+      <div class="step"><b>3 · Decide</b>A z-score of ±2 or more is a surprise. Markets were picked before the speech, so there's no search delay.</div>
+      <div class="step"><b>4 · Trade</b>Kalshi + Polymarket orders within $10/order, $50/day limits and a kill switch.</div>
+      <div class="step"><b>5 · Prove</b>Each call is hashed onto Solana, stored in Tiger Data, and remembered by Backboard.</div>
+    </div>
+  </div>
+  <footer>Built at &amp;hacks XII, William &amp; Mary · Om Patel &amp; Dylan Ball · Not financial advice.</footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const cents = (p) => p == null ? "—" : Math.round(p * 100) + "¢";
+let lastUpdate = 0;
+
+function cleanTitle(title, market) {
+  title = (title || "").replace(/\?/g, "").trim();
+  if (title.includes(" -- ")) { const [e, o] = title.split(" -- "); title = `${o.trim()} (${e.trim()})`; }
+  return title || market;
+}
+
+function chart(chunks, t0) {
+  const pts = chunks.filter(c => c.z != null);
+  const W = 640, H = 220, pad = 28, zmax = 4;
+  const times = pts.map(c => (new Date(c.time) - t0) / 60000);
+  const tmax = Math.max(1, ...times);
+  const x = t => pad + (t / tmax) * (W - pad * 2);
+  const y = z => H / 2 - (Math.max(-zmax, Math.min(zmax, z)) / zmax) * (H / 2 - 12);
+  let s = "";
+  for (const [z, col, lab] of [[2, "var(--hawk)", "+2 hawkish"], [-2, "var(--dove)", "−2 dovish"], [0, "#334", "usual"]]) {
+    s += `<line x1="${pad}" x2="${W - 6}" y1="${y(z)}" y2="${y(z)}" stroke="${col}" stroke-dasharray="${z ? "5 5" : "2 4"}" opacity=".8"/>`;
+    s += `<text x="${W - 8}" y="${y(z) - 4}" fill="${col}" font-size="11" text-anchor="end">${lab}</text>`;
+  }
+  if (pts.length) {
+    s += `<polyline fill="none" stroke="var(--accent)" stroke-width="2" points="${pts.map((c, i) => `${x(times[i])},${y(c.z)}`).join(" ")}"/>`;
+    pts.forEach((c, i) => {
+      const col = c.z >= 2 ? "var(--hawk)" : c.z <= -2 ? "var(--dove)" : "var(--accent)";
+      s += `<circle cx="${x(times[i])}" cy="${y(c.z)}" r="${Math.abs(c.z) >= 2 ? 5 : 3}" fill="${col}"/>`;
+    });
+    s += `<text x="${pad}" y="${H - 4}" fill="var(--faint)" font-size="11">0 min</text>`;
+    s += `<text x="${W - 8}" y="${H - 4}" fill="var(--faint)" font-size="11" text-anchor="end">${tmax.toFixed(1)} min into speech</text>`;
+  }
+  $("chart").innerHTML = s;
+}
+
+function badge(status) {
+  if (status === "SENT") return '<span class="badge b-sent">SENT · real money</span>';
+  if (status === "SENT (demo)") return '<span class="badge b-demo">SENT · Kalshi demo</span>';
+  if (status === "DRY RUN") return '<span class="badge b-dry">DRY RUN</span>';
+  return `<span class="badge b-bad">${esc(status).slice(0, 40)}</span>`;
+}
+
+function render(d) {
+  const s = d.live || {};
+  const mode = s.mode || (s.live_orders ? "live" : "dry");
+  $("mode").className = "pill " + (mode === "live" ? "real" : mode === "demo" ? "demo" : "");
+  $("mode").textContent = mode === "live" ? "REAL MONEY" : mode === "demo" ? "KALSHI DEMO" : "DRY RUN";
+  const chunks = s.chunks || [], spoken = chunks.filter(c => c.z != null), alerts = s.alerts || [];
+  const last = spoken[spoken.length - 1];
+  $("k-status").textContent = (s.status || "—").split(" (")[0].replace(/^\w/, c => c.toUpperCase());
+  $("k-source").textContent = s.speaker ? `${s.speaker.replace("_", " ")} · ${s.source || ""}` : "";
+  $("k-stance").textContent = last ? (last.stance >= 0 ? "+" : "") + last.stance.toFixed(2) : "—";
+  $("k-z").textContent = last ? `z ${last.z >= 0 ? "+" : ""}${last.z.toFixed(1)} · ${last.direction}` : "";
+  $("k-surprises").textContent = alerts.length;
+  const b = s.baseline || {};
+  $("k-base").textContent = b.mean != null ? `usual stance ${b.mean >= 0 ? "+" : ""}${b.mean.toFixed(2)} (spread ${b.stdev.toFixed(2)})` : "";
+  $("k-latency").textContent = alerts.length ? (alerts[alerts.length - 1].latency_ms / 1000).toFixed(1) + "s" : "—";
+
+  const a = alerts[alerts.length - 1];
+  $("alert").innerHTML = a ? `<div class="alert ${a.direction === "HAWKISH" ? "hawk" : "dove"}"><b>${a.direction} surprise</b>
+      (z ${a.z >= 0 ? "+" : ""}${a.z.toFixed(1)}): ${esc(a.summary)} · ${a.orders} order(s) in ${(a.latency_ms / 1000).toFixed(1)}s
+      <div class="muted" style="margin-top:4px">“${esc(a.statement)}”</div></div>` : "";
+
+  chart(chunks, chunks.length ? new Date(chunks[0].time) : new Date());
+
+  $("transcript").innerHTML = chunks.length ? chunks.slice(-12).reverse().map(c => {
+    if (c.role !== "speaker") return `<div class="line q">${c.role === "reporter" ? "Reporter question" : "Not the speaker"} (not scored)</div>`;
+    const cls = c.direction === "HAWKISH" ? "hawk" : c.direction === "DOVISH" ? "dove" : "";
+    const tag = cls ? c.direction : "in line";
+    return `<div class="line"><span class="tag ${cls}">${c.stance >= 0 ? "+" : ""}${c.stance.toFixed(2)} · z ${c.z >= 0 ? "+" : ""}${c.z.toFixed(1)} · ${tag}</span>${esc(c.text)}</div>`;
+  }).join("") : "Waiting for speech…";
+
+  const trades = s.trades || [];
+  const placed = trades.filter(t => !t.skipped), skipped = trades.filter(t => t.skipped);
+  let oh = placed.slice(-6).reverse().map(t => {
+    const side = (t.side || "").toUpperCase(), yl = t.yes_limit || 0, per = side === "YES" ? yl : 1 - yl;
+    return `<div class="order"><div class="t">BUY <span class="side-${side.toLowerCase()}">${side}</span> · ${esc(cleanTitle(t.title, t.market))}</div>
+      <div class="m">${esc((t.venue || "").replace(/^\w/, c => c.toUpperCase()))} · ${t.qty} contracts at up to ${Math.round(per * 100)}¢ · costs at most $${(t.max_cost || 0).toFixed(2)} · pays $${t.qty} if right</div>
+      <div class="m" style="margin-top:4px">${badge(t.status)}${t.trigger ? "triggered by " + esc(t.trigger) : ""}</div></div>`;
+  }).join("");
+  if (skipped.length) oh += `<div class="muted">Skipped ${skipped.length} market(s) already priced in.</div>`;
+  $("orders").innerHTML = oh || "No orders yet.";
+
+  const w = s.watchlist || {};
+  $("watch").innerHTML = ["HAWKISH", "DOVISH"].map(dir => `<div style="margin-bottom:8px"><b>If ${dir.toLowerCase()}:</b><br>` +
+      ((w[dir] || []).slice(0, 4).map(m => `<span class="muted">BUY ${m.side.toUpperCase()} · ${esc(cleanTitle(m.title, m.market))} (${esc(m.venue)})</span>`).join("<br>") || '<span class="muted">—</span>') + "</div>").join("");
+
+  const recs = d.recommenders || {};
+  const rh = Object.entries(recs).map(([venue, r]) => {
+    const bl = r.baseline || {}, items = (r.recommendations && r.recommendations.length ? r.recommendations : r.candidates) || [];
+    const promoted = r.recommendations && r.recommendations.length;
+    return `<div><b>${esc(venue)}</b> <span class="muted">· latest: ${esc(bl.surprise_direction || "—")}${bl.z != null ? " (z " + (+bl.z).toFixed(1) + ")" : ""}</span>` +
+      items.slice(0, 3).map(i => `<div class="order"><div class="t">${promoted && i.side ? "BUY " + i.side.toUpperCase() + " · " : ""}${esc(i.market_title || i.ticker)}</div>
+        <div class="m">relevance ${(+i.relevance_score).toFixed(2)} · bid ${cents(i.quote && i.quote.best_bid)} / ask ${cents(i.quote && i.quote.best_ask)}${promoted ? "" : " · candidate"}</div></div>`).join("") + "</div>";
+  }).join("");
+  $("recs").innerHTML = rh || '<div class="muted">Not running.</div>';
+}
+
+async function poll() {
+  try {
+    const r = await fetch("data/state.json?t=" + Date.now(), { cache: "no-store" });
+    if (r.ok) {
+      const d = await r.json();
+      render(d);
+      // The uploader can keep running after the trading desk stops. Show the
+      // desk's actual update time instead of the upload heartbeat.
+      lastUpdate = d.live_updated_at ? (new Date(d.live_updated_at).getTime() || 0) : 0;
+    }
+  } catch (e) { /* keep last view */ }
+  const age = (Date.now() - lastUpdate) / 1000;
+  $("conn").className = "pill " + (lastUpdate && age < 10 ? "live" : "off");
+  $("conn").textContent = !lastUpdate ? "waiting for the desk" : age < 10 ? "● LIVE" : `last update ${Math.round(age)}s ago`;
+}
+poll(); setInterval(poll, 1000);
+</script>
+</body>
+</html>

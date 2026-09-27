@@ -1,0 +1,5 @@
+# Always fetch fresh live data
+<FilesMatch "state\.json$">
+  Header set Cache-Control "no-store, max-age=0"
+</FilesMatch>
+Options -Indexes

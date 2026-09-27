@@ -10,3 +10,5 @@ solders
 psycopg2-binary
 sounddevice
 websockets
+imageio-ffmpeg
+yt-dlp

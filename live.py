@@ -24,7 +24,7 @@ USAGE
   # ... and this in another
   python live.py --speaker kevin_warsh
 
-  # Talk into the laptop mic yourself (or use the dashboard's "Start mic demo" button)
+  # Talk into the laptop mic yourself (or use the dashboard's Live audio panel)
   python mic.py          (terminal 1)
   python live.py         (terminal 2)
 
@@ -501,6 +501,8 @@ def main():
     parser.add_argument("--no-prewarm", action="store_true", help="Skip the market watchlist (score only)")
     parser.add_argument("--source", choices=["live", "mic"], default="live",
                         help="Tag stored rows as coming from a real speech or the mic demo")
+    parser.add_argument("--source-label", default="",
+                        help="Display label for this audio source in live_state.json")
     parser.add_argument("--surprises-only", action="store_true",
                         help="Only store surprises (use for the mic demo so room chatter isn't saved)")
     parser.add_argument("--fast", action="store_true",
@@ -511,7 +513,8 @@ def main():
     store = stance_scorer.load_store()
     if args.speaker not in store:
         raise SystemExit(f"No stance baseline for {args.speaker}. Run: python stance_scorer.py --seed")
-    source = f"simulate {args.simulate} x{args.speed:g}" if args.simulate else os.path.basename(args.watch)
+    source = (args.source_label or
+              (f"simulate {args.simulate} x{args.speed:g}" if args.simulate else os.path.basename(args.watch)))
     state = State(args.speaker, source, store[args.speaker], args.live)
 
     watchlist = {"HAWKISH": [], "DOVISH": []}

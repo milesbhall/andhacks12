@@ -22,6 +22,10 @@ Login (Auth0 via Streamlit's built-in st.login):
 import glob
 import json
 import os
+import tempfile
+import time
+from pathlib import Path
+from urllib.parse import urlparse
 
 os.environ.setdefault("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
@@ -208,9 +212,8 @@ LIVE_STATE_PATH = os.path.join(SCRIPT_DIR, "live_state.json")
 @st.fragment(run_every=1.0)
 def live_panel():
     if not os.path.isfile(LIVE_STATE_PATH):
-        st.info("Nothing running. Start a session:\n\n"
-                "`python live.py --simulate 20260916 --speed 10`  (demo)\n\n"
-                "or `python speechtxt.py --url <stream>` + `python live.py`  (real speech)")
+        st.info("Nothing running. Choose a source above and press Start, or run "
+                "`python live.py --simulate 20260916 --speed 10` for a saved demo.")
         return
     try:
         with open(LIVE_STATE_PATH, encoding="utf-8") as f:
@@ -269,10 +272,27 @@ def live_panel():
 TRANSCRIPT_LIVE_PATH = os.path.join(SCRIPT_DIR, "live_transcript.json")
 PARTIAL_LIVE_PATH = os.path.join(SCRIPT_DIR, "live_partial.json")
 DEMO_PIDS_PATH = os.path.join(SCRIPT_DIR, "mic_demo_pids.json")
+DEMO_SOURCE_PATH = os.path.join(SCRIPT_DIR, "audio_source_session.json")
+
+
+def _source_session() -> dict:
+    try:
+        with open(DEMO_SOURCE_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _log_tail(path: str) -> str:
+    try:
+        lines = Path(path).read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return "No log output yet."
+    return next((line[:350] for line in reversed(lines) if line.strip()), "No log output yet.")
 
 
 def _demo_running() -> dict:
-    """PIDs of the mic demo processes that are still alive."""
+    """PIDs of the dashboard audio processes that are still alive."""
     import subprocess
     try:
         with open(DEMO_PIDS_PATH, encoding="utf-8") as f:
@@ -294,30 +314,85 @@ def _demo_running() -> dict:
     return alive
 
 
-def _start_demo(mode: str, venues: list, speaker: str, use_mic: bool, recommenders: bool = False):
+def _start_demo(mode: str, venues: list, speaker: str, qty: int, source_kind: str,
+                source_value: str = "", source_label: str = "", recommenders: bool = False):
     import subprocess
     import sys
+    if source_kind not in {"mic", "browser", "file", "url"}:
+        raise ValueError(f"Unknown audio source: {source_kind}")
+    if source_kind == "url" and urlparse(source_value).scheme not in {"http", "https"}:
+        raise ValueError("Enter an http:// or https:// stream URL.")
+    if source_kind == "file" and not Path(source_value).is_file():
+        raise ValueError("Choose an audio file before starting.")
+    with open(DEMO_SOURCE_PATH, "w", encoding="utf-8") as f:
+        json.dump({"kind": source_kind,
+                   "uploaded_path": source_value if source_kind == "file" else ""}, f)
+
+    # The desk must start from an empty transcript; the source begins once its
+    # watchlist is ready so a recording is scored at the pace it is played.
     with open(TRANSCRIPT_LIVE_PATH, "w", encoding="utf-8") as f:
-        json.dump({"source": "microphone", "segments": []}, f)
+        json.dump({"source": source_kind, "segments": []}, f)
+    try:
+        os.remove(LIVE_STATE_PATH)
+    except FileNotFoundError:
+        pass
+    for stale_recommendations in ("live_recommendations.json", "live_polymarket_recommendations.json"):
+        try:
+            os.remove(os.path.join(SCRIPT_DIR, stale_recommendations))
+        except FileNotFoundError:
+            pass
     flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
-    pids = {"desk": subprocess.Popen(
-        [sys.executable, "live.py", "--speaker", speaker, "--fast", "--mode", mode, "--venues", *venues,
-         "--source", "mic", "--surprises-only"],
-        cwd=SCRIPT_DIR, creationflags=flags,
-        stdout=open(os.path.join(SCRIPT_DIR, "live.log"), "w"), stderr=subprocess.STDOUT).pid}
-    if recommenders:
-        for name, script in (("kalshi recommender", "run_kalshi_ticker2.py"),
-                             ("polymarket recommender", "run_polymarket.py")):
-            pids[name] = subprocess.Popen(
-                [sys.executable, script, "--watch", "--speaker", speaker], cwd=SCRIPT_DIR, creationflags=flags,
-                stdout=open(os.path.join(SCRIPT_DIR, script.replace(".py", ".log")), "w"),
-                stderr=subprocess.STDOUT).pid
-    if use_mic:
-        pids["mic"] = subprocess.Popen([sys.executable, "mic.py"], cwd=SCRIPT_DIR, creationflags=flags,
-                                       stdout=open(os.path.join(SCRIPT_DIR, "mic.log"), "w"),
-                                       stderr=subprocess.STDOUT).pid
-    with open(DEMO_PIDS_PATH, "w", encoding="utf-8") as f:
-        json.dump(pids, f)
+    pids = {}
+
+    def launch(name: str, command: list[str], log_name: str):
+        with open(os.path.join(SCRIPT_DIR, log_name), "w", encoding="utf-8") as log:
+            process = subprocess.Popen(command, cwd=SCRIPT_DIR, creationflags=flags,
+                                       stdout=log, stderr=subprocess.STDOUT)
+        pids[name] = process.pid
+        with open(DEMO_PIDS_PATH, "w", encoding="utf-8") as f:
+            json.dump(pids, f)
+        return process
+
+    try:
+        desk_command = [sys.executable, "live.py", "--speaker", speaker, "--fast",
+                        "--mode", mode, "--qty", str(qty), "--venues", *venues,
+                        "--source", "mic" if source_kind in {"mic", "browser"} else "live",
+                        "--source-label", source_label or source_kind]
+        if source_kind in {"mic", "browser"}:
+            desk_command.append("--surprises-only")
+        desk = launch("desk", desk_command, "live.log")
+        if recommenders:
+            for name, script in (("kalshi recommender", "run_kalshi_ticker2.py"),
+                                 ("polymarket recommender", "run_polymarket.py")):
+                launch(name, [sys.executable, script, "--watch", "--speaker", speaker],
+                       script.replace(".py", ".log"))
+        deadline = time.monotonic() + 45
+        while time.monotonic() < deadline:
+            if desk.poll() is not None:
+                raise RuntimeError("Live desk stopped: " + _log_tail(os.path.join(SCRIPT_DIR, "live.log")))
+            try:
+                with open(LIVE_STATE_PATH, encoding="utf-8") as f:
+                    ready = json.load(f).get("status") == "listening"
+            except (OSError, json.JSONDecodeError):
+                ready = False
+            if ready:
+                break
+            time.sleep(0.25)
+        else:
+            raise RuntimeError("Live desk did not become ready within 45 seconds. Check live.log.")
+        if source_kind != "browser":
+            if source_kind == "mic":
+                launch("mic", [sys.executable, "mic.py"], "mic.log")
+            else:
+                source_flag = "--realtime-file" if source_kind == "file" else "--url"
+                launch("audio source", [sys.executable, "speechtxt.py", source_flag, source_value],
+                       "speechtxt.log")
+        if all(os.path.isfile(os.path.join(SCRIPT_DIR, name))
+               for name in ("hostinger_url.txt", "hostinger_token.txt")):
+            launch("website updates", [sys.executable, "publish.py"], "publish.log")
+    except Exception:
+        _stop_demo()
+        raise
 
 
 def _stop_demo():
@@ -341,6 +416,28 @@ def _stop_demo():
         os.remove(DEMO_PIDS_PATH)
     except OSError:
         pass
+    uploaded = _source_session().get("uploaded_path")
+    if uploaded:
+        path = Path(uploaded)
+        try:
+            path.unlink(missing_ok=True)
+            path.parent.rmdir()
+        except OSError:
+            pass
+    try:
+        os.remove(DEMO_SOURCE_PATH)
+    except OSError:
+        pass
+
+
+def _save_uploaded_audio(uploaded) -> str:
+    suffix = Path(uploaded.name).suffix.lower()
+    if suffix not in {".aac", ".flac", ".m4a", ".mp3", ".mp4", ".ogg", ".wav", ".webm"}:
+        raise ValueError("Unsupported audio file type.")
+    folder = Path(tempfile.mkdtemp(prefix="andhacks12_audio_"))
+    path = folder / ("recording" + suffix)
+    path.write_bytes(uploaded.getvalue())
+    return str(path)
 
 
 def _append_spoken(text: str):
@@ -364,6 +461,21 @@ def hearing_now():
         text = ""
     if text and _demo_running().get("mic"):
         st.markdown(f"**Hearing:** _{text}_")
+
+
+@st.fragment(run_every=2.0)
+def audio_source_status():
+    session = _source_session()
+    source_kind = session.get("kind")
+    process_name = "mic" if source_kind == "mic" else "audio source"
+    if source_kind not in {"mic", "file", "url"} or process_name in _demo_running():
+        return
+    log_name = "mic.log" if source_kind == "mic" else "speechtxt.log"
+    detail = _log_tail(os.path.join(SCRIPT_DIR, log_name))
+    if source_kind in {"file", "url"} and detail.startswith("Transcript saved to "):
+        st.success("Audio finished. The desk remains open so you can review its results. Press Stop to end the session.")
+    else:
+        st.error(f"Audio source stopped: {detail}")
 
 
 RECOMMENDER_FILES = {"Kalshi": os.path.join(SCRIPT_DIR, "live_recommendations.json"),
@@ -410,31 +522,62 @@ def recommenders_panel():
 
 
 with tab_live:
-    with st.expander("Microphone demo: talk like the Fed Chair and watch it trade", expanded=True):
+    with st.expander("Live audio: microphone, recording, or stream", expanded=True):
         running = _demo_running()
-        c1, c2, c3 = st.columns([1, 1, 2])
         if not running:
+            if _source_session():
+                st.error("The previous session stopped: " + _log_tail(os.path.join(SCRIPT_DIR, "live.log")))
+            source_kind = st.radio("Audio source", ["mic", "browser", "file", "url"],
+                                   format_func={"mic": "Laptop microphone", "browser": "Browser recorder",
+                                                "file": "Upload audio file", "url": "Live stream URL"}.get,
+                                   horizontal=True)
+            uploaded = (st.file_uploader("Audio recording", type=["aac", "flac", "m4a", "mp3",
+                                                                  "mp4", "ogg", "wav", "webm"])
+                        if source_kind == "file" else None)
+            stream_url = (st.text_input("Stream URL", placeholder="https://example.com/live.m3u8")
+                          if source_kind == "url" else "")
             with_recs = st.checkbox("Also run the live Kalshi + Polymarket recommenders",
                                     help="Dylan's run_kalshi_ticker2 / run_polymarket --watch. Kalshi takes "
                                          "about 2 minutes to load its catalog.")
-            if c1.button("Start mic demo", type="primary", disabled=not logged_in,
-                         help="Starts the desk on the next Fed decision markets and the laptop microphone."):
-                _start_demo(live, venues, speaker, use_mic=True, recommenders=with_recs)
-                st.rerun()
-            if c2.button("Start (browser recorder)", disabled=not logged_in,
-                         help="Desk only; record clips below instead of the laptop mic stream."):
-                _start_demo(live, venues, speaker, use_mic=False, recommenders=with_recs)
-                st.rerun()
-            c3.caption(f"Scores against {speaker}'s usual stance. Mode: **{live}**. "
-                       "Takes a few seconds to load markets.")
+            disabled = not logged_in or not venues or (source_kind == "file" and uploaded is None) or (
+                source_kind == "url" and not stream_url.strip())
+            if st.button("Start", type="primary", disabled=disabled):
+                source_value = ""
+                try:
+                    if os.path.isfile(DEMO_PIDS_PATH) or os.path.isfile(DEMO_SOURCE_PATH):
+                        _stop_demo()
+                    if source_kind == "file":
+                        source_value = _save_uploaded_audio(uploaded)
+                    elif source_kind == "url":
+                        source_value = stream_url.strip()
+                    label = {"mic": "Laptop microphone", "browser": "Browser recorder",
+                             "file": "Uploaded audio",
+                             "url": f"Live stream: {urlparse(source_value).hostname or ''}"}[source_kind]
+                    with st.spinner("Preparing the live desk..."):
+                        _start_demo(live, venues, speaker, qty, source_kind, source_value,
+                                    source_label=label, recommenders=with_recs)
+                    st.rerun()
+                except Exception as exc:
+                    if source_value and source_kind == "file":
+                        path = Path(source_value)
+                        path.unlink(missing_ok=True)
+                        try:
+                            path.parent.rmdir()
+                        except OSError:
+                            pass
+                    st.error(f"Could not start audio session: {exc}")
+            st.caption(f"Scores against {speaker}'s usual stance. Trading mode: **{live}**. "
+                       "Uploaded audio plays at its natural speed; URL audio follows the live stream.")
         else:
-            if c1.button("Stop", type="primary"):
+            if st.button("Stop", type="primary"):
                 _stop_demo()
                 st.rerun()
-            c3.caption("Running: " + ", ".join(running) + ". Speak, pause for a second, and watch below.")
-            if "mic" in running:
+            active_kind = _source_session().get("kind")
+            st.caption("Running: " + ", ".join(running) + ".")
+            audio_source_status()
+            if active_kind == "mic":
                 hearing_now()
-            else:
+            elif active_kind == "browser":
                 clip = st.audio_input("Record a statement (desk is listening for it)")
                 if clip is not None and st.session_state.get("last_clip") != clip.file_id:
                     st.session_state["last_clip"] = clip.file_id
@@ -443,8 +586,9 @@ with tab_live:
                     if heard.strip():
                         _append_spoken(heard.strip())
                         st.success(f"Heard: {heard.strip()}")
-        st.caption('Try: "Inflation is still far too high. We are prepared to raise rates again in October." '
-                   'or "The labor market is weakening fast and we are ready to cut rates at the next meeting."')
+        if not running or _source_session().get("kind") in {"mic", "browser"}:
+            st.caption('Try: "Inflation is still far too high. We are prepared to raise rates again in October." '
+                       'or "The labor market is weakening fast and we are ready to cut rates at the next meeting."')
     live_panel()
     with st.expander("Live market recommenders (Kalshi + Polymarket)", expanded=False):
         recommenders_panel()
