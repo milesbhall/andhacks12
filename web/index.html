@@ -641,8 +641,17 @@ async function poll() {
     }
   } catch (e) { /* keep last view */ }
   const age = (Date.now() - lastUpdate) / 1000;
-  $("conn").className = "pill " + (lastUpdate && age < 10 ? "live" : "off");
-  $("conn").textContent = !lastUpdate ? "waiting for the desk" : age < 10 ? "● LIVE" : `last update ${Math.round(age)}s ago`;
+  const fresh = lastUpdate && age < 15;
+  $("conn").className = "pill " + (fresh ? "live" : "off");
+  $("conn").textContent = !lastUpdate ? "waiting for the desk" : fresh ? "● LIVE" : `last update ${Math.round(age)}s ago`;
+  if (!fresh) {
+    if (["Listening", "Starting", "Running"].includes($("k-status").textContent)) $("k-status").textContent = "Last session";
+    if (lastUpdate && $("mode").textContent !== "—" && !$("mode").textContent.startsWith("LAST: ")) {
+      $("mode").className = "pill";
+      $("mode").textContent = "LAST: " + $("mode").textContent;
+    }
+    $("hearing").hidden = true;
+  }
 }
 poll(); setInterval(poll, 1000);
 loadArchive(); setInterval(loadArchive, 30000);
