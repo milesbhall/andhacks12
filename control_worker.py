@@ -244,7 +244,19 @@ def build_archive() -> dict:
     except Exception:
         signals = []
     replay_dates = [{'id': i['id'], 'label': i['label'], 'speaker': i['speaker']} for i in replay_catalog()]
+    macro, social = {}, {}
+    try:
+        import fred_client
+        macro = fred_client.latest()
+    except Exception:
+        pass
+    try:
+        import social_sentiment
+        social = social_sentiment.latest()
+    except Exception:
+        pass
     return {'updated_at': datetime.now(timezone.utc).isoformat(), 'replays': replays,
+            'macro': macro, 'social': social,
             'trades': trades[-200:][::-1], 'signals': signals, 'replay_dates': replay_dates,
             'speakers': sorted(known_speakers())}
 

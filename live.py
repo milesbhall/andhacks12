@@ -317,10 +317,16 @@ class LiveDesk:
         self.pending_flip = None    # a first opposite-direction surprise waiting for confirmation
         self.background = ThreadPoolExecutor(max_workers=4)
         self.records = []
+        try:   # macro backdrop from FRED, read once from the hourly cache (never blocks scoring)
+            import fred_client
+            self.macro = fred_client.context_line()
+        except Exception:
+            self.macro = ""
 
     def score(self, text: str) -> dict:
         context = " ".join(self.recent[-2:])
-        prompt = LIVE_PROMPT + (f"\nEarlier context: {context[-1500:]}\n" if context else "") + \
+        prompt = LIVE_PROMPT + (f"\nCurrent data (FRED): {self.macro}\n" if self.macro else "") + \
+            (f"\nEarlier context: {context[-1500:]}\n" if context else "") + \
             f"\nNEW PASSAGE: {text[:2500]}"
         data = stance_scorer._gemini_json(prompt)
         stance = max(-1.0, min(1.0, float(data.get("stance", 0.0))))
@@ -393,6 +399,12 @@ class LiveDesk:
         alert = {"time": now_iso(), "direction": record["direction"], "z": record["z"], "summary": record["summary"],
                  "statement": record["statement"][:300], "latency_ms": record["latency_ms"],
                  "orders": sum(1 for t in trades if not t.get("error") and not t.get("blocked"))}
+        try:   # compare with the crowd (Bluesky + Reddit), cached file only
+            import social_sentiment
+            with open(social_sentiment.CACHE_PATH, encoding="utf-8") as f:
+                alert["crowd"] = social_sentiment.crowd_note(record["direction"], json.load(f))
+        except (OSError, ValueError, ImportError):
+            pass
         self.state.append("alerts", alert)
         titles = {(m["venue"], m["market"]): m.get("title", "") for m in fresh}
         for t in trades:

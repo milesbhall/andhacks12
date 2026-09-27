@@ -24,6 +24,12 @@
   "label": "FOMC press conference · Chair Kevin Warsh · 2026-06-17"
  },
  {
+  "id": "pres_20260522_1",
+  "date": "2026-05-22",
+  "speaker": "president_trump",
+  "label": "President: Remarks on the National Economy in Suffern, New York · President Trump · 2026-05-22"
+ },
+ {
   "id": "20260429",
   "date": "2026-04-29",
   "speaker": "jerome_powell",
@@ -40,6 +46,12 @@
   "date": "2026-01-28",
   "speaker": "jerome_powell",
   "label": "FOMC press conference · Chair Jerome Powell · 2026-01-28"
+ },
+ {
+  "id": "pres_20260113_0",
+  "date": "2026-01-13",
+  "speaker": "president_trump",
+  "label": "President: Remarks to the Detroit Economic Club in Detroit, Michigan · President Trump · 2026-01-13"
  },
  {
   "id": "20251210",

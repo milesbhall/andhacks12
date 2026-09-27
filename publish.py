@@ -77,7 +77,7 @@ def build_payload() -> dict:
     live["chunks"] = _items(raw.get("chunks"),
         ("time", "role", "text", "stance", "z", "direction", "summary", "score_ms", "latency_ms"), 500)
     live["alerts"] = _items(raw.get("alerts"),
-        ("time", "direction", "z", "summary", "statement", "latency_ms", "orders"), 100)
+        ("time", "direction", "z", "summary", "statement", "latency_ms", "orders", "crowd"), 100)
     live["trades"] = _items(raw.get("trades"),
         ("time", "venue", "market", "title", "side", "qty", "yes_limit", "max_cost", "trigger", "skipped", "status"), 200)
     try:

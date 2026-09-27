@@ -44,3 +44,7 @@ live.log
 control_config.php
 control_worker.lock
 control_worker_processes.json
+
+scratch/
+social_cache.json
+macro_cache.json

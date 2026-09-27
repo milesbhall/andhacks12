@@ -57,7 +57,7 @@
   .b-demo { background: #2d5fae; color: #fff; } .b-bad { background: #6b2a2a; color: #fff; }
   .muted { color: var(--muted); font-size: 13px; }
   .recs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .how { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .how { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
   .step { background: var(--panel2); border-radius: 10px; padding: 10px; font-size: 13px; }
   .step b { display: block; color: var(--accent); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
   .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -132,7 +132,7 @@
         <label><input type="radio" name="src" value="upload"> 📁 Upload a recording</label>
         <label><input type="radio" name="src" value="url"> 🔗 Stream URL</label>
       </div>
-      <div class="row" id="src-replay" hidden><select id="replay-date" style="max-width:640px"></select><span class="muted">Press conferences and speeches by Warsh and Powell. The speaker baseline switches automatically.</span></div>
+      <div class="row" id="src-replay" hidden><select id="replay-date" style="max-width:640px"></select><span class="muted">Press conferences and speeches by Warsh and Powell, plus presidential remarks on the economy. The speaker baseline switches automatically.</span></div>
       <div class="row" id="src-upload" hidden><input id="audio-upload" type="file" accept=".mp3,.m4a,.wav,.webm,.ogg,.mp4,audio/*"><span class="muted">50 MB max. Pick a playback speed below.</span></div>
       <div class="row" id="src-url" hidden><input id="stream-url" type="url" placeholder="https://www.youtube.com/watch?v=…  or  https://www.federalreserve.gov/…" style="max-width:560px"><span class="muted">YouTube (live or recorded) and federalreserve.gov.</span></div>
       <div class="row" id="src-mic"><span class="muted">Try: “Inflation is still far too high. We are prepared to raise rates again in October.”</span></div>
@@ -162,6 +162,7 @@
     <button data-tab="live" class="on">Live</button>
     <button data-tab="ask">Ask the desk</button>
     <button data-tab="analyze">Analyze</button>
+    <button data-tab="context">Crowd &amp; macro</button>
     <button data-tab="replay">Replay</button>
     <button data-tab="history">History</button>
     <button data-tab="how">How it works</button>
@@ -216,6 +217,17 @@
     <div id="an-result"></div>
   </section>
 
+  <section id="tab-context" hidden>
+    <div class="grid">
+      <div class="card"><h2>What the crowd expects (Bluesky + Reddit)</h2>
+        <div class="muted" style="margin-bottom:8px">Recent posts about the Fed, scored on the same −1 dovish / +1 hawkish scale as the speakers. A speaker surprise that runs against the crowd is a bigger repricing.</div>
+        <div id="crowd" class="muted">Loading…</div></div>
+      <div class="card"><h2>Macro backdrop (FRED)</h2>
+        <div class="muted" style="margin-bottom:8px">Latest data from the St. Louis Fed. Gemini sees these numbers when it scores each passage.</div>
+        <div id="macro" class="muted">Loading…</div></div>
+    </div>
+  </section>
+
   <section id="tab-replay" hidden>
     <div class="card"><h2>Press conference replay</h2>
       <div class="row" style="margin-top:0"><select id="rp-run" style="max-width:640px"></select><span class="muted">Scored answer by answer. |z| ≥ 2 is a surprise.</span></div>
@@ -236,6 +248,7 @@
       <div class="step"><b>2 · Score</b>Gemini rates each passage −1 (dovish) to +1 (hawkish), compared with this speaker's own past answers.</div>
       <div class="step"><b>3 · Decide</b>A z-score of ±2 or more is a surprise. Markets were picked before the speech, so there's no search delay.</div>
       <div class="step"><b>4 · Trade</b>Kalshi + Polymarket orders within $10/order, $50/day limits and a kill switch.</div>
+      <div class="step"><b>0 · Context</b>FRED macro data and Bluesky/Reddit crowd sentiment frame each surprise.</div>
       <div class="step"><b>5 · Prove</b>Each call is hashed onto Solana, stored in Tiger Data, and remembered by Backboard.</div>
     </div>
   </div>
@@ -457,6 +470,21 @@ function drawReplay() {
 }
 $("rp-run").onchange = drawReplay;
 
+function drawContext() {
+  const c = (archive && archive.social) || {}, m = (archive && archive.macro) || {};
+  if (c.n) {
+    const cls = c.lean === "HAWKISH" ? "hawk" : c.lean === "DOVISH" ? "dove" : "";
+    const src = Object.entries(c.by_source || {}).filter(([, v]) => v.n).map(([k, v]) => `${k}: ${sgn(v.mean)} (${v.n})`).join(" · ");
+    $("crowd").innerHTML = `<div class="metric"><div class="muted">Crowd lean</div><div class="v"><span class="tag ${cls}" style="font-size:16px">${esc(c.lean)}</span></div></div>
+      <div class="metric"><div class="muted">Average</div><div class="v">${sgn(c.mean)}</div></div><div class="metric"><div class="muted">Posts</div><div class="v">${c.n}</div></div>
+      <div class="muted" style="margin:6px 0 10px">${esc(src)} · updated ${new Date(c.updated_at).toLocaleTimeString()}</div>` +
+      (c.posts || []).slice(0, 12).map(p => `<div class="line"><span class="tag ${p.stance > 0.2 ? "hawk" : p.stance < -0.2 ? "dove" : ""}">${sgn(p.stance)}</span><span class="muted">${esc(p.source)} · ${esc(p.author)}</span><div><a href="${esc(p.url)}" target="_blank" rel="noopener" style="color:var(--text);text-decoration:none">${esc(p.text)}</a></div></div>`).join("");
+  } else $("crowd").textContent = "No posts yet (the laptop refreshes this every 10 minutes).";
+  const ser = m.series || [];
+  $("macro").innerHTML = ser.length ? `<table><tr><th>Series</th><th>Latest</th><th>As of</th></tr>` +
+    ser.map(x => `<tr><td>${esc(x.label)}</td><td><b>${x.value}${esc(x.unit)}</b>${x.prev != null && x.prev !== x.value ? ` <span class="muted">(was ${x.prev})</span>` : ""}</td><td class="muted">${esc(x.date)}</td></tr>`).join("") + "</table>" : "Not loaded yet.";
+}
+
 function drawHistory() {
   const sig = (archive && archive.signals) || [], tr = (archive && archive.trades) || [];
   $("hist-signals").innerHTML = sig.length ? `<table><tr><th>Time (UTC)</th><th>Speaker</th><th>Read</th><th>z</th><th>Source</th><th>Summary</th></tr>` +
@@ -486,7 +514,7 @@ async function loadArchive() {
   const sp = archive.speakers || [];
   if (sp.length && $("opt-speaker").options.length !== sp.length)
     $("opt-speaker").innerHTML = sp.map(s => `<option value="${s}">${s.replace("_", " ")}</option>`).join("");
-  drawReplay(); drawHistory();
+  drawReplay(); drawHistory(); drawContext();
 }
 $("replay-date").innerHTML = '<option value="20260916">FOMC press conference · Chair Kevin Warsh · 2026-09-16</option>';
 
@@ -549,7 +577,7 @@ function render(d) {
   const a = alerts[alerts.length - 1];
   $("alert").innerHTML = a ? `<div class="alert ${a.direction === "HAWKISH" ? "hawk" : "dove"}"><b>${a.direction} surprise</b>
       (z ${a.z >= 0 ? "+" : ""}${a.z.toFixed(1)}): ${esc(a.summary)} · ${a.orders} order(s) in ${(a.latency_ms / 1000).toFixed(1)}s
-      <div class="muted" style="margin-top:4px">“${esc(a.statement)}”</div></div>` : "";
+      <div class="muted" style="margin-top:4px">“${esc(a.statement)}”</div>${a.crowd ? `<div class="muted" style="margin-top:4px">👥 ${esc(a.crowd)}</div>` : ""}</div>` : "";
 
   chart(chunks, chunks.length ? new Date(chunks[0].time) : new Date());
 

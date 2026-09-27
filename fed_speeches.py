@@ -24,6 +24,21 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TRANSCRIPT_DIR = os.path.join(SCRIPT_DIR, "transcripts")
 SPEECH_URL = "https://www.federalreserve.gov/newsevents/speech/{id}.htm"
 SPEAKER_KEYS = {"warsh": "kevin_warsh", "powell": "jerome_powell"}
+APP_URL = "https://www.presidency.ucsb.edu/documents/{slug}"
+# Presidential remarks on the economy (American Presidency Project, UC Santa Barbara)
+PRESIDENT_REPLAYS = [
+    "remarks-the-detroit-economic-club-detroit-michigan-1",
+    "remarks-the-national-economy-suffern-new-york",
+]
+PRESIDENT_BASELINE = [
+    "the-presidents-news-conference-1274",
+    "remarks-cabinet-meeting-and-exchange-with-reporters-15",
+    "remarks-health-care-costs-and-affordability-and-exchange-with-reporters",
+    "remarks-energy-corpus-christi-texas",
+    "remarks-cabinet-meeting-2",
+]
+ECON = re.compile(r"\b(fed|federal reserve|interest rate|rates|inflation|prices|economy|economic|tariff|jobs|"
+                  r"stock market|dollar|mortgage|warsh|powell|affordab|gas|deficit|debt|growth|recession|wages)\b", re.I)
 DEFAULT_SPEECHES = [
     "warsh20260828a",   # Warsh, "In Our Time"
     "powell20250822a",  # Powell, Jackson Hole: Monetary Policy and the Fed's Framework Review
@@ -31,7 +46,36 @@ DEFAULT_SPEECHES = [
     "powell20250416a",  # Powell, Economic Outlook (tariffs)
     "powell20251014a",  # Powell, Understanding the Fed's Balance Sheet
 ]
-CHAIR_NAMES = {"kevin_warsh": "Chair Kevin Warsh", "jerome_powell": "Chair Jerome Powell"}
+CHAIR_NAMES = {"kevin_warsh": "Chair Kevin Warsh", "jerome_powell": "Chair Jerome Powell",
+               "president_trump": "President Trump"}
+
+
+def fetch_president(slug: str) -> dict:
+    """A presidential speech / remarks from the American Presidency Project. Only the
+    President's own paragraphs about the economy, rates or prices are marked as his
+    (role 'chair', i.e. scored); reporters' questions and off-topic remarks are 'other'."""
+    url = APP_URL.format(slug=slug)
+    r = requests.get(url, timeout=30, headers={"User-Agent": "Mozilla/5.0 (andhacks research)"})
+    r.raise_for_status()
+    page = r.content.decode("utf-8", "replace")
+    title = re.search(r"<h1>(.*?)</h1>", page, re.S)
+    title = html.unescape(re.sub(r"<[^>]+>", "", title.group(1))).strip() if title else slug
+    when = re.search(r'class="date-display-single"[^>]*>([^<]+)<', page)
+    from datetime import datetime
+    date = datetime.strptime(when.group(1).strip(), "%B %d, %Y").strftime("%Y%m%d") if when else "20260101"
+    body = re.search(r'<div class="field-docs-content">(.*?)</div>', page, re.S)
+    segments, speaker = [], "THE PRESIDENT"
+    for p in re.findall(r"<p[^>]*>(.*?)</p>", body.group(1) if body else page, re.S):
+        text = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", p))).strip()
+        label = re.match(r"^(Q|The President|[A-Z][a-z]+ [A-Z][a-zA-Z\.]+)\.\s+", text)
+        if label:
+            speaker = "THE PRESIDENT" if label.group(1) == "The President" else label.group(1).upper()
+            text = text[label.end():]
+        if len(text.split()) < 8 or text.startswith("["):
+            continue
+        role = "chair" if speaker == "THE PRESIDENT" and ECON.search(text) else "other"
+        segments.append({"speaker": speaker, "role": role, "text": text})
+    return {"date": date, "source": url, "title": title, "speaker_key": "president_trump", "segments": segments}
 
 
 def fetch_speech(speech_id: str) -> dict:
@@ -69,7 +113,10 @@ def build_catalog() -> list:
         except (OSError, ValueError):
             continue
         date = data.get("date") or rid[-8:]
-        if rid.startswith("speech_"):
+        if rid.startswith("pres_"):
+            speaker = "president_trump"
+            label = f"President: {data.get('title', rid)}"
+        elif rid.startswith("speech_"):
             speaker = data.get("speaker_key", "kevin_warsh")
             label = f"Speech: {data.get('title', rid)}"
         elif re.fullmatch(r"20\d{6}", rid):
@@ -88,7 +135,23 @@ def build_catalog() -> list:
 def main():
     parser = argparse.ArgumentParser(description="Download Fed speeches for replay")
     parser.add_argument("ids", nargs="*", default=DEFAULT_SPEECHES)
+    parser.add_argument("--president", action="store_true",
+                        help="Download the presidential remarks (replays + baseline set)")
     args = parser.parse_args()
+    if args.president:
+        for n, slug in enumerate(PRESIDENT_REPLAYS + PRESIDENT_BASELINE):
+            try:
+                data = fetch_president(slug)
+            except Exception as e:
+                print(f"{slug}: failed ({e})")
+                continue
+            prefix = "pres_" if slug in PRESIDENT_REPLAYS else "presbase_"
+            rid = f"{prefix}{data['date']}_{n}"
+            with open(os.path.join(TRANSCRIPT_DIR, f"{rid}.json"), "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=1, ensure_ascii=False)
+            scored = sum(1 for x in data["segments"] if x["role"] == "chair")
+            print(f"{rid}: {data['title'][:70]} · {scored} economy paragraphs")
+        args.ids = []
     os.makedirs(TRANSCRIPT_DIR, exist_ok=True)
     for sid in args.ids:
         try:

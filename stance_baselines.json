@@ -1036,5 +1036,775 @@
     "text": "I don’t know. I would—I wouldn’t agree that that’s collateral damage of our—I mean, over time, we do what we do in order to create price stability and maximum employment. And those things are hugely valuable to all of the people we serve. When we raise rates to bring inflation down, you know, that d"
    }
   ]
+ },
+ "president_trump": {
+  "dates": [
+   "presbase_20260220_2",
+   "presbase_20260326_3",
+   "presbase_20260423_4",
+   "presbase_20260227_5",
+   "presbase_20260129_6"
+  ],
+  "n": 126,
+  "mean": -0.09126984126984126,
+  "stdev": 0.2981476786708228,
+  "entries": [
+   {
+    "date": "presbase_20260220_2",
+    "stance": 0.0,
+    "summary": "General political commentary regarding economic national security and country performance.",
+    "text": "This was an important case to me, more as a symbol of economic national security and also, I would say, just for our country itself—so important—because we're doing so well as a country. We've never done so well."
+   },
+   {
+    "date": "presbase_20260220_2",
+    "stance": 0.0,
+    "summary": "Political remarks on tariff usage and stock market performance.",
+    "text": "I have very effectively utilized tariffs over the past year to make America great again. Our stock market has just recently broken 50,000 on the Dow and, simultaneously and even more amazingly, broken 70—broken 7,000 on the S&P—two numbers that everybody thought, upon our landslide election victory,"
+   },
+   {
+    "date": "presbase_20260220_2",
+    "stance": 0.0,
+    "summary": "Discussion of legal constraints on tariff authority and IEEPA.",
+    "text": "To show you how ridiculous the opinion is, however, the Court said that I'm not allowed to charge even $1. I can't charge $1. Can't charge a dollar. I would have used 1 penny, but we don't make the pennies anymore. We save money. Can't charge $1 to any country under IEEPA—not $1—I assume, to protect"
+   },
+   {
+    "date": "presbase_20260220_2",
+    "stance": 0.0,
+    "summary": "Legal analysis of presidential authority to impose future tariffs.",
+    "text": "So I'm going to just start: \"Although I firmly disagree with the Court's holding today, the decision might not substantially constrain a President's ability to order tariffs going forward. That is because numerous other Federal statutes\"—which is so true—\"authorize the President to impose tariffs an"
+   },
+   {
+    "date": "presbase_20260220_2",
+    "stance": 0.5,
+    "summary": "Maintaining existing national security tariffs signals a protectionist, hawkish trade stance.",
+    "text": "In order to protect—and it says so. In order to protect our country, a President can actually charge more tariffs than I was charging in the past period of a year under the various tariffs authorities. So we can use other of the statutes, other of the tariff authorities—which have also been confirme"
+   },
+   {
+    "date": "presbase_20260220_2",
+    "stance": 0.5,
+    "summary": "Imposing new global tariffs signals a hawkish, protectionist trade policy.",
+    "text": "Today I will sign an order to impose a 10-percent global tariff under section 122, over and above our normal tariffs already being charged, and we're also initiating several section 301 and other investigations to protect our country from unfair trading practices of other countries and companies."
+   },
+   {
+    "date": "presbase_20260220_2",
+    "stance": 0.5,
+    "summary": "Threatening higher tariffs on foreign production signals protectionist trade policy.",
+    "text": "You can make your product outside. You can put our people out of business. You can put everybody on the unemployment rolls. But if you're going to make a car in some other country, you're going to pay a 15-, 20-, 30-percent tariff. And those things would have never happened. We wouldn't have lost ou"
+   },
+   {
+    "date": "presbase_20260220_2",
+    "stance": 0.0,
+    "summary": "Political anecdote regarding economic growth and recession forecasts.",
+    "text": "But just like that great patriot said yesterday, \"Sir, what you've done, nobody thought was possible.\" And Steve Moore, a highly respected economist, came into my office yesterday. He said: \"You've done something nobody has ever done. Twenty-two Nobel Prize winners in economics said we would, right "
+   },
+   {
+    "date": "presbase_20260220_2",
+    "stance": 0.0,
+    "summary": "Discusses trade tariffs and border policy; no monetary policy signal.",
+    "text": "No, what we've done—I charged China a 20-percent tariff as a penalty for sending fentanyl in, and that was 20 times more than they could make by selling fentanyl. And I said, you know, at some point, you're going to say, like—and they have reduced it. You know, fentanyl is down by more than 30 perce"
+   },
+   {
+    "date": "presbase_20260220_2",
+    "stance": 0.0,
+    "summary": "Discusses agricultural subsidies funded by tariffs; no monetary policy signal.",
+    "text": "Well, like the farmers. We took care of farmers. You know, the farmers were mistreated by foreign countries very badly—very, very badly. And last week, I gave them $12 billion out of tariff money."
+   },
+   {
+    "date": "presbase_20260220_2",
+    "stance": 0.0,
+    "summary": "Discusses legal status of tariffs; no monetary policy signal.",
+    "text": "We intend to—out of tariff money, because we're going—just so you understand, we have tariffs. We just have them in a different way. And now they've been confirmed by the Supreme Court of the United States, so there's no longer that question out there about tariffs."
+   },
+   {
+    "date": "presbase_20260220_2",
+    "stance": 0.0,
+    "summary": "Discusses trade investigation tools; no monetary policy signal.",
+    "text": "U.S. Trade Representative Jamieson L. Greer. [Laughter] Yes, sir. So, to the President's point, we have a lot of tools out there. We have section 122, which will be implemented today—it will be signed today and implemented very shortly. We have section 301 investigations, which are incredibly legall"
+   },
+   {
+    "date": "presbase_20260220_2",
+    "stance": 0.0,
+    "summary": "Discusses trade deficit trends; no monetary policy signal.",
+    "text": "And so you can look forward in the coming days and weeks to seeing all of that come out, and we're going to keep continuity in the program. We're going to keep addressing this so that the deficit can keep going down. That's the trend it has, and we can make America great again, sir."
+   },
+   {
+    "date": "presbase_20260220_2",
+    "stance": 0.0,
+    "summary": "Personal critique of an individual's knowledge; no monetary policy signal.",
+    "text": "He doesn't even know any—I watched him the other day interview, the guy doesn't even know what a tariff is."
+   },
+   {
+    "date": "presbase_20260220_2",
+    "stance": -1.0,
+    "summary": "Strongly advocates for substantially lower interest rates.",
+    "text": "We have a very incompetent Fed Chairman who likes high interest rates. For political reasons, he likes them. But we're going to have somebody very good. Interest rates should come down very substantially. I think it—we should pay—we should pay the lowest interest rates on the planet. There should be"
+   },
+   {
+    "date": "presbase_20260220_2",
+    "stance": 0.0,
+    "summary": "Anecdote regarding trade negotiations with Switzerland; no monetary policy signal.",
+    "text": "We should pay—as an example, the country of Switzerland. We were getting almost no tariffs from then. We had a $40 billion deficit, and the Prime Minister called me up. She said, \"But we are a small country,\" because I said we're going to raise it to 39 percent from nothing. That would have rendered"
+   },
+   {
+    "date": "presbase_20260220_2",
+    "stance": 0.0,
+    "summary": "Political anecdote regarding tariffs; not a monetary policy statement.",
+    "text": "And just yesterday the Prime Minister of Pakistan said, \"President Trump saved 35 million lives by getting them to stop.\" That's—and I did it largely with tariffs. I said, \"Look, you're going to fight, that's fine, but you're not going to do business with the United States. And you're going to pay a"
+   },
+   {
+    "date": "presbase_20260220_2",
+    "stance": 0.0,
+    "summary": "General economic commentary; lacks specific monetary policy signals.",
+    "text": "Okay? I just want to thank you all. Look, great certainty has been brought back to the economy of the United States and actually the economy of the world, because we generate so much in the world. We're the biggest in the world, and we're now the strongest by far."
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "General economic optimism; no specific monetary policy signal provided.",
+    "text": "So, as we end threats to America abroad, we're focused here at home on building the greatest economy in the history of the world."
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Commentary on market confidence; no direct monetary policy implications.",
+    "text": "And I thought—frankly, I thought the oil prices would go up more, and I thought the stock market would go down more. Hasn't been nearly as severe as I thought. I think they have confidence in maybe the—American President and maybe the people sitting around this table."
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Discussion of drug pricing policy; unrelated to monetary policy.",
+    "text": "You don't write about the drug prices going down. They'll be going down 30, 40, 50, 60 percent, 70 percent. Favored nations. Called most favored nations. We're going to be paying the lowest price anywhere in the world."
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Remarks on tariff revenue and legal rulings; no monetary policy signal.",
+    "text": "We gave them $12 billion out of tariff money. We had a tremendous amount of tariff money come in, and we continue to have. We've gone—as you know, the Supreme Court gave us a very unfortunate, foolish ruling—a ruling that gives the people that have ripped off our country for many years—gives them so"
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Discussion of agricultural subsidies; unrelated to monetary policy.",
+    "text": "But because the tariff money has been so substantial, we gave our farmers, who have been mistreated by some countries—we gave them $12 billion, and they're extremely happy, and they deserve it."
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Political commentary regarding farmers; no monetary policy signal.",
+    "text": "They wouldn't trade jobs with any of you, except maybe some of the fake media. I don't know. [Laughter] Somehow, I don't see that. I like their job better, actually. I love the farmers. So we gave them $12 billion."
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Expectations for energy prices; no specific monetary policy signal.",
+    "text": "So, in just a few moments, Treasury Secretary Scott Bessent will discuss the actions that we're taking to address energy prices, which have not gone up as much as I thought, Scott, to be honest with you. And I—you know, it's not over, so maybe it will go up a little bit more. It's all going to come "
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Criticism of Federal Reserve costs; not a monetary policy stance.",
+    "text": "It won't be like the Federal Reserve that's costing $4 billion or something thereabouts. Think of it: $4 billion. You know, it's amazing—I said to the group before, I said, \"Everything I do, I get sued.\" I build under budget, ahead of schedule. I get sued over a ballroom that's going to be the most "
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Irrelevant commentary regarding building construction and the Federal Reserve facility.",
+    "text": "But you know who they didn't sue? The man that took this beautiful Federal Reserve building. That's small—much smaller than the hotel I built. I built the Waldorf Astoria Hotel down the road, and it was a beautiful job, for $200 million—$201 million. It's bigger, I think, than the Federal Reserve bu"
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Irrelevant commentary regarding building construction and the National Trust.",
+    "text": "And we have a great new person coming in to take over the Fed. And Kevin may not ever have an office because I don't know if they're going to be able to build. I passed that building the other day. It's a see-through. You know what see-through means? There's no walls up, and they're going to spend—b"
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": -0.5,
+    "summary": "Criticizes Jerome Powell for interest rates being too high.",
+    "text": "But they don't sue the guy whose interest rates are too high. That's why we call him \"Too Late.\" His name is Jerome Powell. We call him Jerome \"Too Late\" Powell. And done a terrible job."
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Irrelevant commentary regarding lawsuits and office space.",
+    "text": "And nobody sues this guy. And then when Jeanine Pirro, working with Pam and others, has the courage to sue to find out what happened to maybe $4 billion and a building that may never be occupied by Kevin Warsh—he may never get there. We're going to have to find him some space in the White House. We'"
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Vague criticism of the Federal Reserve without specific policy implications.",
+    "text": "So we've got to get our priorities straight. You know? It's a very sad thing that's happened with the Fed."
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Irrelevant commentary regarding construction costs of the Federal Reserve building.",
+    "text": "Think of it. Federal Reserve. I would have had that building done for $25 million. I would have—if I did it, if it was up to—somebody else would have done it for more. So maybe 50. But you could have done that building—if it was properly done and planned, you would have done that building for—I woul"
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Irrelevant commentary regarding the cost of pens.",
+    "text": "So I came here, and they have thousand-dollar pens. And you know, you hand pens out. You're signing, and you're handing them out. You're handing them. There's all these people. Sometimes you have 30, 40 people. And they were $1,000 apiece. Beautiful pen. Ballpoint. A thousand. It was gold, silver, g"
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Irrelevant commentary regarding pens and military contracts.",
+    "text": "That's when I call the guy. I said, \"I'd like to use your pen, but I can't have a gray thing with a big \"S\" on it saying 'Sharpie' as I'm signing a—trillion-dollar airplane contract to buy brand-new fighter jets, band—brandnew B–2 bombers\"—of which we just ordered plenty. \"I can't do that with the p"
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Irrelevant commentary regarding Federal Reserve building expenditures.",
+    "text": "And by the way, this was not staged. I just saw the pen sitting there, and I thought of this as an example of how $25 million spent by me at the Federal Reserve building would be a better job than $4 billion that they're spending."
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Irrelevant commentary regarding building architecture.",
+    "text": "And you know, one of the things that Kevin Warsh told me? He said, \"They ripped down the nicest building.\" I don't know what building they're talking about. They ripped down a building, Scott, right? Kevin Warsh said, \"It's the most beautiful building in Washington.\" He said, \"The most beautiful spa"
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Anecdotal story about pens; no monetary policy content.",
+    "text": "He said, \"Is this really the President?\" He said: \"No, you don't have to pay me, sir. This is such an honor.\" I said, \"Nope, I want to pay you.\" And he said, \"What would you like to pay?\" I said, \"How about five bucks a pen?\" I said—he said, \"That's all right\"—whatever the hell we agreed to—peanuts—"
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Commentary on gas taxes; not a monetary policy signal.",
+    "text": "Well, some people should do that. As an example, in California, every time prices go down, his prices go up because the—you know, the gas tax is bigger than the tax itself—bigger than the product itself."
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Retrospective comment on past economic performance.",
+    "text": "It hasn't—I mean, we've thought about it, I guess. But honestly, when I did this, I knew it was going to be a little bit—we had the greatest economy ever. We had the greatest stock market in history."
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "General opinion on stock market performance; no policy signal.",
+    "text": "I said: \"We're going to take a little bit of a hit, a short-term hit. It's going to end up going much higher than it was,\" in my opinion. I said—we're going to have a great stock market."
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Mention of gas tax as a potential fiscal policy tool.",
+    "text": "But—the gas tax, you know, people have talked about it. It's something we have in our pocket if—if we think it's necessary."
+   },
+   {
+    "date": "presbase_20260326_3",
+    "stance": 0.0,
+    "summary": "Geopolitical commentary regarding military assets.",
+    "text": "We don't know. There could be a few of them out there, but that's a lot. You know, if you have a billion-dollar ship and you get hit by a mine, it's not the greatest thing in the world."
+   },
+   {
+    "date": "presbase_20260423_4",
+    "stance": 0.0,
+    "summary": "Discusses pharmaceutical pricing; unrelated to monetary policy.",
+    "text": "Well, thank you very much. And today I'm thrilled to announce that one of the most respected pharmaceutical companies anywhere in the world, frankly—I know it very well; it's Regeneron—and it's agreed to offer their prescription medications at heavily discounted, most favored nation prices."
+   },
+   {
+    "date": "presbase_20260423_4",
+    "stance": 0.0,
+    "summary": "Political commentary on drug prices; unrelated to monetary policy.",
+    "text": "By itself, we should win the midterms, but it doesn't work that way, unfortunately. You know? It doesn't work that way. People forget too quickly. But we'll have the biggest—it's the biggest cut in drug prices in the history of our country by many percentage points."
+   },
+   {
+    "date": "presbase_20260423_4",
+    "stance": 0.0,
+    "summary": "Discusses pharmaceutical market pricing; unrelated to monetary policy.",
+    "text": "With this announcement, 17 of the world's largest pharmaceutical companies, representing 80 percent of the branded drug market, have now agreed to sell their drugs to American patients at the lowest prices anywhere in the world. We're going to have the lowest prices in the world. This will result in"
+   },
+   {
+    "date": "presbase_20260423_4",
+    "stance": 0.0,
+    "summary": "Historical commentary on drug pricing; unrelated to monetary policy.",
+    "text": "For decades, Americans have been forced to pay the highest prices in the world for prescription drugs, by far—prices that were many, many times what the rest of the world was paying, because we had a President that didn't know what they were doing or they weren't able to get other countries to agree"
+   },
+   {
+    "date": "presbase_20260423_4",
+    "stance": 0.0,
+    "summary": "Executive order regarding drug prices; unrelated to monetary policy.",
+    "text": "To address this chronic unfairness, I signed an Executive order instructing my administration to do everything in our power to slash prescription drug prices for Americans while getting other countries to pay more—in many cases, much more. But their other prices doubled, and sometimes they tripled, "
+   },
+   {
+    "date": "presbase_20260423_4",
+    "stance": 0.0,
+    "summary": "Corporate commitment to drug pricing; unrelated to monetary policy.",
+    "text": "Today we're building on our unprecedented success, with Regeneron committing to offer all new drugs moving forward at most favored nations prices. They'll make their current drugs available to Medicaid and MFN. That's \"most favored nation.\""
+   },
+   {
+    "date": "presbase_20260423_4",
+    "stance": 0.0,
+    "summary": "General statement on drug pricing; unrelated to monetary policy.",
+    "text": "Today we are here. We were not pushed to be here. We are happy to be here because it marks an important step to lower drug prices."
+   },
+   {
+    "date": "presbase_20260423_4",
+    "stance": 0.0,
+    "summary": "Political statement on international trade; unrelated to monetary policy.",
+    "text": "And now, President Trump is putting policies in place to force these nations to pay their fair share, which will, in turn, lower prices for Americans. It's a good deal."
+   },
+   {
+    "date": "presbase_20260423_4",
+    "stance": 0.0,
+    "summary": "Discusses trade tariffs and manufacturing incentives, not monetary policy.",
+    "text": "And, remember, if they do them here, they don't have any tariffs to pay. It's an incredible incentive. And if they don't do them here, they have a very substantial tariff. So they get penalized."
+   },
+   {
+    "date": "presbase_20260423_4",
+    "stance": 0.0,
+    "summary": "Discusses chip manufacturing and trade tariffs, not monetary policy.",
+    "text": "You may say a word about that, Howard, real fast, because we are—what we're doing with chips are incredible. And all we're doing is saying: At the end of a year and a half, 2 years, if you don't have your chip company, you're going to pay a tremendous tariff to put chips into this country. And they "
+   },
+   {
+    "date": "presbase_20260423_4",
+    "stance": 0.0,
+    "summary": "Discusses stock market performance and geopolitical security, not monetary policy.",
+    "text": "Stock market is at an alltime high right now. I projected, and I'm pretty good at this, that the stock market, Howard, would drop maybe 20 percent, 25 percent. And I understood that. And I said, \"Hey, it's a bad thing, but I have to do what's right for the country—even the world.\" Because you can't "
+   },
+   {
+    "date": "presbase_20260423_4",
+    "stance": 0.0,
+    "summary": "Comments on stock market performance, not monetary policy.",
+    "text": "So the stock market, unlike what a lot of people were predicting—I thought they weren't necessarily wrong—the stock market today hit an alltime high. Hit an alltime high yesterday, the day before. And it's staying there."
+   },
+   {
+    "date": "presbase_20260423_4",
+    "stance": 0.0,
+    "summary": "Discusses domestic oil and gas production, not monetary policy.",
+    "text": "No. What I say is: You can't let them have—I don't think it will happen, by the way. I really think we, actually—it turns out that we are \"drill, baby, drill.\" And it turns out we're producing a lot of oil, and they're buying the oil. They're going to Alaska. They're buying—they're going to Texas, L"
+   },
+   {
+    "date": "presbase_20260423_4",
+    "stance": 0.0,
+    "summary": "Critiques Federal Reserve building construction costs, not monetary policy.",
+    "text": "Well, look, you know, the Federal Reserve building is a small building. They're going to be in there, by the time it opens, in my opinion, for $4 billion. I built a hotel down the road for $201 million that I believe is bigger than the Federal Reserve building. $201 million. And the ballroom—I'm goi"
+   },
+   {
+    "date": "presbase_20260423_4",
+    "stance": 0.0,
+    "summary": "Critiques Federal Reserve building renovations, not monetary policy.",
+    "text": "When you look at the fact that they've taken this beautiful building and destroyed it—they've taken down the beautiful ceilings with eagles. They've taken down the walls that are a foot and a half thick, masonry. You couldn't hear from office to office. They ripped it all down. They did—they ripped "
+   },
+   {
+    "date": "presbase_20260423_4",
+    "stance": -1.0,
+    "summary": "Criticizes the Fed Chair for not lowering interest rates sooner.",
+    "text": "And we have to get to that. On top of that, he's been terrible on interest rates because he should have lowered interest rates. That's why I call him Jerome \"Too Late\"—\"Too Late\"—it's his nickname—Jerome \"Too Late\" Powell. He likes me a lot."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Political commentary on energy policy; no monetary policy signal.",
+    "text": "And his allies in Congress waged a radical-left war on American oil and natural gas like you've never seen before. They were killing our—they were killing our country and killing your area right here."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Criticism of energy regulations; no monetary policy signal.",
+    "text": "He piled crippling regulations on producers and refiners, opposed natural gas export ban, and slashed new leases for drilling by 95 percent. That's Biden."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Political rhetoric regarding inflation and energy policy.",
+    "text": "Under their \"green new scam\"—one of the greatest scams in history—gasoline reached a peak of over $6.00 a gallon in some States, fueling the worst inflation in the history of our country. We had the worst inflation in the history of our country. The—you know, you've heard me say this before. The fak"
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Commentary on local job creation and economic investment.",
+    "text": "Since that crucial investment, companies have flocked here, creating tens of thousands of jobs and generating billions and billions of dollars in revenue for your community."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Statistical report on energy exports; no monetary policy signal.",
+    "text": "Nationwide exports of liquified natural gas are up 37 percent. Think of that. And the past year—the highest level in American history, and going up a lot—crude oil exports are up by hundreds of thousands of barrels a day."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Personal remarks about port operations and employee pride.",
+    "text": "At this port, I have the honor of leading roughly 75 employees and contractors, most of which are here today. And I can tell you with utmost sincerity that every one of us takes great pride in our jobs supporting this global gateway. We work hard and with humility."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "General statement on regional economic importance of the waterway.",
+    "text": "This waterway means something to us. It represents the economic opportunity for tens of thousands of families throughout this region."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Argument that lower energy costs reduce general consumer prices.",
+    "text": "Slashing energy costs is among the most important actions we can take to bring down prices for American consumers, because when you cut the cost of energy, you really caught—you just cut the cost of energy—everything follows—look, you're in an industry, a business—whatever you want to call it—a prof"
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": -0.5,
+    "summary": "Highlights successful disinflation, implying less need for restrictive policy.",
+    "text": "In 12 months, we've driven core inflation down to the lowest level in more than 5 years. And in the last 3 months of 2025, it's been down to 1-point inflation—1.7 percent. Nobody thought that."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Political commentary regarding tenure; no specific monetary policy signal.",
+    "text": "So we went from the highest inflation ever to low inflation. All—you know, everything took place. I've been here 1 year. Think of it. One year. A little bit more than 1 year now. Time flies. Time flies. Maybe we should—maybe we do one more term. Should we do one more term? Do one more term."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": -0.5,
+    "summary": "Cites broad price declines, suggesting inflation is no longer a threat.",
+    "text": "But think of it. The price of eggs is down 60 percent. The cost of chicken, butter, fruit, hotels, automobiles. Rent is lower today than it has been in years. And even beef is, right now, on the way down. It's coming down. It's coming down fast. Prices of almost everything is down."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Focuses on stock market performance and political approval; neutral policy signal.",
+    "text": "The stock market has hit 53 alltime record highs since the election. Think of that, in 1 year. Adding trillions of dollars in value—Americans' pensions and 401(k)s and retirement accounts, they're all through the roof. Who has a 401(k)? Wow. Is anybody unhappy with the job I'm doing?"
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Defends the importance of stock market gains; no monetary policy signal.",
+    "text": "And then, you know—you hear these radical lunatics say, \"The stock market doesn't matter.\" Well, it does matter, because they have 401(k)s. They have investments. They buy stocks without 401(k)s. It matters a lot."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Boasts about market milestones; lacks specific monetary policy implications.",
+    "text": "Our stock market is going through—you know, we beat 50,000 on the Dow. They said, when I got elected, if I could beat 50,000 by the end of my fourth year, it would be a tremendous miracle. And we then hit 7,000 on the S&P, and that was even tougher. They said, \"There's no way that could be done.\" I "
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Discusses fiscal retirement matching policy; not related to monetary policy.",
+    "text": "To help ensure that all American share in the gains from the rising stock market, I announced on Tuesday night that any worker whose employer does not provide matching contributions to a retirement account, my administration will begin matching your retirement savings with up to $1,000 a year. Nobod"
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Discusses fiscal tax policy regarding overtime; not monetary policy.",
+    "text": "One American who is benefiting tremendously from our tax cuts is Kevin Rhoades from Andrews, Texas. Kevin is a Marine Corps veteran who has spent 20 years in the oil and gas industry. Great guy. Just met him. He works as a wells tech in Permian Basin, where he averages 15 hours a week in overtime. N"
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Personal introduction and greeting; no monetary policy content.",
+    "text": "Andrews, TX, resident Kevin Rhoades. Thank you, Mr. President. It's a huge honor to be here in Corpus Christi, Texas, with everyone here. Thank you to Oil and Gas Workers Association also."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Discussion of the oil and gas industry; no monetary policy content.",
+    "text": "We are products of the oil industry—oil and gas industry of West Texas. We send our oil here to Corpus Christi to send out across the world."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Personal anecdote about family and career; no monetary policy content.",
+    "text": "We are just Americans, two parents trying to give the best life to their children, opportunities for both of our sons, one who is in automation, fixing to go into the oil gas industry."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Discussion of drug pricing policy; no monetary policy content.",
+    "text": "Under the most-favored-nation agreements for drug prices, we're slashing drug prices at record levels like never seen before, with price differences of 400, 500, even 600 percent. I went to other countries, I said, \"No way.\""
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Comments on historical drug pricing; no monetary policy content.",
+    "text": "You know, we were paying the highest prices in the entire world by far, and now we're paying the lowest price. It's numbers that have come down for decades. Think of it."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Comments on international drug pricing; no monetary policy content.",
+    "text": "For decades, Americans have paid the highest drug prices. Nobody's ever paid more. We would pay sometimes 8, 10, 12 times more than places in Europe and other countries. But from now on, because of what I did, we're going to be paying the lowest price. It's called favored nations—most favored nation"
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Discussion of tariffs and drug negotiations; no monetary policy content.",
+    "text": "I got it done, and I got it done by saying very simply to the other countries, \"If you're not going to do it, we're going to charge you a massive tariff that's many times more.\" Because they had to approve it. The drug companies approved it. The countries approved it."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Political remarks regarding drug prices; no monetary policy content.",
+    "text": "And I said, \"That alone\"—Governor, that alone should win us the midterms. Ted, that alone should win us the midterms. That is the single biggest thing to happen. It's a revolution in prescription drugs. Your prices are going down 80 percent, 85 percent, 70 percent. Numbers that nobody ever saw."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Remarks on drug pricing; unrelated to monetary policy.",
+    "text": "I announced that I got—because nobody in 28 years had gotten drug prices down. I got them down, from the beginning of the year to the end, one quarter of 1 percent. I thought it was great, because nobody else had done it for 28 years. Now I've got them down 80 percent, 85 percent, 75, 55."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Criticism of insurance companies; unrelated to monetary policy.",
+    "text": "Big insurance companies have gotten rich with our Government, giving them hundreds of billions of dollars as their stock prices soared. Because Obamacare was good at—rotten health insurance. Good for one reason: the insurance companies. The insurance companies made a fortune."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Discussion of energy policy and AI data centers; no monetary signal.",
+    "text": "As I announced on Tuesday, under our new Rate Payer Protection Pledge, we're also telling the big tech companies that energy usage, AI data centers, cannot drive up price in communities—electric prices in communities. They have an obligation to pay that—we have told them, \"You've got to build your o"
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": -1.0,
+    "summary": "Advocates for lower mortgage rates and expansionary bond purchases.",
+    "text": "We're expanding the dream of homeownership to millions of Americans. And after I directed the purchase of $200 billion in mortgage bonds—that's $200 billion in mortgage bonds—mortgage rates just fell substantially lower than 6 percent for the first time in 5 years."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": -1.0,
+    "summary": "Criticizes Fed for not cutting interest rates aggressively enough.",
+    "text": "The annual cost of a typical new mortgage is now down almost $5,000 in 1 year. Think of that. And have a lousy guy in the Fed. Terrible. Jerome \"Too Late.\" You know what? He's too late. You know why we call him \"Too Late\"? He's too late in reducing mortgage interest rates or interest rate. He's not "
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Personal anecdote; unrelated to monetary policy.",
+    "text": "No, Paul is just incredible. And he rates Trump the single greatest President in history. That's why I have him. He says, \"He's the GOAT.\" \"The GOAT.\" No, we have—we've had a couple good—we haven't had too many, actually."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "Political commentary on past economic conditions; no specific policy signal.",
+    "text": "Just over 1 year ago, we inherited a total disaster. Four years now—think of it: Four years we had ruinous inflation, economic surrender—we surrendered to the whole world—a border invasion, rampant crime and chaos. All over the world, they laughed at us."
+   },
+   {
+    "date": "presbase_20260227_5",
+    "stance": 0.0,
+    "summary": "General political rhetoric regarding national status; no monetary policy signal.",
+    "text": "America is back. Our economy is roaring, and our country is strong, and we're respected again. They're respecting us again. China respects us. Russia respects us. They all respect. And they respect your President. They respect—and I respect them. We got a lot of things going on."
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "General political commentary on economic growth and government shutdowns.",
+    "text": "I want to thank my entire Cabinet for 12 months of unprecedented achievements. We really have. I mean, it's unprecedented—the numbers we've had on the economy, on growth. You see them. And that's despite a Democrat shutdown. Without the shutdown, we would have picked up about a point and a half more"
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Political rhetoric regarding inflation and GDP growth figures.",
+    "text": "And just as I promised, we've defeated the Biden inflation nightmare and achieved explosive new economic growth. The Atlanta Fed is predicting an astounding 5.4 percent GDP growth in the fourth quarter, and that's despite the fact that we had a Democrat shutdown. We would have had—that number would "
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Comments on GDP growth and avoiding government shutdowns.",
+    "text": "So the GDP growth in the fourth quarter was great. And it's going to be—I think we're going to have an amazing—an incredible year. Hopefully, we won't have a shutdown. We're working on that right now. I think we're getting close. The Democrats, I don't believe, want to see it either. So we'll work i"
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Observations on stock market performance and record highs.",
+    "text": "And just yesterday, the S&P 500 hit 7,000 for the first time ever. There's never been any time at which it's done like that. And the other stocks also—I think it was 52 times for the Dow had hit a record high. But the 7,000 was not a number that was even thinkable if you go back a year ago. And so S"
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "General positive sentiment regarding the state of the economy.",
+    "text": "The economy is doing amazingly well. I wish the press would report it, but people are finding out. They're seeing it. It's coming—it's becoming pretty evident. It's hard to hide."
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Political comparison of real income growth versus inflation.",
+    "text": "Biden inflation, which is really stagflation, cost the typical family $34,000. Think of that: $34,000. But after 1 year, growth in real incomes is outpacing inflation by more than $3,000 under Trump. So one cost $34,000, and one made $3,000. That's a big swing."
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Remarks on domestic energy production levels.",
+    "text": "We're drilling—I think I can say we're drilling more than at any time ever in the history—we're taking out more energy out of our land. But specifically, if you took—look at oil and gas, we've never been anywhere even close."
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Observations on declining consumer prices and affordability.",
+    "text": "Grocery prices, airfares, hotels, car payments, and rent prices are coming down very fast. And you don't hear the word \"affordability\" issued by the Democrats anymore. Now they're going into other things because they're getting beaten badly on affordability."
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "General comment on past price levels; no monetary policy signal.",
+    "text": "And by the time we had the egg hunt a few months later, we had the prices down pretty good."
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Historical commentary on inflation; no current monetary policy signal.",
+    "text": "So we really have—you don't hear the word \"affordability,\" because—we inherited very high prices, and we inherited the highest inflation in 48 years. I say \"the history of our country.\" I think it sounds almost the same. Actually, I think 48 years sounds, actually, worse for some reason. So I'll go "
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Political commentary on Fed leadership; no specific policy stance.",
+    "text": "And we had the highest inflation in 48 years. We have now very—as you saw yesterday with the Fed—I'm not a fan of his. He said that inflation, essentially, is not a factor. It's really been pretty amazing. I just put out a statement about his statements. I won't repeat them here because they're too "
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Discussion of drug pricing policy; unrelated to monetary policy.",
+    "text": "Under my most-favored-nations policy—which I think is the most important thing, Bobby, of all—all that we've done, because we're bringing drug prices down by 80, 90 percent, depending on the way—you could say 5-, 6-, 7-, 800 percent. Depends on the way you want to calculate it, right? But let's go t"
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Discussion of drug pricing policy; unrelated to monetary policy.",
+    "text": "But drug prices for prescription drugs will be down 80, 90 percent, 75 percent, 68 percent. They've only gone up. For years and years and years, they've only gone up. And now we're going to have, essentially, the most favored nation. We're going to have the most-favored price in the whole world. Wha"
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Discussion of drug pricing policy; unrelated to monetary policy.",
+    "text": "But if you think, most-favored-nation policy for drugs will bring your drug prices down at levels. So now if they're selling a pill for $10 in London and $130 in New York, the London price will go up to $20, and we'll go down to $20. So we'll go from $130 down to $20."
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Discussion of trade tariffs; unrelated to monetary policy.",
+    "text": "I said, \"Well, if you don't do it, I'm going to charge you a 25-percent tariff on all of your wine, champagne, and everything else you sell into the United States.\" He said, \"Like I said, I will do it.\" [Laughter] That was the end of the conversation, right? That was the end of the conversation."
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Discussion of drug pricing policy; unrelated to monetary policy.",
+    "text": "So we're going to be knocking drug prices down at levels never seen before. I want to thank the drug companies because, once they agreed, they really did—they felt it was very unfair. One of them told me, \"It's actually a relief to agree, because this has been just a rough thing for me, you know, to"
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Remarks on drug prices; unrelated to monetary policy.",
+    "text": "So we're going to be bringing the drug prices down at numbers never—never seen before. It's going to have a huge impact—positive impact on health care."
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "General political commentary; unrelated to monetary policy.",
+    "text": "You mentioned the great economy. One of the things in the \"One Big Beautiful Bill\"—Mr. President, it was an honor to host you and, as you said, the best rapper in the world, Nicki Minaj, at yesterday's Trump Account summit."
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Discussion of tariffs; not a direct monetary policy signal.",
+    "text": "They're coming in, they're building because they don't want to pay the tariff. And the tariffs are very, you know, steep."
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Procedural comment regarding the appointment of a Fed chair.",
+    "text": "And we're going to be announcing, next week, I think, sometime—Scott and Howard and everybody—we're going to be announcing the head of the Fed, who that will be. And it will be a person that will, I think, do a good job."
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": -1.0,
+    "summary": "Explicitly calls for lower interest rates, criticizing current Fed policy.",
+    "text": "We're paying far too much interest in the Fed. The Fed rate is too high, unacceptably high. We should have the lowest. And I think you read my statement today—I put out a statement before the meeting. But we should have the lowest interest rate in—anywhere in the world, because a lot of these countr"
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": -1.0,
+    "summary": "Advocates for significant interest rate cuts to stimulate the economy.",
+    "text": "We should have the lowest interest rate anywhere in the world. They should be 2 points and even 3 points lower. And if it was—each point is the equivalent of, I would say, $500 billion. So, if you got 2 points lower, you have a trillion dollars in saving, and it's almost—if you call it—call it just "
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": -0.5,
+    "summary": "Implies the Fed should act as a helper, not a hindrance.",
+    "text": "Thank you. And with the help of the Fed—because we really—you know, we want—we want help, not hindrance. Why would the Fed hinder? But with the help of the Fed, with the right choice—if we make the right choice—you know, a lot of times you make a choice, you think it's good, and it turns out to be n"
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": -0.5,
+    "summary": "Suggests Fed policy should support higher economic growth and markets.",
+    "text": "But with the help of the Fed, we could hit numbers that have never been hit before. We could hit 8, 9, 10. There's no reason why not. And you know, it's—I talk about—if you go back 20 years, 25 years—I'm old enough to remember—when we had good news, when you announced good news, the stock market wen"
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "General commentary on the relationship between growth, inflation, and interest rates.",
+    "text": "But now it's—over the last 15 or so years, if you announce good news, that means they're going to raise interest rates, right? Because they want to kill it. So you can never really be that successful, because you announce all record numbers—great, great, great—because they're afraid of inflation, bu"
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Political commentary on historical inflation and economic growth performance.",
+    "text": "So—and you've seen that with us. I mean, we're growing at a much faster rate than anybody thought was possible. We have very controllable inflation. With Biden, we were getting killed, and we had the worst inflation in 48 years—in history—in the history of our country, and that's with—going down."
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": -1.0,
+    "summary": "Advocates for lowering interest rates in response to positive economic news.",
+    "text": "So growth is a great thing. It doesn't mean inflation. And I want to go back to a system where when we announce good news, they say: \"That's great. We can lower interest rates instead of raise interest.\""
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": -0.5,
+    "summary": "Suggests delaying inflation response to prioritize economic growth and market performance.",
+    "text": "And by the way, if inflation comes, we'll take care of it when it comes. But you know, they're trying to guess it, and they're trying to get it 10 years before—in advance. And you know, we want to make this country greater than ever before, and I think we're doing that, but we want to make it that w"
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Discusses trade policy, reshoring, and innovation without direct monetary policy signals.",
+    "text": "As you said, \"Not only do I want MFN, but I want them to all reshore their production to this country\"—and they don't have any money to do it, because we've taken it all from them—\"and I want to make sure we continue to lead the world in innovation.\" We succeeded in all of those goals, and the proof"
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": -1.0,
+    "summary": "Explicitly calls for lower interest rates to support the housing market.",
+    "text": "I'm going to ask Scott Turner to speak really quickly about housing, because, in my opinion—and I have very strong opinions on housing. That's what I did for a long time. I did good with it. But you know, we got to get interest rates down even lower. They are now pretty low, but we got to get them l"
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": -1.0,
+    "summary": "Advocates for lower interest rates to boost housing values and affordability.",
+    "text": "The best thing that can happen for both groups of people is lower interest rates, and those interest rates are coming down. And with a proper, intelligent person at the Fed, that person will be able to work with us to get interest rates down. That covers all of the sins. It covers everything. Lower "
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Discusses housing wealth preservation without specific monetary policy implications.",
+    "text": "One of the things Scott said though is, again, existing housing, people that own their homes, we're going to keep them wealthy. We're going to keep those prices up. We're not going to destroy the value of their homes so that somebody that didn't work very hard can buy a home."
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": -1.0,
+    "summary": "Explicitly advocates for lowering interest rates to stimulate the economy.",
+    "text": "We're going to get—we're going to make it easier to buy. We're going to get interest rates down. But I want to protect the people that, for the first time in their lives, feel good about themselves. They feel like they've—you know, that they're wealthy people."
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Discusses housing market preferences without direct monetary policy implications.",
+    "text": "And I want them to understand it. You know, there's so much talk about, \"Oh, we're going to drive housing prices down.\" I don't want to drive housing prices down. I want to drive housing prices up for people that own their homes. And they can be assured that's what's going to happen."
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Discusses energy production and fuel sources; unrelated to monetary policy.",
+    "text": "We're allowing them to build a electric-producing plant, mostly electric, but electric to—they can use nuclear to do it. They can use oil and gas. They can use coal. They can use whatever they want. I think many are choosing oil and gas because it's there. It's tried, it's true, it's plentiful, it's"
+   },
+   {
+    "date": "presbase_20260129_6",
+    "stance": 0.0,
+    "summary": "Anecdotal commentary on maritime piracy; unrelated to monetary policy.",
+    "text": "Just to finish up on that, the Somalian pirates, over the years, have pirated, stolen many ships. They would get large amounts of money for the ship. You know, you have a billion-dollar ship, and the insurance companies didn't want to fight, because, you know, some of those ships are very flammable."
+   }
+  ]
  }
 }
