@@ -122,6 +122,8 @@
   <div class="card" style="margin-top:18px"><h2>Control room</h2>
     <div class="muted" id="control-status">Checking operator controls…</div>
     <div id="control-login" class="row" hidden>
+      <a class="btn" id="auth0-login" href="auth0.php" style="text-decoration:none" hidden>🔐 Sign in with Auth0</a>
+      <span class="muted" id="password-label">Operator password:</span>
       <input id="operator-password" type="password" autocomplete="current-password" placeholder="Operator password" style="max-width:320px">
       <button class="btn" id="operator-login" type="button">Sign in</button>
     </div>
@@ -152,9 +154,10 @@
         <button class="btn" id="control-start" type="button">▶ Start</button>
         <button class="btn stop" id="control-stop" type="button">■ Stop</button>
         <span style="flex:1"></span>
+        <span class="muted" id="whoami"></span>
         <button class="btn ghost" id="operator-logout" type="button">Sign out</button>
       </div>
-      <div class="muted" style="margin-top:8px">Limits: $10/order, $50/day, kill switch on the laptop. LIVE asks you to type LIVE before any real order can be sent.</div>
+      <div class="muted" style="margin-top:8px">Limits: $10/order, $50/day, kill switch on the laptop. LIVE requires approved Auth0 sign-in, typing LIVE, and local worker opt-in. Analyze always uses dry run.</div>
     </div>
   </div>
 
@@ -260,7 +263,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const cents = (p) => p == null ? "—" : Math.round(p * 100) + "¢";
 const sgn = (x, d = 2) => x == null ? "—" : (x >= 0 ? "+" : "") + Number(x).toFixed(d);
-let liveConfirmed = false;
+let liveConfirmed = false, authMethod = "password";
 let lastUpdate = 0, controlCsrf = "", controlBusy = false, authed = false, archive = null;
 
 // ---------------------------------------------------------------- tabs
@@ -305,12 +308,22 @@ function setAuthed(on) {
 async function refreshControls() {
   try {
     const d = await controlApi();
+    $("auth0-login").hidden = !d.auth0_available;
+    $("password-label").textContent = d.auth0_available ? "or operator password:" : "Operator password:";
     $("control-login").hidden = !!d.authenticated;
     $("control-panel").hidden = !d.authenticated;
     setAuthed(!!d.authenticated);
     if (!d.authenticated) { controlCsrf = ""; $("control-status").textContent = "Sign in to start a session, ask the desk, or analyze a statement."; return; }
     controlCsrf = d.csrf;
-    const s = d.status;
+    const s = d.status, u = d.user || {};
+    authMethod = u.auth || "password";
+    $("whoami").textContent = u.email ? `Signed in as ${u.email} (Auth0)` : "Signed in with the operator password";
+    const liveOpt = [...$("opt-mode").options].find(o => o.value === "live");
+    if (liveOpt) {
+      liveOpt.disabled = !u.live_ok;
+      liveOpt.textContent = u.live_ok ? "LIVE (real money; local opt-in required)" : "LIVE (real money) · Auth0 sign-in required";
+      if (liveOpt.disabled && liveOpt.selected) { $("opt-mode").value = "dry"; liveConfirmed = false; }
+    }
     $("control-status").innerHTML = `<b style="color:${s.online ? "var(--dove)" : "var(--warn)"}">● Laptop ${s.online ? "online" : "offline"}</b> · ` +
       esc(s.phase) + (s.source ? " · " + esc(s.source) : "") + (s.message ? " · " + esc(s.message) : "") + (s.pending ? " · command pending…" : "") +
       (s.online ? "" : ' <span class="muted">(run <code>python control_worker.py</code> on the laptop)</span>');
@@ -344,6 +357,7 @@ $("operator-login").onclick = async () => {
 };
 $("operator-password").onkeydown = e => { if (e.key === "Enter") $("operator-login").click(); };
 $("operator-logout").onclick = async () => {
+  if (authMethod === "auth0") { location.href = "auth0.php?logout=1"; return; }
   try { await controlApi("logout", new FormData()); await refreshControls(); }
   catch (e) { $("control-status").textContent = e.message; }
 };
@@ -361,7 +375,7 @@ $("control-start").onclick = async () => {
     form.set("source_url", url);
   } else if (src === "replay") form.set("replay_date", $("replay-date").value);
   controlBusy = true; $("control-start").disabled = true;
-  try { await controlApi("start", form); showTab("live"); await refreshControls(); }
+  try { await controlApi("start", form); liveConfirmed = false; if ($("opt-mode").value === "live") $("opt-mode").value = "dry"; showTab("live"); await refreshControls(); }
   catch (e) { $("control-status").textContent = e.message; }
   finally { controlBusy = false; }
 };

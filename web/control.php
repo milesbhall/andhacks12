@@ -19,33 +19,41 @@ if ($method === 'GET' && $action === 'job') {
         'result' => $job['result'] ?? null, 'error' => $job['error'] ?? null]]);
 }
 if ($method === 'GET') {
-    if (empty($_SESSION['operator'])) control_json(200, ['ok' => true, 'configured' => true, 'authenticated' => false]);
+    if (empty($_SESSION['operator'])) control_json(200, ['ok' => true, 'configured' => true,
+        'authenticated' => false, 'auth0_available' => control_auth0_available()]);
     $state = control_store($config, function (&$s) { return control_public_state($s); });
     control_json(200, ['ok' => true, 'configured' => true, 'authenticated' => true,
-        'csrf' => control_csrf(), 'status' => $state]);
+        'auth0_available' => control_auth0_available(),
+        'csrf' => control_csrf(), 'status' => $state,
+        'user' => ['auth' => $_SESSION['auth'] ?? 'password', 'email' => $_SESSION['email'] ?? '',
+                   'name' => $_SESSION['name'] ?? '', 'live_ok' => !empty($_SESSION['live_ok'])]]);
 }
 if ($method !== 'POST') control_json(405, ['ok' => false]);
 if ($action === 'login') {
     $key = hash('sha256', (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
     $blocked = control_store($config, function (&$s) use ($key) {
-        $entry = $s['login_attempts'][$key] ?? ['count' => 0, 'until' => 0];
-        if (($entry['until'] ?? 0) < time() - 900) $entry = ['count' => 0, 'until' => 0];
-        return ($entry['count'] ?? 0) >= 5 && ($entry['until'] ?? 0) > time();
+        $now = time();
+        foreach (($s['login_attempts'] ?? []) as $ip => $old) {
+            if ((int)($old['window_started'] ?? 0) < $now - 900) unset($s['login_attempts'][$ip]);
+        }
+        $entry = $s['login_attempts'][$key] ?? ['count' => 0, 'window_started' => $now];
+        if ((int)($entry['blocked_until'] ?? 0) > $now) return true;
+        if ((int)($entry['window_started'] ?? 0) < $now - 900 ||
+            (int)($entry['blocked_until'] ?? 0) > 0) $entry = ['count' => 0, 'window_started' => $now];
+        $entry['count']++;
+        if ($entry['count'] > 5) $entry['blocked_until'] = $now + 300;
+        $s['login_attempts'][$key] = $entry;
+        return $entry['count'] > 5;
     });
     if ($blocked) control_json(429, ['ok' => false, 'error' => 'Try again later']);
     $password = (string)($_POST['password'] ?? '');
     if (strlen($password) > 1024 || !password_verify($password, $config['password_hash'])) {
-        control_store($config, function (&$s) use ($key) {
-            $entry = $s['login_attempts'][$key] ?? ['count' => 0, 'until' => 0];
-            $entry['count'] = (int)$entry['count'] + 1;
-            $entry['until'] = time() + ($entry['count'] >= 5 ? 300 : 900);
-            $s['login_attempts'][$key] = $entry;
-        });
         control_json(401, ['ok' => false, 'error' => 'Invalid password']);
     }
     control_store($config, function (&$s) use ($key) { unset($s['login_attempts'][$key]); });
     session_regenerate_id(true);
-    $_SESSION['operator'] = true;
+    $_SESSION = ['operator' => true, 'auth' => 'password', 'live_ok' => false,
+        'authenticated_at' => time()];
     control_json(200, ['ok' => true, 'csrf' => control_csrf()]);
 }
 control_require_login();
@@ -77,6 +85,8 @@ if ($action === 'job') {
 }
 
 if (!in_array($action, ['start', 'stop'], true)) control_json(400, ['ok' => false]);
+if ($action === 'start' && ($_POST['mode'] ?? '') === 'live' && empty($_SESSION['live_ok']))
+    control_json(403, ['ok' => false, 'error' => 'LIVE trading needs an Auth0 sign-in from an approved account']);
 
 $uploadId = null;
 $sourceUrl = null;

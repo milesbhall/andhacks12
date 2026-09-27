@@ -12,8 +12,8 @@ this worker polls for them over HTTPS and runs everything on this laptop:
   * Jobs: Ask the desk (Backboard), Analyze a statement, search memories.
   * Publishes data/archive.json (replays + order/signal history) every minute.
 
-Real-money (live) mode is never accepted from the website. Use the local
-command line for that.
+Real-money (live) mode requires both typed confirmation on the website and
+MARKETPULSE_ALLOW_LIVE=1 in the local worker environment.
 """
 
 import argparse
@@ -37,7 +37,7 @@ ROOT = Path(__file__).resolve().parent
 MANIFEST = ROOT / 'control_worker_processes.json'
 LOCK_PATH = ROOT / 'control_worker.lock'
 ALLOWED_SOURCE_HOSTS = {'www.federalreserve.gov', 'www.youtube.com', 'youtube.com', 'm.youtube.com', 'youtu.be'}
-WEB_MODES = ('dry', 'demo', 'live')   # live needs the typed confirmation checked in control.php
+WEB_MODES = ('dry', 'demo', 'live')
 SPEEDS = (1, 2, 3, 4, 5, 10, 20)
 POLL_SECONDS = 2
 ARCHIVE_SECONDS = 60
@@ -77,8 +77,11 @@ def known_speakers() -> set:
 def clean_options(raw) -> dict:
     raw = raw if isinstance(raw, dict) else {}
     mode = raw.get('mode') if raw.get('mode') in WEB_MODES else 'dry'
-    if mode == 'live' and raw.get('confirm_live') != 'LIVE':
-        mode = 'dry'
+    if mode == 'live':
+        if raw.get('confirm_live') != 'LIVE':
+            raise ValueError('LIVE mode requires typed LIVE confirmation')
+        if os.environ.get('MARKETPULSE_ALLOW_LIVE') != '1':
+            raise ValueError('LIVE mode requires local MARKETPULSE_ALLOW_LIVE=1 opt-in')
     speaker = raw.get('speaker') if raw.get('speaker') in known_speakers() else 'kevin_warsh'
     try:
         qty = max(1, min(5, int(raw.get('qty', 2))))
@@ -181,7 +184,11 @@ def _trim_record(r: dict) -> dict:
 
 
 def run_job(job: dict):
-    kind, text, opts = job.get('kind'), (job.get('text') or '').strip(), clean_options(job.get('options'))
+    kind, text = job.get('kind'), (job.get('text') or '').strip()
+    raw_options = job.get('options')
+    if kind in ('ask', 'analyze', 'memories'):
+        raw_options = {**(raw_options if isinstance(raw_options, dict) else {}), 'mode': 'dry'}
+    opts = clean_options(raw_options)
     if kind == 'ask':
         import backboard_client as bb
         if not bb.enabled():
@@ -201,10 +208,10 @@ def run_job(job: dict):
         import pipeline
         import stance_scorer
         result = stance_scorer.score_statement(opts['speaker'], text)
-        record = pipeline.act_on(result, opts['speaker'], opts['venues'], opts['mode'], opts['qty'],
+        record = pipeline.act_on(result, opts['speaker'], opts['venues'], 'dry', opts['qty'],
                                  bool((job.get('options') or {}).get('stance_only')), source='website')
         pipeline.save(f"website_{int(time.time())}", [record])
-        return {'record': _trim_record(record), 'mode': opts['mode']}
+        return {'record': _trim_record(record), 'mode': 'dry'}
     raise ValueError('Unknown job')
 
 

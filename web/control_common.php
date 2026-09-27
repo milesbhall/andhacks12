@@ -27,6 +27,10 @@ function control_config(): ?array {
     return $config;
 }
 
+function control_auth0_available(): bool {
+    return is_readable(dirname(__DIR__) . '/incredible_trades_private/auth0_config.php');
+}
+
 function control_worker_auth(): void {
     $token = $_SERVER['HTTP_X_UPLOAD_TOKEN'] ?? '';
     if (!is_string($token) || !hash_equals(CONTROL_TOKEN_SHA256, hash('sha256', $token))) {
@@ -44,9 +48,17 @@ function control_require_https(): void {
 function control_session(): void {
     if (session_status() === PHP_SESSION_ACTIVE) return;
     session_name('it_operator');
+    ini_set('session.use_only_cookies', '1');
+    ini_set('session.use_strict_mode', '1');
     session_set_cookie_params(['httponly' => true, 'secure' => true,
-        'samesite' => 'Strict', 'path' => '/']);
+        // Auth0 returns via a top-level cross-site redirect, which needs Lax.
+        'samesite' => 'Lax', 'path' => '/']);
     session_start();
+    // Polling is frequent, so enforce an absolute 8-hour session lifetime.
+    if (!empty($_SESSION['operator']) && (int)($_SESSION['authenticated_at'] ?? 0) < time() - 8 * 3600) {
+        $_SESSION = [];
+        session_regenerate_id(true);
+    }
 }
 
 function control_csrf(): string {
@@ -136,6 +148,8 @@ function control_session_options(array $p): array {
     $mode = in_array($p['mode'] ?? 'dry', ['dry', 'demo', 'live'], true) ? (string)$p['mode'] : 'dry';
     // Real money only with the typed confirmation from the page.
     if ($mode === 'live' && (string)($p['confirm_live'] ?? '') !== 'LIVE') $mode = 'dry';
+    // Real money also needs an Auth0 sign-in from an allow-listed account (not just the password).
+    if ($mode === 'live' && empty($_SESSION['live_ok'])) $mode = 'dry';
     $speed = (float)($p['speed'] ?? 0);
     if (!in_array($speed, [1.0, 2.0, 3.0, 4.0, 5.0, 10.0, 20.0], true)) $speed = 0.0;
     $speaker = (string)($p['speaker'] ?? 'kevin_warsh');

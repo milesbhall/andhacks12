@@ -1,6 +1,7 @@
 """Offline checks; no website calls, subprocesses, or audio processing."""
 
 import json
+import os
 import tempfile
 import time
 import unittest
@@ -28,7 +29,7 @@ class HostedControlTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 control_worker.validate_url('https://www.federalreserve.gov/a')
 
-    def test_worker_launch_has_fixed_dry_mode(self):
+    def test_worker_defaults_to_dry_when_mode_is_missing(self):
         worker = control_worker.Worker('https://example.test', 'existing-token')
         commands = []
         fake_process = Mock(pid=123, poll=Mock(return_value=None))
@@ -36,14 +37,46 @@ class HostedControlTests(unittest.TestCase):
              patch.object(worker, 'stop'), patch.object(worker, '_download', return_value='C:/private/audio.mp3'), \
              patch.object(worker, '_launch', side_effect=lambda name, args: commands.append((name, args)) or fake_process), \
              patch.object(worker, 'request', return_value=Mock(json=Mock(return_value={'command': {'id': 'one'}}))), \
-             patch.object(worker, 'status'):
+             patch.object(worker, 'status'), patch.dict(os.environ, {'MARKETPULSE_ALLOW_LIVE': ''}):
             worker.start({'id': 'one', 'action': 'start', 'source_type': 'upload', 'upload_id': 'audio.mp3',
-                          'mode': 'live', 'speaker': 'attacker', 'qty': 999})
+                          'options': {'speaker': 'attacker', 'qty': 999}})
         desk = commands[0][1]
         self.assertEqual(desk[desk.index('--mode') + 1], 'dry')
         self.assertEqual(desk[desk.index('--speaker') + 1], 'kevin_warsh')
         self.assertNotIn('live', desk)
         self.assertNotIn('999', desk)
+
+    def test_worker_accepts_live_only_with_local_opt_in_and_confirmation(self):
+        requested = {'mode': 'live', 'confirm_live': 'LIVE'}
+        with patch.dict(os.environ, {'MARKETPULSE_ALLOW_LIVE': '1'}):
+            self.assertEqual(control_worker.clean_options(requested)['mode'], 'live')
+            with self.assertRaisesRegex(ValueError, 'typed LIVE confirmation'):
+                control_worker.clean_options({'mode': 'live'})
+        for value in ('', 'true', '0'):
+            with self.subTest(local_opt_in=value), patch.dict(os.environ, {'MARKETPULSE_ALLOW_LIVE': value}):
+                with self.assertRaisesRegex(ValueError, 'local MARKETPULSE_ALLOW_LIVE=1'):
+                    control_worker.clean_options(requested)
+
+    def test_worker_rejects_live_before_launch_without_local_opt_in(self):
+        worker = control_worker.Worker('https://example.test', 'existing-token')
+        with patch.dict(os.environ, {'MARKETPULSE_ALLOW_LIVE': ''}), \
+             patch.object(worker, 'stop'), patch.object(worker, '_launch') as launch:
+            with self.assertRaisesRegex(ValueError, 'local MARKETPULSE_ALLOW_LIVE=1'):
+                worker.start({'id': 'one', 'source_type': 'mic',
+                              'options': {'mode': 'live', 'confirm_live': 'LIVE'}})
+        launch.assert_not_called()
+
+    def test_analyze_job_is_always_dry_even_when_live_is_requested(self):
+        import pipeline
+        import stance_scorer
+        with patch.dict(os.environ, {'MARKETPULSE_ALLOW_LIVE': ''}), \
+             patch.object(stance_scorer, 'score_statement', return_value={'score': 1}), \
+             patch.object(pipeline, 'act_on', return_value={'statement': 'test'}) as act_on, \
+             patch.object(pipeline, 'save'):
+            result = control_worker.run_job({'kind': 'analyze', 'text': 'test',
+                'options': {'mode': 'live', 'confirm_live': 'LIVE'}})
+        self.assertEqual(result['mode'], 'dry')
+        self.assertEqual(act_on.call_args.args[3], 'dry')
 
     def test_publisher_excludes_untrusted_fields_and_non_speaker_text(self):
         with tempfile.TemporaryDirectory() as folder:

@@ -42,6 +42,7 @@ run_polymarket.log
 mic.log
 live.log
 control_config.php
+auth0_config.php
 control_worker.lock
 control_worker_processes.json
 

@@ -4,8 +4,9 @@
 
 MarketPulse listens to Fed speakers (and the President) live, scores each passage's
 policy stance **against that speaker's own history**, and when someone breaks character
-(|z| ≥ 2) it trades the next FOMC decision on **Kalshi** and **Polymarket** within about
-a second. "Inflation is too high" is routine for a hawk and a shock from a dove; a generic
+(|z| ≥ 2) it can act on the next FOMC decision on **Kalshi** and **Polymarket**. End-to-end
+latency depends on transcription, model scoring, market data, and order submission; the live
+dashboard displays the measured time for each signal. "Inflation is too high" is routine for a hawk and a shock from a dove; a generic
 sentiment model can't tell the difference. A personal baseline can.
 
 ## How it works
@@ -37,13 +38,13 @@ sentiment model can't tell the difference. A personal baseline can.
 ## The website
 
 The Hostinger page is the whole product; no Streamlit needed. Anyone can watch; the
-operator signs in to run it. A small worker on the laptop (`control_worker.py`) polls the
+operator signs in with an approved Auth0 account or the operator password to run it. A small worker on the laptop (`control_worker.py`) polls the
 site over HTTPS and runs the Python pipeline locally.
 
 - **Control room:** start/stop a session from the mic, a recording, a stream URL, or a replay; choose speaker, mode (dry / Kalshi demo / LIVE), contracts, venues, playback speed.
 - **Live:** z-score chart, transcript, "Hearing:" line for the mic, order cards, the markets ready to trade, live recommenders.
 - **Ask the desk:** questions answered from Backboard memory of every signal and order.
-- **Analyze:** score any statement and see which markets it would move.
+- **Analyze:** score any statement and see which markets it would move. This tool always runs dry and never sends orders.
 - **Crowd & macro:** Bluesky + Reddit sentiment and the FRED backdrop.
 - **Replay:** 17 press conferences and speeches (Warsh, Powell, presidential remarks) scored answer by answer.
 - **History:** every signal (Tiger Data) and order.
@@ -69,6 +70,13 @@ Data tools: `fed_transcripts.py` (FOMC press conference PDFs), `fed_speeches.py`
 `stance_scorer.py --seed` (build a speaker baseline), `build_replays.py`,
 `fred_client.py`, `social_sentiment.py`.
 
+Hosted controls and Auth0 setup are in [docs/HOSTED_CONTROLS.md](docs/HOSTED_CONTROLS.md).
+Real-money mode requires all three gates: an approved Auth0 identity with LIVE access,
+typing `LIVE` when selecting the mode, and starting the local worker with
+`MARKETPULSE_ALLOW_LIVE=1`. The default worker rejects LIVE requests; dry run and
+Kalshi demo remain available. A locally created `STOP_TRADING` file still stops order
+execution. Use dry run for judging unless the team deliberately enables real money.
+
 ## Repo map
 
 | File | Role |
@@ -89,11 +97,23 @@ Data tools: `fed_transcripts.py` (FOMC press conference PDFs), `fed_speeches.py`
 $10 per order, $50 per day across venues (demo orders excluded), max 2¢ slippage,
 `STOP_TRADING` kill switch file, no adding to a market already traded in a session, and
 an opposite-direction trade needs two surprises in a row. LIVE mode on the website
-requires the operator password and typing LIVE. Real money is never the default.
+requires an approved Auth0 identity, typing LIVE, and local worker opt-in. Real money is never the default.
+
+## Full stack
+
+| Layer | Technology and role |
+|---|---|
+| Front end and hosting | HTML, CSS, JavaScript dashboard on Hostinger; PHP endpoints for the control queue, sessions, and publishing |
+| Identity | Auth0 Authorization Code flow for allowlisted operators; password fallback for non-LIVE controls |
+| Local runtime | Python worker on the operator laptop, outbound HTTPS polling, subprocess supervision, replay and audio handling |
+| Speech and scoring | ElevenLabs Scribe v2 Realtime transcription; Gemini stance scoring with FRED macro context and speaker baselines |
+| Markets and execution | Kalshi and Polymarket market data/order clients, dry/demo/LIVE modes, limits and a local kill switch |
+| Context and history | FRED, Bluesky, Reddit via SocialCrawl, Tiger Data (TimescaleDB), Backboard memory |
+| Proof | Solana devnet memo receipt when a funded wallet is configured |
 
 ## Sponsors used
 
-Gemini · ElevenLabs · Solana · Tiger Data · Backboard · Auth0 (local dashboard) · Hostinger · Kalshi · Polymarket · FRED · Bluesky · Reddit via SocialCrawl
+Gemini · ElevenLabs · Solana · Tiger Data · Backboard · Auth0 · Hostinger · Kalshi · Polymarket · FRED · Bluesky · Reddit via SocialCrawl
 
 ## Team
 
