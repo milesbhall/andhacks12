@@ -19,14 +19,35 @@ if ($method === 'GET' && $download !== null) {
     exit;
 }
 if ($method === 'GET') {
-    $command = control_store($config, function (&$s) { return $s['command'] ?? null; });
-    control_json(200, ['ok' => true, 'command' => $command]);
+    $out = control_store($config, function (&$s) {
+        $jobs = [];
+        foreach (($s['jobs'] ?? []) as $id => $job) {
+            if (($job['status'] ?? '') !== 'queued') continue;
+            $jobs[] = ['id' => $id, 'kind' => $job['kind'], 'text' => $job['text'], 'options' => $job['options'] ?? []];
+            $s['jobs'][$id]['status'] = 'running';
+        }
+        return ['command' => $s['command'] ?? null, 'jobs' => $jobs];
+    });
+    control_json(200, ['ok' => true, 'command' => $out['command'], 'jobs' => $out['jobs']]);
 }
 if ($method !== 'POST') control_json(405, ['ok' => false]);
-$body = file_get_contents('php://input', false, null, 0, 4097);
-if (strlen($body) > 4096) control_json(413, ['ok' => false]);
+$body = file_get_contents('php://input', false, null, 0, 400001);
+if (strlen($body) > 400000) control_json(413, ['ok' => false]);
 $data = json_decode($body, true);
 if (!is_array($data)) control_json(400, ['ok' => false]);
+if (isset($data['job_id'])) {
+    $jid = (string)$data['job_id'];
+    if (!preg_match('/^[a-f0-9]{32}$/', $jid)) control_json(400, ['ok' => false]);
+    $ok = in_array($data['job_status'] ?? '', ['done', 'error'], true);
+    if (!$ok) control_json(400, ['ok' => false]);
+    control_store($config, function (&$s) use ($jid, $data) {
+        if (!isset($s['jobs'][$jid])) return;
+        $s['jobs'][$jid]['status'] = $data['job_status'];
+        $s['jobs'][$jid]['result'] = $data['job_result'] ?? null;
+        $s['jobs'][$jid]['error'] = substr((string)($data['job_error'] ?? ''), 0, 300);
+    });
+    control_json(200, ['ok' => true]);
+}
 $phase = $data['phase'] ?? '';
 if (!in_array($phase, ['idle', 'starting', 'running', 'stopping', 'stopped', 'error'], true)) control_json(400, ['ok' => false]);
 $ack = (string)($data['ack'] ?? '');

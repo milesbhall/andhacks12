@@ -1,7 +1,19 @@
 """Outbound-polling Hostinger controller. Run locally beside the existing pipeline.
 
-The hosted site can request only uploaded audio or an approved HTTPS URL.
-Every desk launch here fixes --mode dry; browser requests never supply CLI flags.
+    python control_worker.py
+
+The hosted MarketPulse page (web/index.html + web/control.php) queues commands;
+this worker polls for them over HTTPS and runs everything on this laptop:
+
+  * Start/Stop a live session from the laptop microphone, an uploaded recording,
+    an approved HTTPS stream, or a replay of a past press conference.
+  * Session options: speaker, trading mode (dry run or Kalshi demo), contracts
+    per order, venues, and the live Kalshi + Polymarket recommenders.
+  * Jobs: Ask the desk (Backboard), Analyze a statement, search memories.
+  * Publishes data/archive.json (replays + order/signal history) every minute.
+
+Real-money (live) mode is never accepted from the website. Use the local
+command line for that.
 """
 
 import argparse
@@ -9,13 +21,13 @@ import ipaddress
 import json
 import os
 from pathlib import Path
-import shutil
-import signal
 import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 import psutil
@@ -25,8 +37,11 @@ ROOT = Path(__file__).resolve().parent
 MANIFEST = ROOT / 'control_worker_processes.json'
 LOCK_PATH = ROOT / 'control_worker.lock'
 ALLOWED_SOURCE_HOSTS = {'www.federalreserve.gov'}
+WEB_MODES = ('dry', 'demo')
 POLL_SECONDS = 2
+ARCHIVE_SECONDS = 60
 MAX_SESSION_SECONDS = 2 * 60 * 60
+REPLAY_SPEED = 10
 
 
 def validate_url(value: str, allowed_hosts=ALLOWED_SOURCE_HOSTS) -> str:
@@ -42,6 +57,26 @@ def validate_url(value: str, allowed_hosts=ALLOWED_SOURCE_HOSTS) -> str:
         if not address.is_global:
             raise ValueError('Source host did not resolve to a public address')
     return value
+
+
+def known_speakers() -> set:
+    try:
+        return set(json.loads((ROOT / 'stance_baselines.json').read_text(encoding='utf-8')))
+    except (OSError, ValueError):
+        return {'kevin_warsh'}
+
+
+def clean_options(raw) -> dict:
+    raw = raw if isinstance(raw, dict) else {}
+    mode = raw.get('mode') if raw.get('mode') in WEB_MODES else 'dry'   # never 'live' from the web
+    speaker = raw.get('speaker') if raw.get('speaker') in known_speakers() else 'kevin_warsh'
+    try:
+        qty = max(1, min(5, int(raw.get('qty', 2))))
+    except (TypeError, ValueError):
+        qty = 2
+    venues = [v for v in ('kalshi', 'polymarket') if v in (raw.get('venues') or [])] or ['kalshi', 'polymarket']
+    return {'mode': mode, 'speaker': speaker, 'qty': qty, 'venues': venues,
+            'recommenders': bool(raw.get('recommenders'))}
 
 
 def _read_secret(name: str, env: str) -> str:
@@ -77,7 +112,7 @@ class SingleWorkerLock:
         self.handle.close()
 
 
-def _owned_processes() -> list[psutil.Process]:
+def _owned_processes() -> list:
     try:
         entries = json.loads(MANIFEST.read_text(encoding='utf-8'))
     except (OSError, ValueError):
@@ -94,8 +129,7 @@ def _owned_processes() -> list[psutil.Process]:
 
 
 def _kill_owned():
-    processes = _owned_processes()
-    for parent in processes:
+    for parent in _owned_processes():
         try:
             children = parent.children(recursive=True)
             for p in children:
@@ -108,6 +142,98 @@ def _kill_owned():
             pass
     MANIFEST.unlink(missing_ok=True)
 
+
+# ---------------------------------------------------------------- jobs --- #
+
+def _trim_trade(t: dict) -> dict:
+    import trading_common as tc
+    return {k: t.get(k) for k in ('time', 'venue', 'market', 'title', 'side', 'qty', 'yes_limit',
+                                   'max_cost', 'reason', 'trigger')} | {
+        'status': (f"skipped: {t['error']}" if t.get('error') else tc.trade_status(t)),
+        'skipped': bool(t.get('error') or t.get('blocked'))}
+
+
+def _trim_record(r: dict) -> dict:
+    return {
+        'statement': (r.get('statement') or '')[:600], 'stance': r.get('stance'), 'z': r.get('z'),
+        'baseline_mean': r.get('baseline_mean'), 'direction': r.get('direction'), 'summary': r.get('summary'),
+        'solana': (r.get('solana') or {}).get('explorer'),
+        'matches': [{'venue': m.get('venue'), 'market': m.get('market'), 'title': m.get('title'),
+                     'direction': m.get('direction'), 'relevance': m.get('relevance'),
+                     'bid': (m.get('quote') or {}).get('best_bid'), 'ask': (m.get('quote') or {}).get('best_ask'),
+                     'reason': m.get('reason')} for m in (r.get('matches') or [])[:10]],
+        'trades': [_trim_trade(t) for t in (r.get('trades') or [])[:10]],
+    }
+
+
+def run_job(job: dict):
+    kind, text, opts = job.get('kind'), (job.get('text') or '').strip(), clean_options(job.get('options'))
+    if kind == 'ask':
+        import backboard_client as bb
+        if not bb.enabled():
+            raise RuntimeError('Backboard is not configured on the laptop')
+        r = bb.ask(text)
+        return {'answer': r.get('answer') or '(no answer)', 'model': r.get('model'),
+                'memories': len(r.get('memories') or [])}
+    if kind == 'memories':
+        import backboard_client as bb
+        if not bb.enabled():
+            raise RuntimeError('Backboard is not configured on the laptop')
+        mems = bb.search_memories(text, limit=20) if text else bb.list_memories()[:30]
+        return {'memories': [{'content': (m.get('content') or '')[:600],
+                              'tag': (m.get('metadata') or {}).get('direction') or (m.get('metadata') or {}).get('kind', ''),
+                              'created_at': str(m.get('created_at', ''))[:16]} for m in mems[:30]]}
+    if kind == 'analyze':
+        import pipeline
+        import stance_scorer
+        result = stance_scorer.score_statement(opts['speaker'], text)
+        record = pipeline.act_on(result, opts['speaker'], opts['venues'], opts['mode'], opts['qty'],
+                                 bool((job.get('options') or {}).get('stance_only')), source='website')
+        pipeline.save(f"website_{int(time.time())}", [record])
+        return {'record': _trim_record(record), 'mode': opts['mode']}
+    raise ValueError('Unknown job')
+
+
+def build_archive() -> dict:
+    import trading_common as tc
+    replays = []
+    for path in sorted((ROOT / 'results').glob('replay_*.json'), reverse=True)[:6]:
+        try:
+            data = json.loads(path.read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            continue
+        replays.append({'name': path.stem, 'created': data.get('created'),
+                        'records': [_trim_record(r) for r in data.get('records', [])]})
+    trades = []
+    try:
+        with open(tc.TRADE_LOG_PATH, encoding='utf-8') as f:
+            for line in f:
+                try:
+                    r = json.loads(line)
+                except ValueError:
+                    continue
+                trades.append({'time': r.get('time'), 'venue': r.get('venue'), 'market': r.get('market'),
+                               'side': r.get('side'), 'qty': r.get('qty'), 'yes_limit': r.get('yes_limit'),
+                               'max_cost': r.get('max_cost'), 'status': tc.trade_status(r),
+                               'reason': r.get('reason')})
+    except OSError:
+        pass
+    signals = []
+    try:
+        import tiger_store
+        if tiger_store.enabled():
+            rows = tiger_store.query('SELECT time, speaker, direction, z, summary, solana_sig, source '
+                                     'FROM signals ORDER BY time DESC LIMIT 150')
+            signals = [{k: (str(v) if k == 'time' else v) for k, v in dict(r).items()} for r in rows]
+    except Exception:
+        signals = []
+    replay_dates = sorted(p.stem for p in (ROOT / 'transcripts').glob('20*.json'))
+    return {'updated_at': datetime.now(timezone.utc).isoformat(), 'replays': replays,
+            'trades': trades[-200:][::-1], 'signals': signals, 'replay_dates': replay_dates,
+            'speakers': sorted(known_speakers())}
+
+
+# -------------------------------------------------------------- worker --- #
 
 class Worker:
     def __init__(self, url: str, token: str):
@@ -123,9 +249,13 @@ class Worker:
         self.audio_finished_at = None
         self.started_at = None
         self.pending_ack = ''
+        self.kind = None
+        self.opts = clean_options({})
+        self.last_archive = 0.0
+        self.archive_lock = threading.Lock()
 
     def request(self, method: str, path: str, **kwargs):
-        r = self.http.request(method, self.base + path, timeout=15, **kwargs)
+        r = self.http.request(method, self.base + path, timeout=kwargs.pop('timeout', 15), **kwargs)
         r.raise_for_status()
         return r
 
@@ -136,6 +266,40 @@ class Worker:
         if acknowledged == self.pending_ack:
             self.pending_ack = ''
 
+    # -- archive + jobs ------------------------------------------------- #
+    def publish_archive(self):
+        if not self.archive_lock.acquire(blocking=False):
+            return
+        try:
+            body = json.dumps(build_archive(), default=str)
+            self.request('POST', '/update.php', params={'name': 'archive'}, data=body,
+                         headers={'Content-Type': 'application/json'}, timeout=30)
+            self.last_archive = time.monotonic()
+        except Exception as exc:
+            print('archive upload failed:', exc)
+        finally:
+            self.archive_lock.release()
+
+    def _job_thread(self, job):
+        try:
+            payload = {'job_id': job['id'], 'job_status': 'done', 'job_result': run_job(job)}
+        except Exception as exc:
+            payload = {'job_id': job['id'], 'job_status': 'error',
+                       'job_error': f'{type(exc).__name__}: {exc}'[:300]}
+        body = json.dumps(payload, default=str)
+        if len(body) > 390000:
+            body = json.dumps({'job_id': job['id'], 'job_status': 'error', 'job_error': 'Result too large'})
+        for _ in range(3):
+            try:
+                self.request('POST', '/control_worker.php', data=body,
+                             headers={'Content-Type': 'application/json'}, timeout=30)
+                break
+            except requests.RequestException:
+                time.sleep(2)
+        if job.get('kind') == 'analyze':
+            self.publish_archive()
+
+    # -- sessions ------------------------------------------------------- #
     def _remember_process(self, name, process):
         self.processes[name] = process
         entries = []
@@ -161,9 +325,9 @@ class Worker:
     def _download(self, upload_id):
         if not isinstance(upload_id, str) or len(upload_id) > 40 or '/' in upload_id or '\\' in upload_id:
             raise ValueError('Invalid upload id')
-        self.tempdir = tempfile.TemporaryDirectory(prefix='incredible_controls_')
+        self.tempdir = tempfile.TemporaryDirectory(prefix='marketpulse_controls_')
         path = Path(self.tempdir.name) / upload_id
-        with self.request('GET', '/control_worker.php', params={'download': upload_id}, stream=True) as r:
+        with self.request('GET', '/control_worker.php', params={'download': upload_id}, stream=True, timeout=120) as r:
             size = 0
             with open(path, 'wb') as f:
                 for chunk in r.iter_content(64 * 1024):
@@ -180,36 +344,54 @@ class Worker:
             self.status(command['id'])
             return
         self.stop()
-        source_type = command.get('source_type')
-        if source_type == 'upload':
-            source_value = self._download(command.get('upload_id'))
-            self.source = 'uploaded recording'
-            source_flag = '--realtime-file'
-        elif source_type == 'url':
-            source_value = validate_url(command.get('source_url', ''))
-            self.source = urlparse(source_value).hostname
-            source_flag = '--url'
+        self.opts = clean_options(command.get('options'))
+        kind = command.get('source_type')
+        self.source_flag = self.source_value = None
+        if kind == 'upload':
+            self.source_value = self._download(command.get('upload_id'))
+            self.source, self.source_flag = 'uploaded recording', '--realtime-file'
+        elif kind == 'url':
+            self.source_value = validate_url(command.get('source_url', ''))
+            self.source, self.source_flag = urlparse(self.source_value).hostname, '--url'
+        elif kind == 'mic':
+            self.source = 'laptop microphone'
+        elif kind == 'replay':
+            date = str(command.get('replay_date') or '')
+            if not (len(date) == 8 and date.isdigit() and (ROOT / 'transcripts' / f'{date}.json').is_file()):
+                raise ValueError('Unknown press conference date')
+            self.source_value = date
+            self.source = f'replay {date[:4]}-{date[4:6]}-{date[6:]} x{REPLAY_SPEED}'
         else:
             raise ValueError('Invalid source type')
+        self.kind = kind
         latest = self.request('GET', '/control_worker.php').json().get('command')
         if not latest or latest.get('id') != command['id']:
             self.stop()
             return
         (ROOT / 'live_transcript.json').write_text(json.dumps({'source': self.source, 'segments': []}), encoding='utf-8')
-        for name in ('live_state.json', 'live_recommendations.json', 'live_polymarket_recommendations.json'):
+        for name in ('live_state.json', 'live_partial.json', 'live_recommendations.json',
+                     'live_polymarket_recommendations.json'):
             (ROOT / name).unlink(missing_ok=True)
-        self.phase, self.message = 'starting', 'Preparing the dry-run desk'
-        desk = self._launch('desk', ['live.py', '--speaker', 'kevin_warsh', '--fast', '--mode', 'dry',
-                                     '--qty', '2', '--venues', 'kalshi', 'polymarket',
-                                     '--source-label', self.source])
-        self.source_flag, self.source_value = source_flag, source_value
+        o = self.opts
+        desk = ['live.py', '--speaker', o['speaker'], '--fast', '--mode', o['mode'],
+                '--qty', str(o['qty']), '--venues', *o['venues'], '--source-label', self.source]
+        if kind == 'replay':
+            desk += ['--simulate', self.source_value, '--speed', str(REPLAY_SPEED)]
+        elif kind == 'mic':
+            desk += ['--source', 'mic', '--surprises-only']
+        self.phase, self.message = 'starting', f"Loading markets ({o['mode']} mode)"
+        self._launch('desk', desk)
+        self._launch('publisher', ['publish.py'])
+        if o['recommenders']:
+            for name, script in (('kalshi_recs', 'run_kalshi_ticker2.py'), ('poly_recs', 'run_polymarket.py')):
+                self._launch(name, [script, '--watch', '--speaker', o['speaker']])
         self.started_at = time.monotonic()
         self.status(command['id'])
 
     def _ready(self):
         try:
             state = json.loads((ROOT / 'live_state.json').read_text(encoding='utf-8'))
-            return state.get('status') == 'listening'
+            return state.get('status') in ('listening', 'finished')
         except (OSError, ValueError):
             return False
 
@@ -218,30 +400,47 @@ class Worker:
             self.stop()
             self.message = 'Session time limit reached'
             return
+        desk = self.processes.get('desk')
         if self.phase == 'starting':
-            if self.processes['desk'].poll() is not None:
-                raise RuntimeError('The dry-run desk exited during startup')
+            if desk.poll() is not None and not (self.kind == 'replay' and desk.returncode == 0):
+                raise RuntimeError('The desk exited during startup (see control_desk.log)')
             if self._ready():
-                self._launch('audio', ['speechtxt.py', self.source_flag, self.source_value])
-                self._launch('publisher', ['publish.py'])
-                self.phase, self.message = 'running', 'Dry-run session active'
-            elif time.monotonic() - self.started_at > 60:
-                raise RuntimeError('The dry-run desk did not become ready')
+                if self.kind == 'mic':
+                    self._launch('audio', ['mic.py'])
+                elif self.kind in ('upload', 'url'):
+                    self._launch('audio', ['speechtxt.py', self.source_flag, self.source_value])
+                self.phase = 'running'
+                self.message = f"{self.opts['mode'].upper()} session active · {self.opts['speaker'].replace('_', ' ')}"
+            elif time.monotonic() - self.started_at > 90:
+                raise RuntimeError('The desk did not become ready')
         elif self.phase == 'running':
-            if self.processes['desk'].poll() is not None:
-                raise RuntimeError('The dry-run desk stopped unexpectedly')
+            if desk.poll() is not None:
+                if self.kind == 'replay' and desk.returncode == 0:
+                    self.audio_finished_at = self.audio_finished_at or time.monotonic()
+                    self.message = 'Replay finished'
+                    if time.monotonic() - self.audio_finished_at > 6:
+                        self.stop()
+                        self.message = 'Replay finished'
+                        self.publish_archive()
+                    return
+                raise RuntimeError('The desk stopped unexpectedly (see control_desk.log)')
             if self.processes['publisher'].poll() is not None:
-                raise RuntimeError('Website updates stopped unexpectedly')
-            if self.processes['audio'].poll() is not None:
-                if self.source_flag == '--realtime-file' and self.processes['audio'].returncode == 0:
+                self._launch('publisher', ['publish.py'])      # website updates are not critical; restart
+            audio = self.processes.get('audio')
+            if audio is not None and audio.poll() is not None:
+                if self.kind == 'upload' and audio.returncode == 0:
                     self.audio_finished_at = self.audio_finished_at or time.monotonic()
                     if time.monotonic() - self.audio_finished_at > 12:
                         self.stop()
+                        self.message = 'Recording finished'
                 else:
-                    raise RuntimeError('The audio source stopped unexpectedly')
+                    raise RuntimeError('The audio source stopped (see control_audio.log)')
 
     def stop(self):
+        was_running = self.phase in ('starting', 'running')
         self.phase = 'stopping'
+        if was_running and 'publisher' in self.processes:
+            time.sleep(1.5)   # let the publisher push the final state
         _kill_owned()
         self.processes.clear()
         if self.tempdir:
@@ -252,6 +451,8 @@ class Worker:
 
     def run_once(self):
         data = self.request('GET', '/control_worker.php').json()
+        for job in data.get('jobs') or []:
+            threading.Thread(target=self._job_thread, args=(job,), daemon=True).start()
         command = data.get('command')
         if command and command.get('id') != self.last_command:
             self.last_command = command['id']
@@ -260,6 +461,7 @@ class Worker:
                 if command.get('action') == 'stop':
                     self.stop()
                     self.status(command['id'])
+                    threading.Thread(target=self.publish_archive, daemon=True).start()
                 elif command.get('action') == 'start':
                     if int(command.get('created_at', 0)) < time.time() - 120:
                         self.status(command['id'])
@@ -269,32 +471,35 @@ class Worker:
                     self.status(command['id'])
             except Exception as exc:
                 self.stop()
-                self.phase, self.message = 'error', type(exc).__name__ + ' during session setup'
+                self.phase, self.message = 'error', f'{type(exc).__name__}: {exc}'[:150]
                 self.status(command['id'])
         try:
             self._advance()
         except Exception as exc:
             self.stop()
-            self.phase, self.message = 'error', type(exc).__name__ + ' during session'
+            self.phase, self.message = 'error', f'{exc}'[:150]
         self.status()
+        if time.monotonic() - self.last_archive > ARCHIVE_SECONDS:
+            threading.Thread(target=self.publish_archive, daemon=True).start()
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Local outbound-polling dry-run website worker')
+    parser = argparse.ArgumentParser(description='Local worker for the hosted MarketPulse page')
     parser.add_argument('--url', default=os.environ.get('HOSTINGER_URL') or _read_secret('hostinger_url.txt', 'HOSTINGER_URL'))
     args = parser.parse_args()
     token = _read_secret('hostinger_token.txt', 'HOSTINGER_TOKEN')
     if not args.url or not token or urlparse(args.url).scheme != 'https':
         raise SystemExit('Configure an HTTPS Hostinger URL and the existing upload token locally')
     with SingleWorkerLock():
-        _kill_owned()  # Recover only PIDs whose creation times match this worker's manifest.
+        _kill_owned()
         worker = Worker(args.url, token)
+        print(f'MarketPulse worker polling {args.url} (Ctrl+C to stop)')
         try:
             while True:
                 try:
                     worker.run_once()
-                except requests.RequestException:
-                    pass  # Network failure cannot create a new session; retry outbound.
+                except requests.RequestException as exc:
+                    print('network:', exc)
                 time.sleep(POLL_SECONDS)
         except KeyboardInterrupt:
             pass

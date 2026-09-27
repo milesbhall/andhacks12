@@ -90,6 +90,9 @@ function control_store(array $config, callable $callback): mixed {
             if (preg_match('/^[a-f0-9]{32}\.(mp3|m4a|wav|webm|ogg|mp4)$/', $id) &&
                 is_file($candidate) && filemtime($candidate) < time() - 10800) @unlink($candidate);
         }
+        foreach (($state['jobs'] ?? []) as $jid => $job) {
+            if ((int)($job['created_at'] ?? 0) < time() - 900) unset($state['jobs'][$jid]);
+        }
         $result = $callback($state);
         $tmp = $path . '.' . bin2hex(random_bytes(6)) . '.tmp';
         $encoded = json_encode($state, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_SLASHES);
@@ -126,4 +129,15 @@ function control_source_url(string $value, array $config): ?string {
     $allowed = array_map('strtolower', $config['source_hosts'] ?? []);
     if (!in_array($host, $allowed, true)) return null;
     return $value;
+}
+
+function control_session_options(array $p): array {
+    $mode = in_array($p['mode'] ?? 'dry', ['dry', 'demo'], true) ? (string)$p['mode'] : 'dry';
+    $speaker = (string)($p['speaker'] ?? 'kevin_warsh');
+    if (!preg_match('/^[a-z_]{3,40}$/', $speaker)) $speaker = 'kevin_warsh';
+    $qty = max(1, min(5, (int)($p['qty'] ?? 2)));
+    $venues = array_values(array_intersect(['kalshi', 'polymarket'], (array)($p['venues'] ?? ['kalshi', 'polymarket'])));
+    if (!$venues) $venues = ['kalshi', 'polymarket'];
+    return ['mode' => $mode, 'speaker' => $speaker, 'qty' => $qty, 'venues' => $venues,
+            'recommenders' => !empty($p['recommenders'])];
 }

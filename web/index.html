@@ -74,6 +74,39 @@
     .kpis { grid-template-columns: repeat(2, 1fr); } .grid, .recs { grid-template-columns: 1fr; }
     .how, .controls { grid-template-columns: 1fr; }
   }
+
+  .tabs { display: flex; gap: 6px; margin: 18px 0 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .tabs button { background: none; border: 0; color: var(--muted); font: 600 14px inherit; padding: 9px 14px; cursor: pointer;
+                 border-bottom: 2px solid transparent; margin-bottom: -1px; font-family: inherit; }
+  .tabs button.on { color: var(--text); border-bottom-color: var(--accent); }
+  .opgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
+  .opgrid label, .field label { display: block; color: var(--muted); font-size: 13px; margin-bottom: 5px; }
+  select, input[type=text], input[type=url], input[type=number], input[type=password], textarea {
+    width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 7px;
+    padding: 8px 10px; font: inherit; }
+  textarea { min-height: 90px; resize: vertical; }
+  .btn { background: var(--accent); color: #07111f; border: 0; border-radius: 7px; padding: 9px 16px; font: inherit;
+         font-weight: 700; cursor: pointer; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.stop { background: var(--hawk); color: #fff; } .btn.ghost { background: var(--panel2); color: var(--text); }
+  .srcs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .srcs label { display: flex; align-items: center; gap: 6px; background: var(--panel2); border: 1px solid var(--line);
+                border-radius: 8px; padding: 7px 12px; cursor: pointer; font-size: 14px; }
+  .srcs input { accent-color: var(--accent); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+  .chk { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 14px; }
+  .bubble { background: var(--panel2); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; white-space: pre-wrap; }
+  .bubble.me { background: #1d2b44; margin-left: 15%; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; border-top: 0; }
+  .bars { display: flex; align-items: center; gap: 3px; height: 160px; margin: 8px 0 4px; position: relative; }
+  .bars .bw { flex: 1; min-width: 4px; position: relative; height: 160px; }
+  .bars .b { position: absolute; left: 0; right: 0; border-radius: 3px; }
+  .bars::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed #334; }
+  .metric { display: inline-block; margin-right: 22px; } .metric .v { font-size: 22px; font-weight: 700; }
+  a { color: #8fb9ff; }
+  @media (max-width: 860px) { .opgrid { grid-template-columns: 1fr 1fr; } }
 </style>
 </head>
 <body>
@@ -86,31 +119,59 @@
     <div><span class="pill" id="mode">—</span> <span class="pill off" id="conn">connecting…</span></div>
   </header>
 
-  <div class="card" style="margin-top:18px"><h2>Operator controls · dry run only</h2>
+  <div class="card" style="margin-top:18px"><h2>Control room</h2>
     <div class="muted" id="control-status">Checking operator controls…</div>
-    <div id="control-login" class="controls" hidden style="margin-top:12px">
-      <div><label for="operator-password">Operator password</label><input id="operator-password" type="password" autocomplete="current-password"></div>
-      <div style="align-self:end"><button id="operator-login" type="button">Sign in</button></div>
+    <div id="control-login" class="row" hidden>
+      <input id="operator-password" type="password" autocomplete="current-password" placeholder="Operator password" style="max-width:320px">
+      <button class="btn" id="operator-login" type="button">Sign in</button>
     </div>
     <div id="control-panel" hidden>
-      <p class="muted">Start a saved recording or an approved HTTPS speech stream. The local worker must be online. Website sessions are always dry runs and never place real or demo orders.</p>
-      <div class="controls">
-        <div><label for="audio-upload">Upload a recording (50 MB max)</label><input id="audio-upload" type="file" accept=".mp3,.m4a,.wav,.webm,.ogg,.mp4,audio/*"></div>
-        <div><label for="stream-url">Or enter an approved HTTPS source URL</label><input id="stream-url" type="url" placeholder="https://www.federalreserve.gov/…"></div>
+      <div class="srcs" id="srcs">
+        <label><input type="radio" name="src" value="mic" checked> 🎙 Laptop microphone</label>
+        <label><input type="radio" name="src" value="replay"> ⏪ Replay a press conference</label>
+        <label><input type="radio" name="src" value="upload"> 📁 Upload a recording</label>
+        <label><input type="radio" name="src" value="url"> 🔗 Stream URL</label>
       </div>
-      <div class="controls actions"><div class="actions"><button id="control-start" type="button">Start</button><button id="control-stop" class="stop" type="button">Stop</button></div><div style="text-align:right"><button id="operator-logout" type="button">Sign out</button></div></div>
+      <div class="row" id="src-replay" hidden><select id="replay-date" style="max-width:320px"></select><span class="muted">Played back at 10× speed.</span></div>
+      <div class="row" id="src-upload" hidden><input id="audio-upload" type="file" accept=".mp3,.m4a,.wav,.webm,.ogg,.mp4,audio/*"><span class="muted">50 MB max, played at normal speed.</span></div>
+      <div class="row" id="src-url" hidden><input id="stream-url" type="url" placeholder="https://www.federalreserve.gov/…" style="max-width:520px"></div>
+      <div class="row" id="src-mic"><span class="muted">Try: “Inflation is still far too high. We are prepared to raise rates again in October.”</span></div>
+      <div class="opgrid">
+        <div><label for="opt-speaker">Speaker</label><select id="opt-speaker"><option value="kevin_warsh">kevin warsh</option></select></div>
+        <div><label for="opt-mode">Trading mode</label><select id="opt-mode"><option value="dry">Dry run</option><option value="demo">Kalshi demo (fake money)</option></select></div>
+        <div><label for="opt-qty">Contracts per order</label><input id="opt-qty" type="number" min="1" max="5" value="2"></div>
+        <div><label>Venues</label><div class="row" style="margin-top:4px"><label class="chk"><input type="checkbox" id="v-kalshi" checked> Kalshi</label><label class="chk"><input type="checkbox" id="v-poly" checked> Polymarket</label></div></div>
+      </div>
+      <div class="row">
+        <label class="chk"><input type="checkbox" id="opt-recs"> Also run the live Kalshi + Polymarket recommenders</label>
+      </div>
+      <div class="row">
+        <button class="btn" id="control-start" type="button">▶ Start</button>
+        <button class="btn stop" id="control-stop" type="button">■ Stop</button>
+        <span style="flex:1"></span>
+        <button class="btn ghost" id="operator-logout" type="button">Sign out</button>
+      </div>
+      <div class="muted" style="margin-top:8px">Limits: $10/order, $50/day. Real-money trading can only be started from the laptop, never from this page.</div>
     </div>
   </div>
 
+  <nav class="tabs" id="tabs">
+    <button data-tab="live" class="on">Live</button>
+    <button data-tab="ask">Ask the desk</button>
+    <button data-tab="analyze">Analyze</button>
+    <button data-tab="replay">Replay</button>
+    <button data-tab="history">History</button>
+    <button data-tab="how">How it works</button>
+  </nav>
+
+  <section id="tab-live">
   <div class="kpis">
     <div class="kpi"><div class="l">Status</div><div class="v" id="k-status">—</div><div class="s" id="k-source"></div></div>
     <div class="kpi"><div class="l">Latest stance</div><div class="v" id="k-stance">—</div><div class="s" id="k-z"></div></div>
     <div class="kpi"><div class="l">Surprises</div><div class="v" id="k-surprises">0</div><div class="s" id="k-base"></div></div>
     <div class="kpi"><div class="l">Signal → order</div><div class="v" id="k-latency">—</div><div class="s">words heard to orders sent</div></div>
   </div>
-
   <div id="alert"></div>
-
   <div class="grid">
     <div>
       <div class="card"><h2>Surprise vs. the speaker's usual stance (z-score)</h2><svg id="chart" viewBox="0 0 640 220" preserveAspectRatio="none"></svg>
@@ -122,9 +183,50 @@
       <div class="card"><h2>Ready to trade</h2><div id="watch" class="muted">—</div></div>
     </div>
   </div>
-
   <div class="card"><h2>Live market recommenders</h2><div class="recs" id="recs"><div class="muted">Not running.</div></div></div>
+  </section>
 
+  <section id="tab-ask" hidden>
+    <div class="grid">
+      <div class="card"><h2>Ask the desk</h2>
+        <div class="muted" style="margin-bottom:10px">Answers come from Backboard memory: every surprise signal and the orders it triggered.</div>
+        <div id="chat"></div>
+        <div class="row" id="ask-examples"></div>
+        <div class="row"><input id="ask-input" type="text" placeholder="Ask about past signals and trades"><button class="btn" id="ask-go" type="button">Ask</button></div>
+        <div class="muted needs-login" style="margin-top:8px">Sign in above to ask questions.</div>
+      </div>
+      <div class="card"><h2>What the desk remembers</h2>
+        <div class="row" style="margin-top:0"><input id="mem-q" type="text" placeholder="Search memories, e.g. rate hike, Polymarket"><button class="btn ghost" id="mem-go" type="button">Search</button></div>
+        <div id="mems" class="muted" style="margin-top:10px">Sign in to browse memories.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-analyze" hidden>
+    <div class="card"><h2>How surprising is this, for this speaker?</h2>
+      <div class="field"><label for="an-text">Statement</label><textarea id="an-text" placeholder="Paste a quote from a press conference, speech or post"></textarea></div>
+      <div class="row"><label class="chk"><input type="checkbox" id="an-stance"> Stance only (skip markets)</label>
+        <span class="muted">Uses the speaker, trading mode, contracts and venues chosen in the control room.</span></div>
+      <div class="row"><button class="btn" id="an-go" type="button">Analyze</button><span class="muted" id="an-status"></span></div>
+      <div class="muted needs-login" style="margin-top:8px">Sign in above to run an analysis.</div>
+    </div>
+    <div id="an-result"></div>
+  </section>
+
+  <section id="tab-replay" hidden>
+    <div class="card"><h2>Press conference replay</h2>
+      <div class="row" style="margin-top:0"><select id="rp-run" style="max-width:360px"></select><span class="muted">Scored answer by answer. |z| ≥ 2 is a surprise.</span></div>
+      <div id="rp-body" class="muted" style="margin-top:10px">Loading…</div>
+    </div>
+  </section>
+
+  <section id="tab-history" hidden>
+    <div class="card"><h2>Signals (Tiger Data)</h2><div id="hist-signals" class="muted">Loading…</div></div>
+    <div class="card"><h2>Orders</h2><div id="hist-trades" class="muted">Loading…</div></div>
+    <div class="muted" id="hist-updated"></div>
+  </section>
+
+  <section id="tab-how" hidden>
   <div class="card"><h2>How it works</h2>
     <div class="how">
       <div class="step"><b>1 · Listen</b>ElevenLabs Scribe v2 Realtime turns live audio into text, sentence by sentence.</div>
@@ -134,25 +236,52 @@
       <div class="step"><b>5 · Prove</b>Each call is hashed onto Solana, stored in Tiger Data, and remembered by Backboard.</div>
     </div>
   </div>
+  </section>
   <footer>Built at &amp;hacks XII, William &amp; Mary · Om Patel &amp; Dylan Ball · Not financial advice.</footer>
 </div>
-
 <script>
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const cents = (p) => p == null ? "—" : Math.round(p * 100) + "¢";
-let lastUpdate = 0;
-let controlCsrf = "", controlBusy = false;
+const sgn = (x, d = 2) => x == null ? "—" : (x >= 0 ? "+" : "") + Number(x).toFixed(d);
+let lastUpdate = 0, controlCsrf = "", controlBusy = false, authed = false, archive = null;
 
-async function controlApi(action, form) {
+// ---------------------------------------------------------------- tabs
+function showTab(name) {
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
+  document.querySelectorAll("section[id^=tab-]").forEach(s => s.hidden = s.id !== "tab-" + name);
+  try { localStorage.setItem("mp_tab", name); } catch (e) {}
+  if (name === "ask" && authed && !$("mems").dataset.loaded) searchMemories();
+}
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
+try { const t = localStorage.getItem("mp_tab"); if (t && $("tab-" + t)) showTab(t); } catch (e) {}
+
+// ---------------------------------------------------------------- operator API
+async function controlApi(action, form, extra = "") {
   const headers = controlCsrf ? {"X-CSRF-Token": controlCsrf} : {};
-  const r = await fetch("control.php" + (action ? "?action=" + action : ""), {
-    method: form ? "POST" : "GET", headers, body: form || undefined,
-    cache: "no-store", credentials: "same-origin"
+  const r = await fetch("control.php" + (action ? "?action=" + action + extra : ""), {
+    method: form ? "POST" : "GET", headers, body: form || undefined, cache: "no-store", credentials: "same-origin"
   });
-  const d = await r.json();
-  if (!r.ok || !d.ok) throw Error(d.error || "Operator request failed");
+  let d; try { d = await r.json(); } catch (e) { throw Error("Server error " + r.status); }
+  if (!r.ok || !d.ok) throw Error(d.error || "Request failed");
   return d;
+}
+
+function sessionForm() {
+  const f = new FormData();
+  f.set("speaker", $("opt-speaker").value);
+  f.set("mode", $("opt-mode").value);
+  f.set("qty", $("opt-qty").value);
+  if ($("v-kalshi").checked) f.append("venues[]", "kalshi");
+  if ($("v-poly").checked) f.append("venues[]", "polymarket");
+  if ($("opt-recs").checked) f.set("recommenders", "1");
+  return f;
+}
+
+function setAuthed(on) {
+  authed = on;
+  document.querySelectorAll(".needs-login").forEach(e => e.hidden = on);
+  ["ask-go", "an-go", "mem-go"].forEach(id => $(id).disabled = !on);
 }
 
 async function refreshControls() {
@@ -160,21 +289,25 @@ async function refreshControls() {
     const d = await controlApi();
     $("control-login").hidden = !!d.authenticated;
     $("control-panel").hidden = !d.authenticated;
-    if (!d.authenticated) { controlCsrf = ""; $("control-status").textContent = "Operator sign-in required."; return; }
+    setAuthed(!!d.authenticated);
+    if (!d.authenticated) { controlCsrf = ""; $("control-status").textContent = "Sign in to start a session, ask the desk, or analyze a statement."; return; }
     controlCsrf = d.csrf;
     const s = d.status;
-    $("control-status").textContent = (s.online ? "Worker online · " : "Worker offline · ") + s.phase +
-      (s.source ? " · " + s.source : "") + (s.message ? " · " + s.message : "") +
-      (s.pending ? " · command pending" : "");
+    $("control-status").innerHTML = `<b style="color:${s.online ? "var(--dove)" : "var(--warn)"}">● Laptop ${s.online ? "online" : "offline"}</b> · ` +
+      esc(s.phase) + (s.source ? " · " + esc(s.source) : "") + (s.message ? " · " + esc(s.message) : "") + (s.pending ? " · command pending…" : "") +
+      (s.online ? "" : ' <span class="muted">(run <code>python control_worker.py</code> on the laptop)</span>');
     $("control-start").disabled = controlBusy || !s.online || s.pending || !["idle", "stopped", "error"].includes(s.phase);
-    $("control-stop").disabled = controlBusy || (s.online && ["idle", "stopped"].includes(s.phase) && !s.pending);
+    $("control-stop").disabled = controlBusy || (s.online && ["idle", "stopped", "error"].includes(s.phase) && !s.pending);
   } catch (e) {
-    $("control-login").hidden = true;
-    $("control-panel").hidden = true;
+    $("control-login").hidden = true; $("control-panel").hidden = true; setAuthed(false);
     $("control-status").textContent = e.message;
   }
 }
 
+document.querySelectorAll("input[name=src]").forEach(r => r.onchange = () => {
+  const v = document.querySelector("input[name=src]:checked").value;
+  ["mic", "replay", "upload", "url"].forEach(k => $("src-" + k).hidden = k !== v);
+});
 $("operator-login").onclick = async () => {
   const form = new FormData(); form.set("password", $("operator-password").value);
   try { await controlApi("login", form); $("operator-password").value = ""; await refreshControls(); }
@@ -186,14 +319,20 @@ $("operator-logout").onclick = async () => {
   catch (e) { $("control-status").textContent = e.message; }
 };
 $("control-start").onclick = async () => {
-  const form = new FormData(), file = $("audio-upload").files[0], url = $("stream-url").value.trim();
-  if (file && url) { $("control-status").textContent = "Choose a recording or a URL."; return; }
-  if (file && file.size > 50 * 1024 * 1024) { $("control-status").textContent = "Recording exceeds 50 MB."; return; }
-  if (file) { form.set("source_type", "upload"); form.set("audio", file); }
-  else if (url) { form.set("source_type", "url"); form.set("source_url", url); }
-  else { $("control-status").textContent = "Choose an audio source."; return; }
+  const form = sessionForm(), src = document.querySelector("input[name=src]:checked").value;
+  form.set("source_type", src);
+  if (src === "upload") {
+    const file = $("audio-upload").files[0];
+    if (!file) { $("control-status").textContent = "Choose a recording first."; return; }
+    if (file.size > 50 * 1024 * 1024) { $("control-status").textContent = "Recording exceeds 50 MB."; return; }
+    form.set("audio", file);
+  } else if (src === "url") {
+    const url = $("stream-url").value.trim();
+    if (!url) { $("control-status").textContent = "Enter a stream URL."; return; }
+    form.set("source_url", url);
+  } else if (src === "replay") form.set("replay_date", $("replay-date").value);
   controlBusy = true; $("control-start").disabled = true;
-  try { await controlApi("start", form); await refreshControls(); }
+  try { await controlApi("start", form); showTab("live"); await refreshControls(); }
   catch (e) { $("control-status").textContent = e.message; }
   finally { controlBusy = false; }
 };
@@ -203,8 +342,135 @@ $("control-stop").onclick = async () => {
   catch (e) { $("control-status").textContent = e.message; }
   finally { controlBusy = false; }
 };
-refreshControls(); setInterval(refreshControls, 3000);
 
+// ---------------------------------------------------------------- jobs
+async function runJob(kind, text, extra = {}) {
+  const f = sessionForm(); f.set("kind", kind); f.set("text", text);
+  for (const [k, v] of Object.entries(extra)) f.set(k, v);
+  const { id } = await controlApi("job", f);
+  const t0 = Date.now();
+  while (Date.now() - t0 < 5 * 60 * 1000) {
+    await new Promise(r => setTimeout(r, 1500));
+    const { job } = await controlApi("job", null, "&id=" + id);
+    if (job.status === "done") return job.result;
+    if (job.status === "error") throw Error(job.error || "Job failed");
+  }
+  throw Error("Timed out waiting for the laptop");
+}
+
+const chat = [];
+function drawChat() {
+  $("chat").innerHTML = chat.map(m => `<div class="bubble ${m.me ? "me" : ""}">${esc(m.text)}${m.note ? `<div class="muted" style="margin-top:4px">${esc(m.note)}</div>` : ""}</div>`).join("");
+}
+async function ask(q) {
+  q = (q || "").trim(); if (!q || !authed) return;
+  chat.push({ me: true, text: q }); chat.push({ text: "Searching memory…" }); drawChat();
+  $("ask-input").value = ""; $("ask-go").disabled = true;
+  try { const r = await runJob("ask", q); chat[chat.length - 1] = { text: r.answer, note: `${r.memories} memories used · ${r.model}` }; }
+  catch (e) { chat[chat.length - 1] = { text: "Error: " + e.message }; }
+  $("ask-go").disabled = !authed; drawChat();
+}
+$("ask-go").onclick = () => ask($("ask-input").value);
+$("ask-input").onkeydown = e => { if (e.key === "Enter") ask($("ask-input").value); };
+$("ask-examples").innerHTML = ["When was Warsh most hawkish, and what did we buy?", "Which markets have we traded after hawkish surprises?", "What is Warsh's usual stance?"]
+  .map(q => `<button class="btn ghost" type="button" style="font-weight:500;font-size:13px">${esc(q)}</button>`).join("");
+$("ask-examples").querySelectorAll("button").forEach(b => b.onclick = () => ask(b.textContent));
+
+async function searchMemories() {
+  if (!authed) return;
+  $("mems").textContent = "Loading…"; $("mems").dataset.loaded = "1";
+  try {
+    const r = await runJob("memories", $("mem-q").value.trim());
+    const ms = r.memories || [];
+    $("mems").innerHTML = ms.length ? ms.map(m => `<div class="line"><span class="tag ${m.tag === "HAWKISH" ? "hawk" : m.tag === "DOVISH" ? "dove" : ""}">${esc(m.tag || "memory")}</span><span class="muted">${esc(m.created_at)}</span><div>${esc(m.content)}</div></div>`).join("") : "No memories found.";
+  } catch (e) { $("mems").textContent = "Error: " + e.message; }
+}
+$("mem-go").onclick = searchMemories;
+$("mem-q").onkeydown = e => { if (e.key === "Enter") searchMemories(); };
+
+function recordHtml(r) {
+  const cls = r.direction === "HAWKISH" ? "hawk" : r.direction === "DOVISH" ? "dove" : "";
+  let h = `<div class="card"><h2>Result</h2>
+    <div class="metric"><div class="muted">Stance</div><div class="v">${sgn(r.stance)}</div></div>
+    <div class="metric"><div class="muted">Speaker's usual</div><div class="v">${sgn(r.baseline_mean)}</div></div>
+    <div class="metric"><div class="muted">Surprise (z)</div><div class="v">${sgn(r.z, 1)}σ</div></div>
+    <div class="metric"><div class="muted">Read</div><div class="v"><span class="tag ${cls}" style="font-size:16px">${esc(r.direction)}</span></div></div>
+    <p>${esc(r.summary)}</p>` + (r.solana ? `<div class="muted">On-chain receipt: <a href="${esc(r.solana)}" target="_blank" rel="noopener">Solana explorer</a></div>` : "") + "</div>";
+  if ((r.matches || []).length) h += `<div class="card"><h2>Markets</h2><table><tr><th>Venue</th><th>Market</th><th>Direction</th><th>Bid / Ask</th><th>Why</th></tr>` +
+    r.matches.map(m => `<tr><td>${esc(m.venue)}</td><td>${esc(cleanTitle(m.title, m.market))}</td><td>${esc(m.direction)}</td><td>${cents(m.bid)} / ${cents(m.ask)}</td><td class="muted">${esc(m.reason)}</td></tr>`).join("") + "</table></div>";
+  if ((r.trades || []).length) h += `<div class="card"><h2>Orders</h2>` + tradeCards(r.trades) + "</div>";
+  return h;
+}
+function tradeCards(trades) {
+  return trades.map(t => {
+    const side = (t.side || "").toUpperCase(), yl = t.yes_limit || 0, per = side === "YES" ? yl : 1 - yl;
+    return `<div class="order"><div class="t">BUY <span class="side-${side.toLowerCase()}">${side}</span> · ${esc(cleanTitle(t.title, t.market))}</div>
+      <div class="m">${esc((t.venue || "").replace(/^\w/, c => c.toUpperCase()))} · ${t.qty} contracts at up to ${Math.round(per * 100)}¢ · costs at most $${(t.max_cost || 0).toFixed(2)}</div>
+      <div class="m" style="margin-top:4px">${badge(t.status)}</div></div>`;
+  }).join("");
+}
+$("an-go").onclick = async () => {
+  const text = $("an-text").value.trim(); if (!text) return;
+  $("an-go").disabled = true; $("an-result").innerHTML = "";
+  $("an-status").textContent = $("an-stance").checked ? "Scoring with Gemini…" : "Scoring with Gemini, then finding markets (can take a minute)…";
+  try {
+    const r = await runJob("analyze", text, $("an-stance").checked ? { stance_only: "1" } : {});
+    $("an-result").innerHTML = recordHtml(r.record); $("an-status").textContent = `Done (${r.mode} mode).`;
+  } catch (e) { $("an-status").textContent = "Error: " + e.message; }
+  $("an-go").disabled = !authed;
+};
+
+// ---------------------------------------------------------------- archive: replay + history
+function drawReplay() {
+  const runs = (archive && archive.replays) || [];
+  if (!runs.length) { $("rp-body").textContent = "No replays yet. Run: python pipeline.py --replay 20260916"; return; }
+  const run = runs.find(r => r.name === $("rp-run").value) || runs[0];
+  const recs = run.records || [];
+  const zmax = Math.max(3, ...recs.map(r => Math.abs(r.z || 0)));
+  let h = `<div class="bars">` + recs.map((r, i) => {
+    const z = r.z || 0, hgt = Math.max(2, Math.abs(z) / zmax * 78);
+    const col = z >= 2 ? "var(--hawk)" : z <= -2 ? "var(--dove)" : "var(--accent)";
+    return `<div class="bw" title="Answer ${i + 1}: z ${sgn(z, 1)}"><div class="b" style="height:${hgt}px;${z >= 0 ? "bottom" : "top"}:50%;background:${col}"></div></div>`;
+  }).join("") + `</div><div class="muted">Each bar is one answer. Up = more hawkish than usual, down = more dovish. Red/green = surprise.</div>`;
+  h += `<table style="margin-top:12px"><tr><th>#</th><th>z</th><th>Stance</th><th>Read</th><th>Summary</th></tr>` + recs.map((r, i) => {
+    const cls = r.direction === "HAWKISH" ? "hawk" : r.direction === "DOVISH" ? "dove" : "";
+    return `<tr><td>${i + 1}</td><td>${sgn(r.z, 1)}</td><td>${sgn(r.stance)}</td><td><span class="tag ${cls}">${esc(r.direction)}</span></td><td>${esc(r.summary)}` +
+      ((r.trades || []).length ? `<details><summary class="muted">${r.trades.length} order(s)${r.solana ? " · on-chain receipt" : ""}</summary><div class="q" style="margin:6px 0">“${esc(r.statement)}”</div>${tradeCards(r.trades)}${r.solana ? `<a href="${esc(r.solana)}" target="_blank" rel="noopener">Solana explorer</a>` : ""}</details>` : "") + `</td></tr>`;
+  }).join("") + "</table>";
+  $("rp-body").innerHTML = h;
+}
+$("rp-run").onchange = drawReplay;
+
+function drawHistory() {
+  const sig = (archive && archive.signals) || [], tr = (archive && archive.trades) || [];
+  $("hist-signals").innerHTML = sig.length ? `<table><tr><th>Time (UTC)</th><th>Speaker</th><th>Read</th><th>z</th><th>Source</th><th>Summary</th></tr>` +
+    sig.slice(0, 80).map(s => { const cls = s.direction === "HAWKISH" ? "hawk" : s.direction === "DOVISH" ? "dove" : "";
+      return `<tr><td>${esc(String(s.time).slice(0, 19))}</td><td>${esc((s.speaker || "").replace("_", " "))}</td><td><span class="tag ${cls}">${esc(s.direction)}</span></td><td>${sgn(s.z, 1)}</td><td>${esc(s.source)}${s.solana_sig ? ` · <a href="https://explorer.solana.com/tx/${esc(s.solana_sig)}?cluster=devnet" target="_blank" rel="noopener">receipt</a>` : ""}</td><td class="muted">${esc(s.summary)}</td></tr>`; }).join("") + "</table>" : "No signals stored yet.";
+  $("hist-trades").innerHTML = tr.length ? `<table><tr><th>Time</th><th>Venue</th><th>Market</th><th>Side</th><th>Qty</th><th>Limit</th><th>Max cost</th><th>Status</th><th>Reason</th></tr>` +
+    tr.slice(0, 100).map(t => `<tr><td>${esc(String(t.time || "").slice(0, 19))}</td><td>${esc(t.venue)}</td><td>${esc(t.market)}</td><td>${esc((t.side || "").toUpperCase())}</td><td>${esc(t.qty)}</td><td>${cents(t.yes_limit)}</td><td>$${(t.max_cost || 0).toFixed(2)}</td><td>${badge(t.status)}</td><td class="muted">${esc(t.reason)}</td></tr>`).join("") + "</table>" : "No orders yet.";
+  $("hist-updated").textContent = archive && archive.updated_at ? "Archive updated " + new Date(archive.updated_at).toLocaleString() : "";
+}
+
+async function loadArchive() {
+  try {
+    const r = await fetch("data/archive.json?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) throw Error();
+    archive = await r.json();
+  } catch (e) { if (!archive) { $("rp-body").textContent = "Archive not published yet (start the laptop worker)."; $("hist-signals").textContent = $("hist-trades").textContent = "Archive not published yet."; } return; }
+  const cur = $("rp-run").value;
+  $("rp-run").innerHTML = (archive.replays || []).map(r => `<option value="${esc(r.name)}">${esc(r.name.replace("replay_", "Press conference "))}</option>`).join("");
+  if (cur) $("rp-run").value = cur;
+  const dates = archive.replay_dates || [];
+  if (dates.length && !$("replay-date").options.length)
+    $("replay-date").innerHTML = dates.slice().reverse().map(d => `<option value="${d}">FOMC press conference ${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}</option>`).join("");
+  const sp = archive.speakers || [];
+  if (sp.length && $("opt-speaker").options.length !== sp.length)
+    $("opt-speaker").innerHTML = sp.map(s => `<option value="${s}">${s.replace("_", " ")}</option>`).join("");
+  drawReplay(); drawHistory();
+}
+$("replay-date").innerHTML = ["20260916", "20260729", "20260617"].map(d => `<option value="${d}">FOMC press conference ${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}</option>`).join("");
+
+// ---------------------------------------------------------------- live view
 function cleanTitle(title, market) {
   title = (title || "").replace(/\?/g, "").trim();
   if (title.includes(" -- ")) { const [e, o] = title.split(" -- "); title = `${o.trim()} (${e.trim()})`; }
@@ -314,6 +580,8 @@ async function poll() {
   $("conn").textContent = !lastUpdate ? "waiting for the desk" : age < 10 ? "● LIVE" : `last update ${Math.round(age)}s ago`;
 }
 poll(); setInterval(poll, 1000);
+loadArchive(); setInterval(loadArchive, 30000);
+refreshControls(); setInterval(refreshControls, 3000);
 </script>
 </body>
 </html>
