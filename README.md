@@ -117,6 +117,6 @@ Gemini · ElevenLabs · Solana · Tiger Data · Backboard · Auth0 · Hostinger 
 
 ## Team
 
-Om Patel · Dylan Ball · Miles Hall. Built with help from Claude (Anthropic) and Codex.
+Om Patel · Dylan Ball. Built with help from Claude (Anthropic) and Codex.
 
 Not financial advice.
