@@ -238,10 +238,22 @@ def _answer_with_gemini(question: str, memories: list) -> str:
     from google import genai
     notes = "\n".join(f"- {m.get('content', '')}" for m in memories) or "(no memories found)"
     client = genai.Client(api_key=polymarket_client.GEMINI_API_KEY)
-    model = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
-    resp = client.models.generate_content(
-        model=model, contents=f"{SYSTEM_PROMPT}\n\nMemories:\n{notes}\n\nQuestion: {question}")
-    return resp.text.strip()
+    prompt = f"{SYSTEM_PROMPT}\n\nMemories:\n{notes}\n\nQuestion: {question}"
+    first = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
+    models = list(dict.fromkeys([first, "gemini-3.1-flash-lite", "gemini-3.8-flash"]))
+    last = None
+    for attempt in range(2):
+        for model in models:
+            try:
+                return client.models.generate_content(model=model, contents=prompt).text.strip()
+            except Exception as e:   # 429 quota / 503 overload: try the next model
+                last = e
+                if "429" not in str(e) and "503" not in str(e):
+                    raise
+        time.sleep(20)   # per-minute limits reset quickly
+    top = "\n".join(f"- {m.get('content', '')}" for m in memories[:5])
+    return ("Gemini is rate-limited right now, so here are the closest saved memories instead:\n"
+            + (top or "(none found)") + f"\n\n({type(last).__name__}: quota exceeded, try again in a minute)")
 
 
 def ask(question: str, run: str = "questions") -> dict:
