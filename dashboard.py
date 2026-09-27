@@ -39,7 +39,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 RESULTS_DIR = os.path.join(SCRIPT_DIR, "results")
 ALLOWED_TRADERS = {e.strip().lower() for e in os.environ.get("ALLOWED_TRADERS", "").split(",") if e.strip()}
 
-st.set_page_config(page_title="Incredible Trades", page_icon="📈", layout="wide")
+st.set_page_config(page_title="MarketPulse", page_icon="📈", layout="wide")
 
 
 # ------------------------------------------------------------------ #
@@ -180,7 +180,7 @@ def show_record(rec: dict):
 logged_in, email = current_user()
 
 with st.sidebar:
-    st.header("Incredible Trades")
+    st.header("MarketPulse")
     if auth_configured():
         if logged_in:
             st.write(f"Signed in as **{email}**")

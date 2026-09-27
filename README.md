@@ -1,6 +1,6 @@
-# Incredible Trades
+# MarketPulse
 
-**Incredible Trades** transcribes speeches and posts from market-moving figures (e.g. Fed Chair Kevin Warsh, Donald Trump) in real time and scores each statement for **surprise relative to that speaker's own history**, not generic sentiment. It flags when someone sounds unusually hawkish, dovish, or off-script *for them*, maps the statement to the relevant contracts on **Kalshi, Polymarket US, and other regulated prediction markets**, and can place trades automatically within set risk limits. Every prediction is logged against the actual outcome, so the system builds a public, calibrated track record.
+**MarketPulse** transcribes speeches and posts from market-moving figures (e.g. Fed Chair Kevin Warsh, Donald Trump) in real time and scores each statement for **surprise relative to that speaker's own history**, not generic sentiment. It flags when someone sounds unusually hawkish, dovish, or off-script *for them*, maps the statement to the relevant contracts on **Kalshi, Polymarket US, and other regulated prediction markets**, and can place trades automatically within set risk limits. Every prediction is logged against the actual outcome, so the system builds a public, calibrated track record.
 
 ## Why it exists
 

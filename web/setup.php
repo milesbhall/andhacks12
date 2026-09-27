@@ -76,7 +76,7 @@ if (is_file($configPath)) {
 function h(string $value): string { return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 ?><!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Incredible Trades operator setup</title>
+<title>MarketPulse operator setup</title>
 <style>body{margin:0;background:#0b1019;color:#e5edf9;font:16px/1.5 system-ui,sans-serif}
 main{max-width:520px;margin:8vh auto;padding:28px;background:#141d2b;border:1px solid #2b3950;border-radius:12px}
 h1{font-size:24px;margin:0 0 10px}p{color:#aebed4}label{display:block;margin:18px 0 6px}
