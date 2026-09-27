@@ -15,6 +15,8 @@ if ($method === 'GET' && $action === 'job') {
     if (!preg_match('/^[a-f0-9]{32}$/', $id)) control_json(400, ['ok' => false]);
     $job = control_store($config, function (&$s) use ($id) { return $s['jobs'][$id] ?? null; });
     if (!$job) control_json(404, ['ok' => false, 'error' => 'Job not found or expired']);
+    if (!hash_equals((string)($job['owner'] ?? ''), hash('sha256', session_id())))
+        control_json(404, ['ok' => false, 'error' => 'Job not found or expired']);
     control_json(200, ['ok' => true, 'job' => ['status' => $job['status'], 'kind' => $job['kind'],
         'result' => $job['result'] ?? null, 'error' => $job['error'] ?? null]]);
 }
@@ -60,6 +62,39 @@ control_require_login();
 control_check_csrf();
 if ($action === 'logout') { $_SESSION = []; session_destroy(); control_json(200, ['ok' => true]); }
 
+// Exchange keys and account data stay on the local worker. Order jobs require
+// an approved Auth0 identity, even when a password session can operate audio.
+if (in_array($action, ['order_snapshot', 'order_preview', 'order_submit'], true)) {
+    if (($_SESSION['auth'] ?? '') !== 'auth0' || empty($_SESSION['live_ok']))
+        control_json(403, ['ok' => false, 'error' => 'Orders require an approved Auth0 sign-in']);
+    $options = [];
+    if ($action === 'order_preview') {
+        if ((string)($_POST['confirm_live'] ?? '') !== 'LIVE')
+            control_json(400, ['ok' => false, 'error' => 'Type LIVE to preview an order']);
+        foreach (['venue', 'env', 'market', 'outcome', 'side', 'qty', 'limit_price'] as $field)
+            $options[$field] = substr((string)($_POST[$field] ?? ''), 0, 160);
+    } elseif ($action === 'order_submit') {
+        if ((string)($_POST['confirm_live'] ?? '') !== 'LIVE')
+            control_json(400, ['ok' => false, 'error' => 'Type LIVE to submit an order']);
+        $options['preview_id'] = (string)($_POST['preview_id'] ?? '');
+        if (!preg_match('/^[a-f0-9]{32}$/', $options['preview_id']))
+            control_json(400, ['ok' => false, 'error' => 'Invalid order preview']);
+    }
+    $id = bin2hex(random_bytes(16));
+    $owner = hash('sha256', session_id());
+    $result = control_store($config, function (&$s) use ($id, $action, $options, $owner) {
+        if (!control_public_state($s)['online']) return 'offline';
+        $queued = count(array_filter($s['jobs'] ?? [], fn($j) => in_array($j['status'] ?? '', ['queued', 'running'], true)));
+        if ($queued >= 5) return 'busy';
+        $s['jobs'][$id] = ['kind' => $action, 'text' => '', 'options' => $options,
+            'owner' => $owner, 'status' => 'queued', 'created_at' => time()];
+        return 'ok';
+    });
+    if ($result === 'offline') control_json(409, ['ok' => false, 'error' => 'Local worker is offline']);
+    if ($result === 'busy') control_json(429, ['ok' => false, 'error' => 'Too many active jobs']);
+    control_json(200, ['ok' => true, 'id' => $id]);
+}
+
 // ---- Jobs: Ask the desk, Analyze a statement, search memories ---------------
 if ($action === 'job') {
     $kind = (string)($_POST['kind'] ?? '');
@@ -69,12 +104,13 @@ if ($action === 'job') {
     $opts = control_session_options($_POST);
     $opts['stance_only'] = !empty($_POST['stance_only']);
     $id = bin2hex(random_bytes(16));
-    $result = control_store($config, function (&$s) use ($id, $kind, $text, $opts) {
+    $owner = hash('sha256', session_id());
+    $result = control_store($config, function (&$s) use ($id, $kind, $text, $opts, $owner) {
         if (!control_public_state($s)['online']) return 'offline';
         $jobs = $s['jobs'] ?? [];
         $queued = count(array_filter($jobs, fn($j) => ($j['status'] ?? '') === 'queued'));
         if ($queued >= 5) return 'busy';
-        $jobs[$id] = ['kind' => $kind, 'text' => $text, 'options' => $opts,
+        $jobs[$id] = ['kind' => $kind, 'text' => $text, 'options' => $opts, 'owner' => $owner,
                       'status' => 'queued', 'created_at' => time()];
         $s['jobs'] = $jobs;
         return 'ok';

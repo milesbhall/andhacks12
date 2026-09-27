@@ -29,6 +29,8 @@ STATE_PATH = os.path.join(SCRIPT_DIR, "live_state.json")
 RECOMMENDERS = {"Kalshi": os.path.join(SCRIPT_DIR, "live_recommendations.json"),
                 "Polymarket": os.path.join(SCRIPT_DIR, "live_polymarket_recommendations.json")}
 HEARTBEAT_SECONDS = 5
+RECOMMENDER_MAX_AGE_SECONDS = 90
+TRANSCRIPT_ACTIVE_SECONDS = 20
 
 
 def _read(name: str) -> str:
@@ -66,9 +68,21 @@ def _items(value, names, limit):
     return out
 
 
+def _age_seconds(value):
+    if not isinstance(value, str):
+        return None
+    try:
+        moment = datetime.fromisoformat(value.replace('Z', '+00:00'))
+        if moment.tzinfo is None:
+            moment = moment.replace(tzinfo=timezone.utc)
+        return (datetime.now(timezone.utc) - moment).total_seconds()
+    except ValueError:
+        return None
+
+
 def build_payload() -> dict:
     raw = _load(STATE_PATH) or {}
-    live = _fields(raw, ("speaker", "source", "started", "status", "live_orders", "mode"))
+    live = _fields(raw, ("speaker", "source", "started", "status", "live_orders", "mode", "updated_at"))
     live["baseline"] = _fields(raw.get("baseline"), ("mean", "stdev", "n", "raw_mean"))
     live["baseline"]["macro_shift"] = ((raw.get("baseline") or {}).get("macro") or {}).get("shift")
     watch = raw.get("watchlist") or {}
@@ -81,6 +95,17 @@ def build_payload() -> dict:
         ("time", "direction", "z", "summary", "statement", "latency_ms", "orders", "crowd"), 100)
     live["trades"] = _items(raw.get("trades"),
         ("time", "venue", "market", "title", "side", "qty", "yes_limit", "max_cost", "trigger", "skipped", "status"), 200)
+    transcript = _load(os.path.join(SCRIPT_DIR, 'live_transcript.json')) or {}
+    live['transcript_updated_at'] = transcript.get('updated_at')
+    transcript_age = _age_seconds(live['transcript_updated_at'])
+    if live.get('status') in ('finished', 'stopped'):
+        live['audio_status'] = 'finished'
+    elif not transcript.get('segments'):
+        live['audio_status'] = 'waiting'
+    elif transcript_age is not None and 0 <= transcript_age <= TRANSCRIPT_ACTIVE_SECONDS:
+        live['audio_status'] = 'listening'
+    else:
+        live['audio_status'] = 'stale'
     try:
         live_updated_at = datetime.fromtimestamp(os.path.getmtime(STATE_PATH), timezone.utc).isoformat()
     except OSError:
@@ -90,16 +115,38 @@ def build_payload() -> dict:
             chunk["text"] = ""          # never publish what someone else in the room said
             chunk["summary"] = ""
     recs = {}
+    ready = []
+    market_times = []
     for venue, path in RECOMMENDERS.items():
         data = _load(path)
-        if data:
+        rec_age = _age_seconds(data.get('updated_at')) if isinstance(data, dict) else None
+        if data and rec_age is not None and 0 <= rec_age <= RECOMMENDER_MAX_AGE_SECONDS \
+                and live.get('status') not in ('finished', 'stopped'):
             rec_fields = ("venue", "ticker", "market_id", "event_title", "market_title",
-                          "relevance_score", "side", "quote")
+                          "relevance_score", "side", "quote", "reasoning")
             recs[venue] = {
+                "updated_at": data['updated_at'],
                 "baseline": _fields(data.get("baseline"), ("surprise_direction", "z")),
                 "candidates": _items(data.get("candidates"), rec_fields, 20),
                 "recommendations": _items(data.get("recommendations"), rec_fields, 20),
             }
+            market_times.append(data['updated_at'])
+            # Candidates move with the conversation even without a stance
+            # surprise; recommendations add a suggested side when one exists.
+            topical = recs[venue]['recommendations'] or recs[venue]['candidates']
+            for item in topical:
+                market = item.get('market_id') or item.get('ticker')
+                if not market:
+                    continue
+                ready.append({
+                    'venue': venue.lower(), 'market': market,
+                    'title': ' -- '.join(filter(None, (item.get('event_title'), item.get('market_title')))),
+                    'side': item.get('side'), 'relevance': item.get('relevance_score'),
+                    'reason': item.get('reasoning', ''), 'quote': item.get('quote', {}),
+                    'updated_at': data['updated_at'],
+                })
+    live['ready_markets'] = sorted(ready, key=lambda m: m.get('relevance') or 0, reverse=True)[:20]
+    live['market_updated_at'] = max(market_times) if market_times else None
     hearing = ""
     partial = _load(os.path.join(SCRIPT_DIR, "live_partial.json")) or {}
     try:   # only show what the mic hears right now (stale text is dropped after 8 s)

@@ -7,20 +7,20 @@
 <meta name="description" content="Live Fed-speech surprise detection and prediction-market trading.">
 <style>
   :root {
-    --bg: #0b0e13; --panel: #131821; --panel2: #1a2130; --line: #263042;
-    --text: #e8edf5; --muted: #8a96a8; --faint: #5d6878;
+    --bg: #11181d; --panel: #192329; --panel2: #203039; --line: #31434a;
+    --text: #e9f8f8; --muted: #a1b8bd; --faint: #78929a;
     --hawk: #ef5b5b; --hawk-bg: rgba(239,91,91,.12);
-    --dove: #3fbf7f; --dove-bg: rgba(63,191,127,.12);
-    --accent: #5b9dff; --warn: #f0b429;
+    --dove: #80ed65; --dove-bg: rgba(128,237,101,.12);
+    --accent: #18d4e4; --warn: #f0b429;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
-  body { margin: 0; background: var(--bg); color: var(--text);
+  body { margin: 0; background: radial-gradient(circle at 50% -15%, #17313a, var(--bg) 45%); color: var(--text);
          font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
   .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
   header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; }
-  h1 span { color: var(--accent); }
+  h1 span { color: var(--dove); }
   .sub { color: var(--muted); font-size: 14px; margin-top: 2px; }
   .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
           border: 1px solid var(--line); color: var(--muted); }
@@ -105,28 +105,77 @@
   .bars .b { position: absolute; left: 0; right: 0; border-radius: 3px; }
   .bars::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed #334; }
   .metric { display: inline-block; margin-right: 22px; } .metric .v { font-size: 22px; font-weight: 700; }
-  a { color: #8fb9ff; }
+  a { color: var(--accent); }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand-mark { width: 76px; height: 62px; overflow: hidden; border-radius: 12px; background: #151c21; position: relative; }
+  .brand-mark img { width: 172px; height: 94px; max-width: none; position: absolute; left: -48px; top: -16px; }
+  .entry { max-width: 920px; margin: 7vh auto 0; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+  .entry-hero { padding: 10px 4px; }
+  .entry-hero img { width: 100%; border-radius: 18px; display: block; }
+  .entry-hero p { color: var(--muted); margin: 16px 0; }
+  .entry h2 { color: var(--text); font-size: 23px; letter-spacing: -.02em; text-transform: none; }
+  .entry .card { padding: 24px; }
+  .entry .row { align-items: stretch; }
+  .entry .row input { flex: 1; min-width: 180px; }
+  .setup-steps { padding-left: 20px; margin-bottom: 0; color: var(--muted); font-size: 14px; }
+  .setup-steps li { margin: 6px 0; }
+  .setup-steps code { color: var(--text); }
+  .notice { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; color: var(--muted); font-size: 13px; background: var(--panel2); }
+  .market-actions { display: flex; gap: 8px; margin-top: 9px; }
+  .market-actions button { min-width: 66px; padding: 6px 10px; }
+  .market-actions button.sell { background: var(--panel); color: var(--text); border: 1px solid var(--line); }
+  .market-actions button:disabled { opacity: .5; cursor: not-allowed; }
+  dialog { width: min(520px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--text); padding: 22px; box-shadow: 0 20px 80px #000a; }
+  dialog::backdrop { background: #030a0dcc; }
+  .ticket-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+  .ticket-grid label { display: block; color: var(--muted); font-size: 13px; margin-bottom: 5px; }
+  .ticket-value { padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; min-height: 40px; }
+  #conn-detail { display: block; text-align: right; margin-top: 4px; }
   @media (max-width: 860px) { .opgrid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 700px) { .entry { grid-template-columns: 1fr; margin-top: 20px; } .entry-hero img { max-height: 220px; object-fit: cover; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
+  <main id="entry" class="entry">
+    <div class="entry-hero">
+      <img src="marketpulse-logo.jpeg" alt="MarketPulse logo: a cyan to green market chart and heartbeat">
+      <h1>Hear the market move.</h1>
+      <p>Sign in to control your local listening desk, review the transcript, and follow markets as the speaker changes topics.</p>
+      <div class="notice">This installation controls one team laptop and its connected trading account. Approved operators should keep that laptop worker running while listening or replaying a speech.</div>
+    </div>
     <div>
+      <div class="card"><h2>Sign in to MarketPulse</h2>
+        <div class="muted" id="entry-status">Checking sign-in…</div>
+        <div id="control-login" hidden>
+          <div class="row"><a class="btn" id="auth0-login" href="auth0.php" style="text-decoration:none" hidden>Sign in with Auth0</a></div>
+          <label class="muted" id="password-label" for="operator-password">Operator password</label>
+          <div class="row"><input id="operator-password" type="password" autocomplete="current-password" placeholder="Operator password"><button class="btn" id="operator-login" type="button">Sign in</button></div>
+        </div>
+      </div>
+      <div class="card"><h2>Set up your local keys</h2>
+        <ol class="setup-steps">
+          <li>Get the <a href="https://github.com/milesbhall/andhacks12" target="_blank" rel="noopener noreferrer">MarketPulse project</a> on the team laptop, then run <code>pip install -r requirements.txt</code> in its folder.</li>
+          <li>Put each API key in its matching local file in that folder: <code>gemapi.txt</code> (Gemini) and <code>elevenapi.txt</code> (ElevenLabs) are needed for live listening and scoring.</li>
+          <li>Add <code>hostinger_url.txt</code> with this site's URL and <code>hostinger_token.txt</code> with the site's private upload token. The local worker uses them to publish updates.</li>
+          <li>For optional features, add <code>fredapi.txt</code>, <code>socialcrawlapi.txt</code>, <code>backboardapi.txt</code>, and <code>tigerdb.txt</code>. Venue credentials belong in <code>kalshikey.txt</code> with <code>privkey.txt</code>, or <code>polymarketkey.txt</code> with <code>polymarketsecret.txt</code>.</li>
+          <li>Run <code>python control_worker.py</code> and return here. Start in Dry run mode.</li>
+        </ol>
+        <p class="muted">Keep keys on the team laptop. Do not paste them into this page, upload them to the website, or commit them to Git. Auth0 sign-in does not supply local API keys. Another team needs its own isolated deployment and worker to use its own account.</p>
+      </div>
+    </div>
+  </main>
+  <div id="app" hidden>
+  <header>
+    <div class="brand"><div class="brand-mark"><img src="marketpulse-logo.jpeg" alt=""></div><div>
       <h1>Market<span>Pulse</span></h1>
       <div class="sub" id="sub">Live Fed-speech surprise detection → prediction-market orders</div>
-    </div>
-    <div><span class="pill" id="mode">—</span> <span class="pill off" id="conn">connecting…</span></div>
+    </div></div>
+    <div><span class="pill" id="mode">—</span> <span class="pill off" id="conn">connecting…</span><span class="muted" id="conn-detail"></span></div>
   </header>
 
   <div class="card" style="margin-top:18px"><h2>Control room</h2>
     <div class="muted" id="control-status">Checking operator controls…</div>
-    <div id="control-login" class="row" hidden>
-      <a class="btn" id="auth0-login" href="auth0.php" style="text-decoration:none" hidden>🔐 Sign in with Auth0</a>
-      <span class="muted" id="password-label">Operator password:</span>
-      <input id="operator-password" type="password" autocomplete="current-password" placeholder="Operator password" style="max-width:320px">
-      <button class="btn" id="operator-login" type="button">Sign in</button>
-    </div>
     <div id="control-panel" hidden>
       <div class="srcs" id="srcs">
         <label><input type="radio" name="src" value="mic" checked> 🎙 Laptop microphone</label>
@@ -163,6 +212,7 @@
 
   <nav class="tabs" id="tabs">
     <button data-tab="live" class="on">Live</button>
+    <button data-tab="orders">Orders</button>
     <button data-tab="ask">Ask the desk</button>
     <button data-tab="analyze">Analyze</button>
     <button data-tab="context">Crowd &amp; macro</button>
@@ -186,12 +236,46 @@
       <div class="card"><h2>Transcript</h2><div id="hearing" class="muted" style="margin-bottom:8px" hidden></div><div id="transcript" class="muted">Waiting for speech…</div></div>
     </div>
     <div>
-      <div class="card"><h2>Orders</h2><div id="orders" class="muted">No orders yet.</div></div>
-      <div class="card"><h2>Ready to trade</h2><div id="watch" class="muted">—</div></div>
+      <div class="card"><h2>Recent order attempts</h2><div id="orders" class="muted">No order attempts yet.</div></div>
+      <div class="card"><h2>Ready to trade</h2><div id="watch-topic" class="muted" style="margin-bottom:8px">Waiting for the speaker…</div><div id="watch" class="muted">—</div></div>
     </div>
   </div>
   <div class="card"><h2>Live market recommenders</h2><div class="recs" id="recs"><div class="muted">Not running.</div></div></div>
   </section>
+
+  <section id="tab-orders" hidden>
+    <div class="card"><h2>Active orders</h2>
+      <div class="row"><button class="btn ghost" id="orders-refresh" type="button">Refresh account</button><span class="muted" id="orders-asof">Sign in with an approved Auth0 account to view private exchange data.</span></div>
+      <div id="exchange-orders" class="muted" style="margin-top:14px">No exchange snapshot yet.</div>
+    </div>
+    <div class="card"><h2>Holdings</h2><div id="exchange-positions" class="muted">No exchange snapshot yet.</div></div>
+    <div class="card"><h2>Recent order attempts</h2>
+      <div id="active-orders" class="muted" style="margin-top:14px">No order attempts yet.</div>
+    </div>
+    <div class="card"><h2>Markets in view</h2>
+      <div class="muted" style="margin-bottom:10px">Markets follow the latest speaker topic. Every real order requires a fresh exchange quote, a short-lived preview, and a separate confirmation. This desk uses one team laptop and trading account.</div>
+      <div id="order-markets" class="muted">Waiting for markets…</div>
+    </div>
+  </section>
+
+  <dialog id="order-ticket" aria-labelledby="ticket-heading">
+    <h2 id="ticket-heading" style="margin-top:0">Review order</h2>
+    <div id="ticket-market" class="ticket-value"></div>
+    <div class="ticket-grid">
+      <div><label>Venue</label><div id="ticket-venue" class="ticket-value"></div></div>
+      <div><label>Action</label><div id="ticket-action" class="ticket-value"></div></div>
+      <div><label for="ticket-outcome">Outcome</label><select id="ticket-outcome"><option value="yes">YES</option><option value="no">NO</option></select></div>
+      <div><label for="ticket-qty">Contracts</label><input id="ticket-qty" type="number" min="1" max="5" value="1"></div>
+      <div><label for="ticket-limit" id="ticket-limit-label">Maximum price per contract (¢)</label><input id="ticket-limit" type="number" min="1" max="99" value="50"></div>
+      <div><label for="ticket-env">Environment</label><select id="ticket-env"><option value="prod">LIVE · real money</option><option value="demo">Kalshi demo</option></select></div>
+      <div><label>Latest public quote</label><div id="ticket-quote" class="ticket-value"></div></div>
+      <div><label id="ticket-value-label">Maximum order value</label><div id="ticket-cost" class="ticket-value"></div></div>
+    </div>
+    <div class="notice">Mode: <b id="ticket-mode">LIVE · real money</b>. The local worker must explicitly enable LIVE. A sent order is not proof of a fill.</div>
+    <div><label for="ticket-live">Type LIVE to preview and confirm</label><input id="ticket-live" type="text" autocomplete="off" placeholder="LIVE"></div>
+    <p class="muted" id="ticket-block">Review the ticket, then request a fresh private quote.</p>
+    <div class="row"><button class="btn ghost" id="ticket-preview" type="button">Preview order</button><button class="btn" id="ticket-confirm" type="button" disabled>Confirm order</button><button class="btn ghost" id="ticket-close" type="button">Close</button></div>
+  </dialog>
 
   <section id="tab-ask" hidden>
     <div class="grid">
@@ -233,6 +317,7 @@
 
   <section id="tab-replay" hidden>
     <div class="card"><h2>Press conference replay</h2>
+      <div class="notice" style="margin-bottom:12px"><b>Replay tab:</b> precomputed stance-only results, scored answer by answer. <b>Control room replay:</b> feeds a saved transcript through the timed live desk, updating the Live tab and showing order attempts in the selected trading mode. Start with Dry run.</div>
       <div class="row" style="margin-top:0"><select id="rp-run" style="max-width:640px"></select><span class="muted">Scored answer by answer. |z| ≥ 2 is a surprise.</span></div>
       <div id="rp-body" class="muted" style="margin-top:10px">Loading…</div>
     </div>
@@ -257,6 +342,7 @@
   </div>
   </section>
   <footer>Built at &amp;hacks XII, William &amp; Mary · Om Patel &amp; Dylan Ball · Not financial advice.</footer>
+  </div>
 </div>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -264,7 +350,9 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&l
 const cents = (p) => p == null ? "—" : Math.round(p * 100) + "¢";
 const sgn = (x, d = 2) => x == null ? "—" : (x >= 0 ? "+" : "") + Number(x).toFixed(d);
 let liveConfirmed = false, authMethod = "password";
-let lastUpdate = 0, controlCsrf = "", controlBusy = false, authed = false, archive = null;
+let lastUpdate = 0, publishedAt = 0, lastState = null, controlCsrf = "", controlBusy = false, authed = false, archive = null;
+let manualMarkets = [], ticketAction = "buy", ticketMarket = null, orderPreview = null;
+let ordersSnapshot = null, ordersBusy = false, ordersLastFetch = 0, orderAccess = false;
 
 // ---------------------------------------------------------------- tabs
 function showTab(name) {
@@ -272,6 +360,7 @@ function showTab(name) {
   document.querySelectorAll("section[id^=tab-]").forEach(s => s.hidden = s.id !== "tab-" + name);
   try { localStorage.setItem("mp_tab", name); } catch (e) {}
   if (name === "ask" && authed && !$("mems").dataset.loaded) searchMemories();
+  if (name === "orders" && authed && orderAccess) loadOrdersSnapshot();
 }
 document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
 try { const t = localStorage.getItem("mp_tab"); if (t && $("tab-" + t)) showTab(t); } catch (e) {}
@@ -300,7 +389,15 @@ function sessionForm() {
 }
 
 function setAuthed(on) {
+  if (!on && authed) {
+    orderAccess = false; ordersSnapshot = null; orderPreview = null;
+    $("exchange-orders").textContent = "Sign in to view account orders.";
+    $("exchange-positions").textContent = "Sign in to view holdings.";
+    $("orders-asof").textContent = "Private exchange data is unavailable while signed out.";
+  }
   authed = on;
+  $("entry").hidden = on;
+  $("app").hidden = !on;
   document.querySelectorAll(".needs-login").forEach(e => e.hidden = on);
   ["ask-go", "an-go", "mem-go"].forEach(id => $(id).disabled = !on);
 }
@@ -309,14 +406,18 @@ async function refreshControls() {
   try {
     const d = await controlApi();
     $("auth0-login").hidden = !d.auth0_available;
-    $("password-label").textContent = d.auth0_available ? "or operator password:" : "Operator password:";
+    $("password-label").textContent = d.auth0_available ? "Or use the operator password" : "Operator password";
     $("control-login").hidden = !!d.authenticated;
     $("control-panel").hidden = !d.authenticated;
     setAuthed(!!d.authenticated);
-    if (!d.authenticated) { controlCsrf = ""; $("control-status").textContent = "Sign in to start a session, ask the desk, or analyze a statement."; return; }
+    if (!d.authenticated) { controlCsrf = ""; $("entry-status").textContent = "Choose a sign-in method to open the desk."; $("control-status").textContent = "Sign in to start a session, ask the desk, or analyze a statement."; return; }
+    $("entry-status").textContent = "Signed in.";
     controlCsrf = d.csrf;
     const s = d.status, u = d.user || {};
     authMethod = u.auth || "password";
+    const hadOrderAccess = orderAccess;
+    orderAccess = authMethod === "auth0" && !!u.live_ok;
+    if (!hadOrderAccess && orderAccess && !$("tab-orders").hidden) loadOrdersSnapshot();
     $("whoami").textContent = u.email ? `Signed in as ${u.email} (Auth0)` : "Signed in with the operator password";
     const liveOpt = [...$("opt-mode").options].find(o => o.value === "live");
     if (liveOpt) {
@@ -331,9 +432,50 @@ async function refreshControls() {
     $("control-stop").disabled = controlBusy || (s.online && ["idle", "stopped", "error"].includes(s.phase) && !s.pending);
   } catch (e) {
     $("control-login").hidden = true; $("control-panel").hidden = true; setAuthed(false);
+    $("entry-status").textContent = e.message;
     $("control-status").textContent = e.message;
   }
 }
+
+async function orderJob(action, fields = {}) {
+  const form = new FormData();
+  for (const [key, value] of Object.entries(fields)) form.set(key, String(value));
+  const {id} = await controlApi(action, form);
+  const started = Date.now();
+  while (Date.now() - started < 60000) {
+    await new Promise(resolve => setTimeout(resolve, 1400));
+    const {job} = await controlApi("job", null, "&id=" + encodeURIComponent(id));
+    if (job.status === "done") return job.result;
+    if (job.status === "error") throw Error(job.error || "The local worker could not complete this request");
+  }
+  throw Error("The local worker did not answer. Check the exchange before retrying any submitted order.");
+}
+
+function drawOrdersSnapshot(s) {
+  $("orders-asof").textContent = `Exchange account checked ${timeLabel(s.as_of)}${s.errors && s.errors.length ? " · Some venues failed" : ""}`;
+  const rows = Array.isArray(s.orders) ? s.orders : [];
+  $("exchange-orders").innerHTML = rows.length ? rows.map(o => `<div class="order"><div class="t">${esc((o.side || "Order").toUpperCase())} ${esc((o.outcome || "").toUpperCase())} · ${esc(o.market || "Unknown market")}</div><div class="m">${esc(o.venue || "Exchange")} · ${esc(o.env || "prod")} · remaining ${esc(o.qty ?? "—")} · limit ${esc(o.limit_price ?? "—")} · ${esc(o.status || "open")}</div></div>`).join("") : "No open exchange orders were returned.";
+  const holdings = Array.isArray(s.positions) ? s.positions : [];
+  $("exchange-positions").innerHTML = holdings.length ? holdings.map((p, i) => `<div class="order"><div class="t">${esc((p.outcome || "").toUpperCase())} · ${esc(p.market || "Unknown market")}</div><div class="m">${esc(p.venue || "Exchange")} · held ${esc(p.qty ?? "—")}</div><div class="market-actions"><button class="btn sell" type="button" data-position="${i}">Sell held contracts</button></div></div>`).join("") : "No verified holdings were returned.";
+  if (s.errors && s.errors.length) $("exchange-positions").insertAdjacentHTML("beforeend", `<div class="notice">${s.errors.map(esc).join(" · ")}</div>`);
+  const attempts = Array.isArray(s.recent_attempts) ? s.recent_attempts : [];
+  $("active-orders").innerHTML = attempts.length ? attempts.slice(0, 12).map(a => `<div class="order"><div class="t">${esc((a.side || "").toUpperCase())} ${esc((a.outcome || "").toUpperCase())} · ${esc(a.market || "")}</div><div class="m">${esc(a.venue || "")} · ${esc(a.status || "unknown")} · ${timeLabel(a.time)} · request ${esc(a.request_id || "—")}</div></div>`).join("") : "No recent manual attempts were returned.";
+}
+
+async function loadOrdersSnapshot() {
+  if (ordersBusy || !authed || !orderAccess) return;
+  ordersBusy = true; $("orders-refresh").disabled = true;
+  $("orders-asof").textContent = "Checking private exchange accounts…";
+  try { ordersSnapshot = await orderJob("order_snapshot"); ordersLastFetch = Date.now(); drawOrdersSnapshot(ordersSnapshot); }
+  catch (e) { $("orders-asof").textContent = "Account refresh failed: " + e.message; }
+  finally { ordersBusy = false; $("orders-refresh").disabled = false; }
+}
+$("orders-refresh").onclick = loadOrdersSnapshot;
+$("exchange-positions").addEventListener("click", e => {
+  const button = e.target.closest("button[data-position]");
+  const p = ordersSnapshot && ordersSnapshot.positions && ordersSnapshot.positions[Number(button && button.dataset.position)];
+  if (p) openOrderTicket({market:p.market, title:p.market, venue:p.venue, side:p.outcome, quote:{}}, "sell");
+});
 
 document.querySelectorAll("input[name=src]").forEach(r => r.onchange = () => {
   const v = document.querySelector("input[name=src]:checked").value;
@@ -353,7 +495,7 @@ $("replay-date").onchange = () => {
 $("operator-login").onclick = async () => {
   const form = new FormData(); form.set("password", $("operator-password").value);
   try { await controlApi("login", form); $("operator-password").value = ""; await refreshControls(); }
-  catch (e) { $("control-status").textContent = e.message; }
+  catch (e) { $("entry-status").textContent = e.message; }
 };
 $("operator-password").onkeydown = e => { if (e.key === "Enter") $("operator-login").click(); };
 $("operator-logout").onclick = async () => {
@@ -570,6 +712,104 @@ function badge(status) {
   return `<span class="badge b-bad">${esc(status).slice(0, 40)}</span>`;
 }
 
+function timeLabel(value) {
+  const t = Date.parse(value || "");
+  return Number.isFinite(t) ? new Date(t).toLocaleTimeString([], {hour: "numeric", minute: "2-digit", second: "2-digit"}) : "—";
+}
+
+function marketCard(m, actions = false, index = 0) {
+  const title = cleanTitle(m.title, m.market), side = (m.side || "").toUpperCase();
+  return `<div class="order"><div class="t">${esc(title)}</div>
+    <div class="m">${esc(m.venue || "Market")} ${side ? "· suggested BUY " + esc(side) : "· direction pending"}${m.relevance != null ? " · relevance " + Number(m.relevance).toFixed(2) : ""}${m.quote ? " · bid " + cents(m.quote.best_bid) + " / ask " + cents(m.quote.best_ask) : ""}</div>
+    ${m.reason ? `<div class="m">${esc(m.reason)}</div>` : ""}
+    ${actions ? `<div class="market-actions"><button class="btn" type="button" data-ticket="buy" data-index="${index}">Buy</button><button class="btn sell" type="button" data-ticket="sell" data-index="${index}">Sell</button></div>` : ""}</div>`;
+}
+
+$("order-markets").addEventListener("click", e => {
+  const button = e.target.closest("button[data-ticket]");
+  if (!button) return;
+  const m = manualMarkets[Number(button.dataset.index)];
+  if (!m || !authed) return;
+  openOrderTicket(m, button.dataset.ticket);
+});
+function openOrderTicket(m, action) {
+  ticketMarket = m;
+  ticketAction = action;
+  orderPreview = null;
+  $("ticket-market").textContent = cleanTitle(m.title, m.market);
+  $("ticket-venue").textContent = m.venue || "—";
+  $("ticket-action").textContent = ticketAction.toUpperCase();
+  const suggestedOutcome = String(m.side || "").toLowerCase();
+  $("ticket-outcome").value = suggestedOutcome.endsWith("no") ? "no" : "yes";
+  $("ticket-quote").textContent = `Bid ${cents(m.quote && m.quote.best_bid)} / ask ${cents(m.quote && m.quote.best_ask)}`;
+  $("ticket-env").value = "prod";
+  $("ticket-env").querySelector('option[value="demo"]').disabled = m.venue !== "kalshi";
+  $("ticket-mode").textContent = "LIVE · real money";
+  $("ticket-live").value = "";
+  $("ticket-confirm").disabled = true;
+  $("ticket-preview").disabled = !orderAccess;
+  $("ticket-qty").value = "1";
+  setTicketQuoteLimit();
+  $("ticket-limit-label").textContent = ticketAction === "buy" ? "Maximum price per contract (¢)" : "Minimum price per contract (¢)";
+  $("ticket-value-label").textContent = ticketAction === "buy" ? "Maximum order value" : "Minimum expected proceeds";
+  $("ticket-block").textContent = orderAccess ? "Type LIVE, then request a fresh private quote and risk check." : "Manual orders require an approved Auth0 sign-in.";
+  updateTicketValue();
+  $("order-ticket").showModal();
+}
+function setTicketQuoteLimit() {
+  const q = ticketMarket && ticketMarket.quote || {};
+  const outcome = $("ticket-outcome").value;
+  const yesQuote = ticketAction === "buy" ? (outcome === "yes" ? q.best_ask : q.best_bid) : (outcome === "yes" ? q.best_bid : q.best_ask);
+  const price = outcome === "yes" ? yesQuote : 1 - yesQuote;
+  $("ticket-limit").value = price > 0 && price < 1 ? String(Math.round(price * 100)) : "50";
+}
+function updateTicketValue() {
+  orderPreview = null; $("ticket-confirm").disabled = true;
+  if (ticketMarket) $("ticket-block").textContent = "Ticket changed. Request a new preview before confirming.";
+  const qty = Number($("ticket-qty").value), limit = Number($("ticket-limit").value);
+  $("ticket-cost").textContent = Number.isInteger(qty) && qty >= 1 && qty <= 5 && Number.isInteger(limit) && limit >= 1 && limit <= 99 ?
+    `$${(qty * limit / 100).toFixed(2)}` : "Enter 1–5 contracts and a price from 1–99¢";
+}
+$("ticket-qty").oninput = updateTicketValue;
+$("ticket-limit").oninput = updateTicketValue;
+$("ticket-outcome").onchange = () => { setTicketQuoteLimit(); updateTicketValue(); };
+$("ticket-env").onchange = () => { $("ticket-mode").textContent = $("ticket-env").value === "demo" ? "KALSHI DEMO" : "LIVE · real money"; updateTicketValue(); };
+$("ticket-live").oninput = () => { if (orderPreview) $("ticket-confirm").disabled = $("ticket-live").value !== "LIVE"; };
+$("ticket-close").onclick = () => $("order-ticket").close();
+$("ticket-preview").onclick = async () => {
+  if (!ticketMarket || !orderAccess) return;
+  if ($("ticket-live").value !== "LIVE") { $("ticket-block").textContent = "Type LIVE exactly to preview this order."; return; }
+  const qty = Number($("ticket-qty").value), limit = Number($("ticket-limit").value);
+  if (!Number.isInteger(qty) || qty < 1 || qty > 5 || !Number.isInteger(limit) || limit < 1 || limit > 99) {
+    $("ticket-block").textContent = "Enter 1–5 contracts and a limit between 1¢ and 99¢."; return;
+  }
+  orderPreview = null; $("ticket-confirm").disabled = true; $("ticket-preview").disabled = true;
+  $("ticket-block").textContent = "Checking exchange quote, holdings, and risk limits…";
+  try {
+    const p = await orderJob("order_preview", {venue:ticketMarket.venue,env:$("ticket-env").value,market:ticketMarket.market,
+      outcome:$("ticket-outcome").value,side:ticketAction,qty,limit_price:(limit/100).toFixed(2),confirm_live:"LIVE"});
+    orderPreview = p;
+    $("ticket-block").textContent = `Fresh exchange quote: bid ${cents(p.quote && p.quote.best_bid)} / ask ${cents(p.quote && p.quote.best_ask)}. ${ticketAction.toUpperCase()} ${p.qty} ${p.outcome.toUpperCase()} at ${cents(p.limit_price)} on ${p.venue} ${p.env}. Estimated fee $${Number(p.estimated_fee || 0).toFixed(2)}; maximum cost $${Number(p.max_cost || 0).toFixed(2)}. Preview expires ${timeLabel(p.expires_at)}.`;
+    $("ticket-confirm").disabled = false;
+  } catch (e) { $("ticket-block").textContent = "Preview failed: " + e.message; }
+  finally { $("ticket-preview").disabled = false; }
+};
+$("ticket-confirm").onclick = async () => {
+  const p = orderPreview;
+  if (!p || $("ticket-live").value !== "LIVE") return;
+  if (Date.parse(p.expires_at) <= Date.now()) { updateTicketValue(); $("ticket-block").textContent = "Preview expired. Request another."; return; }
+  const exact = `${p.side.toUpperCase()} ${p.qty} ${p.outcome.toUpperCase()} on ${p.venue} ${p.env} at ${cents(p.limit_price)}`;
+  if (!confirm(`Submit ${exact}?\n\nThis may place a real-money exchange order. You must check the exchange if the outcome is unclear.`)) return;
+  orderPreview = null; $("ticket-confirm").disabled = true; $("ticket-preview").disabled = true;
+  $("ticket-block").textContent = "Submitting once. Do not retry if the response is unclear…";
+  try {
+    const result = await orderJob("order_submit", {preview_id:p.preview_id, confirm_live:"LIVE"});
+    $("ticket-block").textContent = `Exchange submission: ${result.status || "unknown"}. Request ${result.request_id || "—"}; order ${result.order_id || "not returned"}; filled ${result.fill_count ?? "unconfirmed"}; remaining ${result.remaining_count ?? "unconfirmed"}. Refresh the account view to verify.`;
+    loadOrdersSnapshot();
+  } catch (e) { $("ticket-block").textContent = "Submission outcome needs checking: " + e.message + ". Check the exchange before any new attempt."; }
+  finally { $("ticket-preview").disabled = false; }
+};
+
 function render(d) {
   const s = d.live || {};
   $("hearing").hidden = !d.hearing;
@@ -612,11 +852,19 @@ function render(d) {
       <div class="m" style="margin-top:4px">${badge(t.status)}${t.trigger ? "triggered by " + esc(t.trigger) : ""}</div></div>`;
   }).join("");
   if (skipped.length) oh += `<div class="muted">Skipped ${skipped.length} market(s) already priced in.</div>`;
-  $("orders").innerHTML = oh || "No orders yet.";
+  $("orders").innerHTML = oh || "No order attempts yet.";
 
-  const w = s.watchlist || {};
-  $("watch").innerHTML = ["HAWKISH", "DOVISH"].map(dir => `<div style="margin-bottom:8px"><b>If ${dir.toLowerCase()}:</b><br>` +
-      ((w[dir] || []).slice(0, 4).map(m => `<span class="muted">BUY ${m.side.toUpperCase()} · ${esc(cleanTitle(m.title, m.market))} (${esc(m.venue)})</span>`).join("<br>") || '<span class="muted">—</span>') + "</div>").join("");
+  const marketTime = Date.parse(s.market_updated_at || ""), sessionEnded = ["stopped", "finished", "idle", "error"].includes(String(s.status || "").toLowerCase()) || s.audio_status === "finished";
+  const marketsFresh = !sessionEnded && Number.isFinite(marketTime) && Date.now() - marketTime < 90000;
+  const ready = marketsFresh && Array.isArray(s.ready_markets) ? s.ready_markets : [];
+  const newest = spoken[spoken.length - 1];
+  $("watch-topic").textContent = ready.length ? `Based on the latest speaker topic · markets updated ${timeLabel(s.market_updated_at)}` :
+    sessionEnded ? "Session ended. Start a new listening session for current matches." :
+    !marketsFresh && s.market_updated_at ? `Market matches are stale (last updated ${timeLabel(s.market_updated_at)}). Waiting for fresh data.` :
+    newest ? "No current topic match yet. Market recommenders are still searching." : "Waiting for speaker words before showing topic-matched markets.";
+  $("watch").innerHTML = ready.length ? ready.slice(0, 6).map(m => marketCard(m)).join("") : "No topic-matched markets ready.";
+  manualMarkets = ready.slice(0, 12);
+  $("order-markets").innerHTML = manualMarkets.length ? manualMarkets.map((m, index) => marketCard(m, true, index)).join("") : "No topic-matched markets ready.";
 
   const recs = d.recommenders || {};
   const rh = Object.entries(recs).map(([venue, r]) => {
@@ -634,17 +882,22 @@ async function poll() {
     const r = await fetch("data/state.json?t=" + Date.now(), { cache: "no-store" });
     if (r.ok) {
       const d = await r.json();
+      lastState = d;
       render(d);
-      // The uploader can keep running after the trading desk stops. Show the
-      // desk's actual update time instead of the upload heartbeat.
       lastUpdate = d.live_updated_at ? (new Date(d.live_updated_at).getTime() || 0) : 0;
+      publishedAt = d.published_at ? (new Date(d.published_at).getTime() || 0) : 0;
     }
   } catch (e) { /* keep last view */ }
-  const age = (Date.now() - lastUpdate) / 1000;
-  const fresh = lastUpdate && age < 15;
-  $("conn").className = "pill " + (fresh ? "live" : "off");
-  $("conn").textContent = !lastUpdate ? "waiting for the desk" : fresh ? "● LIVE" : `last update ${Math.round(age)}s ago`;
-  if (!fresh) {
+  const now = Date.now(), deskAge = (now - lastUpdate) / 1000, uploadAge = (now - publishedAt) / 1000;
+  const fresh = lastUpdate && deskAge < 15 && publishedAt && uploadAge < 15;
+  const live = (lastState && lastState.live) || {};
+  const ended = ["stopped", "finished", "idle", "error"].includes(String(live.status || "").toLowerCase()) || live.audio_status === "finished";
+  const hearing = live.audio_status === "listening" && fresh && !ended;
+  $("conn").className = "pill " + (hearing ? "live" : "off");
+  $("conn").textContent = !lastUpdate ? "Waiting for desk" : ended ? "Session ended" : !fresh ? "Desk update stale" :
+    live.audio_status === "stale" ? "Audio stalled" : live.audio_status === "waiting" ? "Waiting for audio" : hearing ? "● Listening" : "Desk connected";
+  $("conn-detail").textContent = `Desk ${timeLabel(lastState && lastState.live_updated_at)} · Speech ${timeLabel(live.transcript_updated_at)} · Markets ${timeLabel(live.market_updated_at)}`;
+  if (!hearing) {
     if (["Listening", "Starting", "Running"].includes($("k-status").textContent)) $("k-status").textContent = "Last session";
     if (lastUpdate && $("mode").textContent !== "—" && !$("mode").textContent.startsWith("LAST: ")) {
       $("mode").className = "pill";

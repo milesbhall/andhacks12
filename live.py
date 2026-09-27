@@ -120,6 +120,7 @@ class State:
 
     def save(self):
         with self.lock:
+            self.data["updated_at"] = now_iso()
             text = json.dumps(self.data, indent=1, default=str, ensure_ascii=False)
         tmp = STATE_PATH + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
@@ -470,10 +471,19 @@ def simulate(date: str, speed: float):
     with open(path, encoding="utf-8") as f:
         segments = json.load(f)["segments"]
     print(f"Simulating {date} at {speed:g}x speaking speed ({len(segments)} turns)...")
+    # The market recommenders watch the same rolling input as a live transcriber.
+    # Keep the source role so they can ignore questions and other voices.
+    played = []
     for seg in segments:
         for sentence in re.split(r"(?<=[.?!])\s+", seg["text"]):
             if sentence.strip():
                 time.sleep(len(sentence.split()) / (WORDS_PER_SECOND * speed))
+                played.append({"text": sentence.strip(), "role": seg.get("role", "other")})
+                tmp = TRANSCRIPT_PATH + ".tmp"
+                with open(tmp, "w", encoding="utf-8") as f:
+                    json.dump({"source": f"replay {date}", "updated_at": now_iso(),
+                               "segments": played}, f, ensure_ascii=False)
+                os.replace(tmp, TRANSCRIPT_PATH)
                 yield sentence
 
 

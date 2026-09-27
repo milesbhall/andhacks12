@@ -164,6 +164,7 @@ def watch_live_transcript(
             str(segment.get("text", "")).strip()
             for segment in existing_segments
             if isinstance(segment, dict) and segment.get("text")
+            and segment.get("role", "speaker") in ("chair", "speaker", "president")
         )[-context_characters:]
     pending_sentence = ""
     pending_since = None
@@ -207,6 +208,8 @@ def watch_live_transcript(
         seen_segments = len(segments)
         for segment in new_segments:
             if not isinstance(segment, dict):
+                continue
+            if segment.get("role", "speaker") not in ("chair", "speaker", "president"):
                 continue
             text = segment.get("text")
             if not isinstance(text, str) or not text.strip():

@@ -95,6 +95,31 @@ class HostedControlTests(unittest.TestCase):
             self.assertNotIn('private question', body)
             self.assertEqual(payload['live']['chunks'][1]['text'], 'Public remarks')
 
+    def test_publisher_uses_fresh_topic_markets_and_reports_audio_age(self):
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat()
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            state = folder / 'live_state.json'
+            state.write_text(json.dumps({'status': 'listening', 'speaker': 'kevin_warsh'}), encoding='utf-8')
+            (folder / 'live_transcript.json').write_text(json.dumps({
+                'updated_at': now, 'segments': [{'text': 'The chair mentioned oil.'}]}), encoding='utf-8')
+            rec = folder / 'live_recommendations.json'
+            rec.write_text(json.dumps({'updated_at': now, 'candidates': [{
+                'market_id': 'OIL-1', 'event_title': 'Oil', 'market_title': 'Price above 100',
+                'relevance_score': 0.8, 'side': 'yes', 'quote': {'best_ask': 0.45}}]}), encoding='utf-8')
+            with patch.object(publish, 'SCRIPT_DIR', str(folder)), \
+                 patch.object(publish, 'STATE_PATH', str(state)), \
+                 patch.object(publish, 'RECOMMENDERS', {'Kalshi': str(rec)}):
+                live = publish.build_payload()['live']
+                self.assertEqual(live['audio_status'], 'listening')
+                self.assertEqual(live['ready_markets'][0]['market'], 'OIL-1')
+                self.assertEqual(live['market_updated_at'], now)
+                state.write_text(json.dumps({'status': 'stopped'}), encoding='utf-8')
+                stopped = publish.build_payload()['live']
+                self.assertEqual(stopped['audio_status'], 'finished')
+                self.assertEqual(stopped['ready_markets'], [])
+
     def test_superseded_start_does_not_launch(self):
         worker = control_worker.Worker('https://example.test', 'existing-token')
         with patch.object(worker, 'stop') as stop, patch.object(worker, '_download', return_value='local.mp3'), \
@@ -112,6 +137,24 @@ class HostedControlTests(unittest.TestCase):
             worker._advance()
         stop.assert_called_once()
         self.assertEqual(worker.message, 'Session time limit reached')
+
+    def test_replay_feeds_rolling_transcript_for_market_recommenders(self):
+        import live
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            (folder / 'demo.json').write_text(json.dumps({'segments': [
+                {'role': 'chair', 'text': 'Inflation remains high. We may raise rates.'},
+                {'role': 'other', 'text': 'What about oil?'}]}), encoding='utf-8')
+            output = folder / 'live_transcript.json'
+            with patch.object(live.stance_scorer, 'TRANSCRIPT_DIR', str(folder)), \
+                 patch.object(live, 'TRANSCRIPT_PATH', str(output)), \
+                 patch.object(live.time, 'sleep'):
+                replay = live.simulate('demo', 20)
+                self.assertEqual(next(replay), 'Inflation remains high.')
+                self.assertEqual(json.loads(output.read_text(encoding='utf-8'))['segments'], [
+                    {'text': 'Inflation remains high.', 'role': 'chair'}])
+                list(replay)
+            self.assertEqual(json.loads(output.read_text(encoding='utf-8'))['segments'][-1]['role'], 'other')
 
 
 if __name__ == '__main__':

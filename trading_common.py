@@ -15,6 +15,8 @@ Both venues quote prices from the YES side:
 
 import json
 import os
+import math
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -27,6 +29,7 @@ MAX_SLIPPAGE = 0.02               # pay at most 2 cents worse than the best pric
 
 KILL_SWITCH_FILE = os.path.join(SCRIPT_DIR, "STOP_TRADING")
 TRADE_LOG_PATH = os.path.join(SCRIPT_DIR, "trades.jsonl")
+TRADE_LOCK_PATH = os.path.join(SCRIPT_DIR, "trade_risk.lock")
 
 # Taker fee coefficients: fee = theta * contracts * p * (1 - p)
 TAKER_FEE_THETA = {
@@ -81,6 +84,7 @@ def spent_today() -> float:
         return 0.0
     today = datetime.now(timezone.utc).date().isoformat()
     total = 0.0
+    attempts = {}
     with open(TRADE_LOG_PATH, encoding="utf-8") as f:
         for line in f:
             try:
@@ -89,14 +93,24 @@ def spent_today() -> float:
                 continue
             if entry.get("env") == "demo":
                 continue  # fake money doesn't count toward the real daily cap
-            if entry.get("live") and entry.get("sent") and entry.get("time", "").startswith(today):
-                total += entry.get("max_cost", 0.0)
+            if entry.get("live") and entry.get("time", "").startswith(today):
+                request_id = entry.get("request_id")
+                if request_id:
+                    # A durable pending record reserves the budget even when the
+                    # exchange response is lost. Later receipts replace it.
+                    attempts[request_id] = entry
+                elif entry.get("sent"):
+                    total += entry.get("max_cost", 0.0)
+    total += sum(float(e.get("max_cost", 0)) for e in attempts.values()
+                 if e.get("status") not in ("rejected_before_send", "blocked"))
     return total
 
 
 def risk_check(qty: float, max_cost: float, live: bool) -> list:
     """Returns a list of problems. Empty list means the order is allowed."""
     problems = []
+    if not all(math.isfinite(float(x)) and float(x) > 0 for x in (qty, max_cost)):
+        return ["quantity and cost must be finite and positive"]
     if qty > MAX_CONTRACTS_PER_ORDER:
         problems.append(f"qty {qty} > MAX_CONTRACTS_PER_ORDER {MAX_CONTRACTS_PER_ORDER}")
     if max_cost > MAX_DOLLARS_PER_ORDER:
@@ -114,6 +128,34 @@ def log_trade(entry: dict):
     entry["time"] = datetime.now(timezone.utc).isoformat()
     with open(TRADE_LOG_PATH, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, default=str) + "\n")
+        f.flush()
+        os.fsync(f.fileno())
+
+
+@contextmanager
+def trade_lock():
+    """Serialize every risk check, reservation, exchange send and receipt."""
+    with open(TRADE_LOCK_PATH, "a+b") as handle:
+        if os.name == "nt":
+            import msvcrt
+            handle.seek(0)
+            if not handle.read(1):
+                handle.seek(0)
+                handle.write(b"0")
+                handle.flush()
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(handle, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if os.name == "nt":
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(handle, fcntl.LOCK_UN)
 
 
 def trade_status(result: dict) -> str:

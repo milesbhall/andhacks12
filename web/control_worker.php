@@ -23,7 +23,8 @@ if ($method === 'GET') {
         $jobs = [];
         foreach (($s['jobs'] ?? []) as $id => $job) {
             if (($job['status'] ?? '') !== 'queued') continue;
-            $jobs[] = ['id' => $id, 'kind' => $job['kind'], 'text' => $job['text'], 'options' => $job['options'] ?? []];
+            $jobs[] = ['id' => $id, 'kind' => $job['kind'], 'text' => $job['text'],
+                'owner' => $job['owner'] ?? '', 'options' => $job['options'] ?? []];
             $s['jobs'][$id]['status'] = 'running';
         }
         return ['command' => $s['command'] ?? null, 'jobs' => $jobs];
@@ -41,7 +42,7 @@ if (isset($data['job_id'])) {
     $ok = in_array($data['job_status'] ?? '', ['done', 'error'], true);
     if (!$ok) control_json(400, ['ok' => false]);
     control_store($config, function (&$s) use ($jid, $data) {
-        if (!isset($s['jobs'][$jid])) return;
+        if (!isset($s['jobs'][$jid]) || ($s['jobs'][$jid]['status'] ?? '') !== 'running') return;
         $s['jobs'][$jid]['status'] = $data['job_status'];
         $s['jobs'][$jid]['result'] = $data['job_result'] ?? null;
         $s['jobs'][$jid]['error'] = substr((string)($data['job_error'] ?? ''), 0, 300);

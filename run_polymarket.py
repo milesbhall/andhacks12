@@ -26,6 +26,7 @@ import json
 import os
 import re
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 os.environ.setdefault("GEMINI_MODEL", "gemini-3.5-flash-lite")
@@ -207,6 +208,22 @@ def watch_live_transcript(transcript_path: Path, poll_interval: float = 0.5,
         print(json.dumps(payload, indent=2, ensure_ascii=False) if recommendations
               else "No markets currently meet the relevance threshold.")
 
+    # Catalog fetching can take longer than the first replay sentences. Rank the
+    # already committed speaker text once before following new segments.
+    if isinstance(segments, list) and segments and payload:
+        try:
+            stamp = datetime.fromisoformat(str(payload.get("updated_at", "")).replace("Z", "+00:00"))
+            if stamp.tzinfo is None:
+                stamp = stamp.replace(tzinfo=timezone.utc)
+            recent = 0 <= (datetime.now(timezone.utc) - stamp).total_seconds() <= 120
+        except ValueError:
+            recent = False
+        if recent:
+            context = " ".join(str(s.get("text", "")).strip() for s in segments
+                               if isinstance(s, dict) and s.get("role", "speaker") in ("chair", "speaker", "president"))[-context_characters:]
+            if context:
+                rank_context(context, context)
+
     while True:
         payload = _read_transcript_payload(transcript_path)
         segments = payload.get("segments", []) if payload else []
@@ -217,6 +234,8 @@ def watch_live_transcript(transcript_path: Path, poll_interval: float = 0.5,
         new_segments = segments[seen_segments:]
         seen_segments = len(segments)
         for segment in new_segments:
+            if isinstance(segment, dict) and segment.get("role", "speaker") not in ("chair", "speaker", "president"):
+                continue
             text = segment.get("text") if isinstance(segment, dict) else None
             if not isinstance(text, str) or not text.strip():
                 continue

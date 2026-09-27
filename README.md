@@ -18,7 +18,7 @@ sentiment model can't tell the difference. A personal baseline can.
  transcript ──► Gemini scores −1 dovish … +1 hawkish (with prior context + FRED macro data)
    │            z = (stance − speaker mean) / speaker sd
    ▼
- |z| ≥ 2 ? ──► pre-picked Kalshi + Polymarket markets (+ Dylan's live recommenders)
+ |z| ≥ 2 ? ──► Kalshi + Polymarket candidates refreshed from the speaker's recent topic
    │            risk limits: $10/order, $50/day, slippage cap, kill switch, flip guard
    ▼
  orders ──► Solana memo receipt · Tiger Data (TimescaleDB) · Backboard memory
@@ -32,22 +32,26 @@ sentiment model can't tell the difference. A personal baseline can.
 | Context | **FRED** (fed funds, CPI, core PCE, unemployment, payrolls, 2y/10y, breakevens) goes into the scoring prompt. **Bluesky + Reddit** (via SocialCrawl) posts are scored on the same scale so each surprise is compared with what the crowd expects. |
 | Score | Gemini rates each passage and labels who is talking (reporter questions are ignored). |
 | Decide | z-score vs. the speaker's baseline, **adjusted with FRED** (+0.25 per point of extra core PCE inflation, −0.15 per point of extra unemployment since the baseline was recorded): Warsh (46 answers, 2 press conferences), Powell (123 answers, 4 press conferences), President Trump (5 economy speeches). |
-| Trade | Markets are chosen before the speech, so no search delay. Dry run, Kalshi demo, or LIVE (typed confirmation). |
+| Trade | Market recommenders follow recent speaker words. Dry run, Kalshi demo, or guarded LIVE execution. |
 | Prove | Every surprise is hashed onto Solana devnet, stored in Tiger Data, and remembered by Backboard ("Ask the desk"). |
 
 ## The website
 
-The Hostinger page is the whole product; no Streamlit needed. Anyone can watch; the
-operator signs in with an approved Auth0 account or the operator password to run it. A small worker on the laptop (`control_worker.py`) polls the
+The Hostinger page starts with sign-in and local key setup. An approved Auth0 operator or the operator password can open the desk; only approved Auth0 operators can access private order controls. A small worker on the team laptop (`control_worker.py`) polls the
 site over HTTPS and runs the Python pipeline locally.
 
 - **Control room:** start/stop a session from the mic, a recording, a stream URL, or a replay; choose speaker, mode (dry / Kalshi demo / LIVE), contracts, venues, playback speed.
 - **Live:** z-score chart, transcript, "Hearing:" line for the mic, order cards, the markets ready to trade, live recommenders.
+- **Orders:** private exchange open orders, holdings, recent manual attempts, and Buy/Sell tickets. A ticket checks a fresh quote and risk limits, then requires a separate confirmation. A submission is not a confirmed fill. Sell requires verified holdings.
 - **Ask the desk:** questions answered from Backboard memory of every signal and order.
 - **Analyze:** score any statement and see which markets it would move. This tool always runs dry and never sends orders.
 - **Crowd & macro:** Bluesky + Reddit sentiment and the FRED backdrop.
 - **Replay:** 17 press conferences and speeches (Warsh, Powell, presidential remarks) scored answer by answer.
 - **History:** every signal (Tiger Data) and order.
+
+The Live page labels the desk update, last speech update, and market update separately. It shows whether audio is waiting, listening, stalled, or ended. Markets in view use the latest available speaker topic and disappear when their source is stale or a session ends. The hosted page and worker share **one team trading account**; independent user keys require separate deployments and workers.
+
+There are two replay paths. **Control room replay** times a saved transcript through the live pipeline, refreshing market recommendations and producing dry/demo/LIVE order attempts according to the chosen mode. **Replay tab** shows previously computed, answer-by-answer stance scores for inspection and sends no orders.
 
 ## Run it
 
@@ -76,6 +80,7 @@ typing `LIVE` when selecting the mode, and starting the local worker with
 `MARKETPULSE_ALLOW_LIVE=1`. The default worker rejects LIVE requests; dry run and
 Kalshi demo remain available. A locally created `STOP_TRADING` file still stops order
 execution. Use dry run for judging unless the team deliberately enables real money.
+Manual Buy/Sell additionally requires a private exchange snapshot, a 90-second, single-use preview bound to the Auth0 session, a fresh limit and position check, and an explicit final confirmation. The worker records a request before its one send attempt and never retries an ambiguous exchange response automatically. The same $10/order and $50/day caps apply to automated and manual LIVE orders. Polymarket Sell fails closed when its account response does not verify the exact held side and quantity.
 
 ## Repo map
 
@@ -85,6 +90,7 @@ execution. Use dry run for judging unless the team deliberately enables real mon
 | `stance_scorer.py` | Gemini stance rubric, speaker baselines, z-scores |
 | `speechtxt.py`, `mic.py` | ElevenLabs realtime transcription (streams, files, YouTube, mic) |
 | `market_router.py`, `kalshi_trader.py`, `polymarket_client.py`, `trading_common.py` | Market search, pricing, orders, risk limits, modes |
+| `manual_orders.py` | Private account snapshots, short-lived manual previews, guarded Buy/Sell execution |
 | `kalshi_ticker2.py`, `run_kalshi_ticker2.py`, `run_polymarket.py`, `recommendation_schema.py` | Dylan's baseline-aware market recommenders |
 | `fred_client.py`, `social_sentiment.py` | FRED macro backdrop; Bluesky + Reddit crowd sentiment |
 | `solana_proof.py`, `tiger_store.py`, `backboard_client.py` | Receipts, time-series storage, memory / Ask the desk |
@@ -103,11 +109,11 @@ requires an approved Auth0 identity, typing LIVE, and local worker opt-in. Real 
 
 | Layer | Technology and role |
 |---|---|
-| Front end and hosting | HTML, CSS, JavaScript dashboard on Hostinger; PHP endpoints for the control queue, sessions, and publishing |
+| Front end and hosting | Logo-led HTML, CSS, JavaScript dashboard on Hostinger; PHP endpoints for authentication, control queue, private order jobs, and publishing |
 | Identity | Auth0 Authorization Code flow for allowlisted operators; password fallback for non-LIVE controls |
 | Local runtime | Python worker on the operator laptop, outbound HTTPS polling, subprocess supervision, replay and audio handling |
 | Speech and scoring | ElevenLabs Scribe v2 Realtime transcription; Gemini stance scoring with FRED macro context and speaker baselines |
-| Markets and execution | Kalshi and Polymarket market data/order clients, dry/demo/LIVE modes, limits and a local kill switch |
+| Markets and execution | Kalshi and Polymarket market data/order clients, topic-aware recommendations, dry/demo/LIVE modes, private manual order flow, shared limits and a local kill switch |
 | Context and history | FRED, Bluesky, Reddit via SocialCrawl, Tiger Data (TimescaleDB), Backboard memory |
 | Proof | Solana devnet memo receipt when a funded wallet is configured |
 

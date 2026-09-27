@@ -186,6 +186,13 @@ def _trim_record(r: dict) -> dict:
 def run_job(job: dict):
     kind, text = job.get('kind'), (job.get('text') or '').strip()
     raw_options = job.get('options')
+    if kind in ('order_snapshot', 'order_preview', 'order_submit'):
+        import manual_orders
+        if kind == 'order_snapshot':
+            return manual_orders.snapshot()
+        if kind == 'order_preview':
+            return manual_orders.preview(raw_options or {}, job.get('owner', ''))
+        return manual_orders.submit((raw_options or {}).get('preview_id'), job.get('owner', ''))
     if kind in ('ask', 'analyze', 'memories'):
         raw_options = {**(raw_options if isinstance(raw_options, dict) else {}), 'mode': 'dry'}
     opts = clean_options(raw_options)
@@ -235,12 +242,25 @@ def build_archive() -> dict:
                     r = json.loads(line)
                 except ValueError:
                     continue
+                if r.get('reason') == 'manual order':
+                    continue  # authenticated account activity belongs only in Orders
                 trades.append({'time': r.get('time'), 'venue': r.get('venue'), 'market': r.get('market'),
                                'side': r.get('side'), 'qty': r.get('qty'), 'yes_limit': r.get('yes_limit'),
                                'max_cost': r.get('max_cost'), 'status': tc.trade_status(r),
                                'reason': r.get('reason')})
     except OSError:
         pass
+    positions = {}
+    for t in trades:   # net contracts per market from our own orders (demo/real only)
+        st = str(t.get('status') or '')
+        if not st.startswith('SENT'):
+            continue
+        key = (t.get('venue'), t.get('market'), 'demo' if 'demo' in st else 'real')
+        pos = positions.setdefault(key, {'venue': key[0], 'market': key[1], 'account': key[2],
+                                         'yes': 0, 'no': 0, 'cost': 0.0, 'last': t.get('time')})
+        pos[t.get('side') or 'yes'] = pos.get(t.get('side') or 'yes', 0) + int(t.get('qty') or 0)
+        pos['cost'] += float(t.get('max_cost') or 0)
+        pos['last'] = t.get('time')
     signals = []
     try:
         import tiger_store
@@ -264,6 +284,7 @@ def build_archive() -> dict:
         pass
     return {'updated_at': datetime.now(timezone.utc).isoformat(), 'replays': replays,
             'macro': macro, 'social': social,
+            'positions': sorted(positions.values(), key=lambda p: str(p['last']), reverse=True)[:40],
             'trades': trades[-200:][::-1], 'signals': signals, 'replay_dates': replay_dates,
             'speakers': sorted(known_speakers())}
 
@@ -319,8 +340,16 @@ class Worker:
         try:
             payload = {'job_id': job['id'], 'job_status': 'done', 'job_result': run_job(job)}
         except Exception as exc:
+            message = f'{type(exc).__name__}: {exc}'[:300]
+            if str(job.get('kind', '')).startswith('order_'):
+                safe = ('Local MARKETPULSE_ALLOW_LIVE=1', 'Order outcome is unknown',
+                        'Sell quantity exceeds', 'Preview expired', 'Invalid preview',
+                        'Market is not open', 'Limit is more than', 'daily cap:',
+                        'STOP_TRADING', 'No YES', 'Missing Kalshi keys',
+                        'Missing Polymarket keys')
+                message = str(exc)[:200] if str(exc).startswith(safe) else 'Order service could not verify the request; check the laptop and exchange account'
             payload = {'job_id': job['id'], 'job_status': 'error',
-                       'job_error': f'{type(exc).__name__}: {exc}'[:300]}
+                       'job_error': message}
         body = json.dumps(payload, default=str)
         if len(body) > 390000:
             body = json.dumps({'job_id': job['id'], 'job_status': 'error', 'job_error': 'Result too large'})
@@ -480,10 +509,33 @@ class Worker:
     def stop(self):
         was_running = self.phase in ('starting', 'running')
         self.phase = 'stopping'
-        if was_running and 'publisher' in self.processes:
-            time.sleep(1.5)   # let the publisher push the final state
         _kill_owned()
         self.processes.clear()
+        if was_running:
+            try:   # the site should say the session ended, not keep showing "Listening"
+                path = ROOT / 'live_state.json'
+                st = json.loads(path.read_text(encoding='utf-8'))
+                st['status'] = 'stopped'
+                path.write_text(json.dumps(st, default=str), encoding='utf-8')
+                subprocess.run([sys.executable, 'publish.py', '--once'], cwd=ROOT, timeout=20,
+                               creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
+        if was_running:
+            state_path = ROOT / 'live_state.json'
+            try:
+                state = json.loads(state_path.read_text(encoding='utf-8'))
+                state['status'] = 'stopped' if state.get('status') != 'finished' else 'finished'
+                state['updated_at'] = datetime.now(timezone.utc).isoformat()
+                replacement = state_path.with_name(state_path.name + '.tmp')
+                replacement.write_text(json.dumps(state, ensure_ascii=False), encoding='utf-8')
+                replacement.replace(state_path)
+                import publish
+                self.request('POST', '/update.php', data=json.dumps(publish.build_payload()),
+                             headers={'Content-Type': 'application/json'}, timeout=10)
+            except Exception as exc:
+                print('final live state upload failed:', exc)
         if self.tempdir:
             self.tempdir.cleanup()
             self.tempdir = None

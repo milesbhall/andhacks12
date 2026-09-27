@@ -45,6 +45,9 @@ control_config.php
 auth0_config.php
 control_worker.lock
 control_worker_processes.json
+manual_order_previews.json
+manual_order_previews.tmp
+trade_risk.lock
 
 scratch/
 social_cache.json

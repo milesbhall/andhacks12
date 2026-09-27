@@ -212,16 +212,28 @@ def place_trade(ticker: str, side: str, qty: float, live: bool = False, reason: 
         "live": live, "sent": False, "reason": reason, "order": order,
     }
 
-    problems = tc.risk_check(qty, max_cost, live)
-    if problems:
-        result["blocked"] = problems
-    elif not live:
-        result["note"] = "DRY RUN: order not sent. Re-run with --live to send."
-    else:
-        result["response"] = KalshiTrader(env).create_order(order)
-        result["sent"] = True
-
-    tc.log_trade(result)
+    with tc.trade_lock():
+        problems = tc.risk_check(qty, max_cost, live)
+        if problems:
+            result["blocked"] = problems
+            tc.log_trade(result)
+        elif not live:
+            result["note"] = "DRY RUN: order not sent. Re-run with --live to send."
+            tc.log_trade(result)
+        else:
+            result["request_id"] = order["client_order_id"]
+            result["status"] = "pending"
+            tc.log_trade(result)
+            try:
+                result["response"] = KalshiTrader(env).create_order(order)
+                result["sent"] = True
+                result["status"] = "submitted"
+            except Exception as exc:
+                result["status"] = "unknown"
+                result["error"] = str(exc)[:300]
+                tc.log_trade(result)
+                raise
+            tc.log_trade(result)
     return result
 
 
