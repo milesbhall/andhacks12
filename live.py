@@ -240,8 +240,10 @@ def fresh_quote(m: dict) -> dict:
 # ------------------------------------------------------------------ #
 
 class LiveDesk:
-    def __init__(self, speaker, venues, qty, live, watchlist, state):
+    def __init__(self, speaker, venues, qty, live, watchlist, state, source="live", surprises_only=False):
         self.speaker, self.venues, self.qty, self.live = speaker, venues, qty, live
+        self.source = source                  # "live", "mic" or "simulate": how rows are tagged in Tiger Data
+        self.surprises_only = surprises_only  # mic demo: don't store neutral chatter
         self.watch = watchlist
         self.state = state
         self.base = stance_scorer.load_store()[speaker]
@@ -342,12 +344,12 @@ class LiveDesk:
             proof = pipeline._solana_proof(record)
             if proof:
                 record["solana"] = proof
-            tiger_store.log_signal(record, source="live", solana_sig=(proof or {}).get("signature"))
+            tiger_store.log_signal(record, source=self.source, solana_sig=(proof or {}).get("signature"))
             tiger_store.log_ticks(record["matches"])
             tiger_store.log_trades(record["trades"])
-            pipeline._backboard_record(record, "live_" + self.state.data["started"][:10])
-        else:
-            tiger_store.log_signal(record, source="live")
+            pipeline._backboard_record(record, f"{self.source}_" + self.state.data["started"][:10])
+        elif not self.surprises_only:
+            tiger_store.log_signal(record, source=self.source)
 
 
 # ------------------------------------------------------------------ #
@@ -426,6 +428,10 @@ def main():
     parser.add_argument("--mode", choices=tc.MODES, default="dry",
                         help="dry (default), demo (Kalshi demo exchange), live (real money)")
     parser.add_argument("--no-prewarm", action="store_true", help="Skip the market watchlist (score only)")
+    parser.add_argument("--source", choices=["live", "mic"], default="live",
+                        help="Tag stored rows as coming from a real speech or the mic demo")
+    parser.add_argument("--surprises-only", action="store_true",
+                        help="Only store surprises (use for the mic demo so room chatter isn't saved)")
     parser.add_argument("--fast", action="store_true",
                         help="Only watch the next Fed decision's markets (starts in seconds; good for the mic demo)")
     args = parser.parse_args()
@@ -446,7 +452,8 @@ def main():
         watchlist = build_watchlist(args.speaker, args.venues)
     state.update(watchlist=watchlist, status="listening")
 
-    desk = LiveDesk(args.speaker, args.venues, args.qty, args.live, watchlist, state)
+    desk = LiveDesk(args.speaker, args.venues, args.qty, args.live, watchlist, state,
+                    source="simulate" if args.simulate else args.source, surprises_only=args.surprises_only)
     sentences = simulate(args.simulate, args.speed) if args.simulate else watch_file(args.watch)
     try:
         for text, heard_at in chunks(sentences):

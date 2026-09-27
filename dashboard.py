@@ -301,7 +301,8 @@ def _start_demo(mode: str, venues: list, speaker: str, use_mic: bool):
         json.dump({"source": "microphone", "segments": []}, f)
     flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
     pids = {"desk": subprocess.Popen(
-        [sys.executable, "live.py", "--speaker", speaker, "--fast", "--mode", mode, "--venues", *venues],
+        [sys.executable, "live.py", "--speaker", speaker, "--fast", "--mode", mode, "--venues", *venues,
+         "--source", "mic", "--surprises-only"],
         cwd=SCRIPT_DIR, creationflags=flags,
         stdout=open(os.path.join(SCRIPT_DIR, "live.log"), "w"), stderr=subprocess.STDOUT).pid}
     if use_mic:
@@ -314,10 +315,20 @@ def _start_demo(mode: str, venues: list, speaker: str, use_mic: bool):
 
 def _stop_demo():
     import signal
+    import subprocess
     for pid in _demo_running().values():
         try:
-            os.kill(pid, signal.SIGTERM)
+            if os.name == "nt":   # kill the whole process tree so the mic really stops
+                subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
+            else:
+                os.kill(pid, signal.SIGTERM)
         except Exception:
+            pass
+    for path, empty in ((TRANSCRIPT_LIVE_PATH, {"segments": []}), (PARTIAL_LIVE_PATH, {"text": ""})):
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(empty, f)
+        except OSError:
             pass
     try:
         os.remove(DEMO_PIDS_PATH)
