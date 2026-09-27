@@ -1,6 +1,6 @@
-# [Incredible Trades]
+# Incredible Trades
 
-**[Project Name]** transcribes speeches and posts from market-moving figures (e.g. Fed Chair Kevin Warsh, Donald Trump) in real time and scores each statement for **surprise relative to that speaker's own history**, not generic sentiment. It flags when someone sounds unusually hawkish, dovish, or off-script *for them*, maps the statement to the relevant contracts on **Kalshi, Polymarket US, and other regulated prediction markets**, and can place trades automatically within set risk limits. Every prediction is logged against the actual outcome, so the system builds a public, calibrated track record.
+**Incredible Trades** transcribes speeches and posts from market-moving figures (e.g. Fed Chair Kevin Warsh, Donald Trump) in real time and scores each statement for **surprise relative to that speaker's own history**, not generic sentiment. It flags when someone sounds unusually hawkish, dovish, or off-script *for them*, maps the statement to the relevant contracts on **Kalshi, Polymarket US, and other regulated prediction markets**, and can place trades automatically within set risk limits. Every prediction is logged against the actual outcome, so the system builds a public, calibrated track record.
 
 ## Why it exists
 
@@ -52,7 +52,9 @@ We test the hypothesis that speaker-relative surprise predicts market moves, liv
 | `tiger_store.py` | Stores signals, prices and trades as Tiger Data time series |
 | `solana_proof.py` | Writes a hash of each signal to Solana, a public timestamp that proves when we made the call |
 | `speechtxt.py` | ElevenLabs Scribe v2 Realtime: turns live audio (Fed broadcast, stream URL or file) into `live_transcript.json` |
-| `run_kalshi_ticker2.py` / `run_polymarket.py` | Top 3 Kalshi / Polymarket markets for a transcript, same input and output format (`--watch` on the Polymarket one reruns as the live transcript grows) |
+| `run_kalshi_ticker2.py` / `run_polymarket.py` | Live recommenders: re-rank the top Kalshi / Polymarket markets on every new sentence (`--watch`), score it against the speaker's baseline, and promote candidates to recommendations only on a surprise. Output: `live_recommendations.json` / `live_polymarket_recommendations.json` |
+| `recommendation_schema.py` | Shared output format for both recommenders (baseline snapshot, candidates, recommendations) |
+| `mic.py` | Laptop microphone -> ElevenLabs Scribe v2 Realtime -> `live_transcript.json` (the dashboard's mic demo) |
 
 **Data and config:** `transcripts/` (parsed press conferences), `stance_baselines.json` (each speaker's usual stance), `.streamlit/secrets.example.toml` (Auth0).
 

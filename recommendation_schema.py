@@ -5,7 +5,9 @@ from datetime import datetime, timezone
 import stance_scorer
 
 
-BASELINE_MIN_WORDS = stance_scorer.MIN_ANSWER_WORDS
+# Live speech arrives one sentence at a time, so use a small floor (like live.py)
+# rather than the 20-word filter used when building baselines from full answers.
+BASELINE_MIN_WORDS = 6
 
 
 def baseline_snapshot(speaker: str, statement: str) -> dict:

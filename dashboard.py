@@ -35,7 +35,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 RESULTS_DIR = os.path.join(SCRIPT_DIR, "results")
 ALLOWED_TRADERS = {e.strip().lower() for e in os.environ.get("ALLOWED_TRADERS", "").split(",") if e.strip()}
 
-st.set_page_config(page_title="Fed Surprise Desk", page_icon="📈", layout="wide")
+st.set_page_config(page_title="Incredible Trades", page_icon="📈", layout="wide")
 
 
 # ------------------------------------------------------------------ #
@@ -176,7 +176,7 @@ def show_record(rec: dict):
 logged_in, email = current_user()
 
 with st.sidebar:
-    st.header("Fed Surprise Desk")
+    st.header("Incredible Trades")
     if auth_configured():
         if logged_in:
             st.write(f"Signed in as **{email}**")
@@ -294,7 +294,7 @@ def _demo_running() -> dict:
     return alive
 
 
-def _start_demo(mode: str, venues: list, speaker: str, use_mic: bool):
+def _start_demo(mode: str, venues: list, speaker: str, use_mic: bool, recommenders: bool = False):
     import subprocess
     import sys
     with open(TRANSCRIPT_LIVE_PATH, "w", encoding="utf-8") as f:
@@ -305,6 +305,13 @@ def _start_demo(mode: str, venues: list, speaker: str, use_mic: bool):
          "--source", "mic", "--surprises-only"],
         cwd=SCRIPT_DIR, creationflags=flags,
         stdout=open(os.path.join(SCRIPT_DIR, "live.log"), "w"), stderr=subprocess.STDOUT).pid}
+    if recommenders:
+        for name, script in (("kalshi recommender", "run_kalshi_ticker2.py"),
+                             ("polymarket recommender", "run_polymarket.py")):
+            pids[name] = subprocess.Popen(
+                [sys.executable, script, "--watch", "--speaker", speaker], cwd=SCRIPT_DIR, creationflags=flags,
+                stdout=open(os.path.join(SCRIPT_DIR, script.replace(".py", ".log")), "w"),
+                stderr=subprocess.STDOUT).pid
     if use_mic:
         pids["mic"] = subprocess.Popen([sys.executable, "mic.py"], cwd=SCRIPT_DIR, creationflags=flags,
                                        stdout=open(os.path.join(SCRIPT_DIR, "mic.log"), "w"),
@@ -359,18 +366,64 @@ def hearing_now():
         st.markdown(f"**Hearing:** _{text}_")
 
 
+RECOMMENDER_FILES = {"Kalshi": os.path.join(SCRIPT_DIR, "live_recommendations.json"),
+                     "Polymarket": os.path.join(SCRIPT_DIR, "live_polymarket_recommendations.json")}
+
+
+@st.fragment(run_every=2.0)
+def recommenders_panel():
+    """Latest output of the two live recommenders (recommendation_schema format)."""
+    shown = False
+    cols = st.columns(2)
+    for col, (venue, path) in zip(cols, RECOMMENDER_FILES.items()):
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            continue
+        shown = True
+        base = data.get("baseline") or {}
+        with col:
+            z = base.get("z")
+            read = base.get("surprise_direction", "UNSCORED")
+            st.markdown(f"**{venue}** · update {data.get('transcript_update') or '—'} · "
+                        f"latest statement: **{read}**" + (f" (z {z:+.1f})" if z is not None else ""))
+            recs = data.get("recommendations") or []
+            items = recs or (data.get("candidates") or [])
+            if not items:
+                st.caption("No related markets yet.")
+            for r in items[:3]:
+                side = (r.get("side") or "").upper()
+                q = r.get("quote") or {}
+                label = f"BUY {side} · " if (recs and side) else ""
+                text = (f"{label}{r.get('market_title') or r.get('ticker')}  \n"
+                        f"relevance {r.get('relevance_score', 0):.2f} · bid {q.get('best_bid')} / ask {q.get('best_ask')}")
+                if recs:
+                    st.success(text)
+                else:
+                    st.caption(text)
+            if items and not recs:
+                st.caption("Candidates only: promoted to recommendations when the statement is a surprise.")
+    if not shown:
+        st.caption("Recommenders not running. Tick the box above before starting, or run "
+                   "`python run_kalshi_ticker2.py --watch` and `python run_polymarket.py --watch`.")
+
+
 with tab_live:
     with st.expander("Microphone demo: talk like the Fed Chair and watch it trade", expanded=True):
         running = _demo_running()
         c1, c2, c3 = st.columns([1, 1, 2])
         if not running:
+            with_recs = st.checkbox("Also run the live Kalshi + Polymarket recommenders",
+                                    help="Dylan's run_kalshi_ticker2 / run_polymarket --watch. Kalshi takes "
+                                         "about 2 minutes to load its catalog.")
             if c1.button("Start mic demo", type="primary", disabled=not logged_in,
                          help="Starts the desk on the next Fed decision markets and the laptop microphone."):
-                _start_demo(live, venues, speaker, use_mic=True)
+                _start_demo(live, venues, speaker, use_mic=True, recommenders=with_recs)
                 st.rerun()
             if c2.button("Start (browser recorder)", disabled=not logged_in,
                          help="Desk only; record clips below instead of the laptop mic stream."):
-                _start_demo(live, venues, speaker, use_mic=False)
+                _start_demo(live, venues, speaker, use_mic=False, recommenders=with_recs)
                 st.rerun()
             c3.caption(f"Scores against {speaker}'s usual stance. Mode: **{live}**. "
                        "Takes a few seconds to load markets.")
@@ -393,6 +446,8 @@ with tab_live:
         st.caption('Try: "Inflation is still far too high. We are prepared to raise rates again in October." '
                    'or "The labor market is weakening fast and we are ready to cut rates at the next meeting."')
     live_panel()
+    with st.expander("Live market recommenders (Kalshi + Polymarket)", expanded=False):
+        recommenders_panel()
 
 with tab_desk:
     import backboard_client as bb
